@@ -31,6 +31,11 @@ export default {
           },
           text: '#E5E7EB'         // 바른 텍스트
         }
+      },
+      screens: {
+        'mobile': '360px', // 모바일 (360px~)
+        'tablet': '768px', // 태블릿 (768px~)
+        'laptop': '1024px', // 랩톱 (1024px~)
       }
     },
   },
