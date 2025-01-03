@@ -19,3 +19,39 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* 기본 리셋 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 버튼, 인풋 등의 기본 스타일 제거 */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* 링크 스타일 리셋 */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* 이미지 기본 설정 */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 리스트 스타일 리셋 */
+ul,
+ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
