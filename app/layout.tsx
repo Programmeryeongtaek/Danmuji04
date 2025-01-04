@@ -9,7 +9,7 @@ interface RootLayoutProps {
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html lang="ko">
-      <body>
+      <body className="h-full bg-light">
         <div>
           <Header />
           <main>{children}</main>

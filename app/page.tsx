@@ -1,6 +1,11 @@
 import './globals.css';
+import HomeScreen from './pages/home/HomeScreen';
 
-const Home = () => {
-  return <div>Project Initial</div>;
+const App = () => {
+  return (
+    <div>
+      <HomeScreen />
+    </div>
+  );
 };
-export default Home;
+export default App;
