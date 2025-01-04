@@ -1,10 +1,12 @@
 import './globals.css';
-import HomeScreen from './pages/home/HomeScreen';
+import HomeSlide from '@/components/home/HomeSlide';
+import Search from '@/components/home/Search';
 
 const App = () => {
   return (
     <div>
-      <HomeScreen />
+      <HomeSlide />
+      <Search />
     </div>
   );
 };
