@@ -1,10 +1,27 @@
+'use client';
+
 import { SearchIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+const phrases = ['무지(無知)를 끊다.', '지식의 체계화', '인생의 마중물'];
 
 const Search = () => {
+  const [currentIndex, setCurrentIndex] = useState([phrases[0]]);
+
+  useEffect(() => {
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      currentIndex = (currentIndex + 1) % phrases.length;
+      setCurrentIndex([phrases[currentIndex]]);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="flex h-40 w-full items-center justify-center border border-black">
       <div className="flex-col pt-10">
-        <span className="flex justify-center pb-3">무지를 끊다.</span>
+        <span className="flex justify-center pb-3">{currentIndex}</span>
         <div className="relative h-[50px] w-full">
           <input
             type="text"
