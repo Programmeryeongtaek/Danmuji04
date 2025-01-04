@@ -1,6 +1,13 @@
 import './globals.css';
+import HomeSlide from '@/components/home/HomeSlide';
+import Search from '@/components/home/Search';
 
-const Home = () => {
-  return <div>Project Initial</div>;
+const App = () => {
+  return (
+    <div>
+      <HomeSlide />
+      <Search />
+    </div>
+  );
 };
-export default Home;
+export default App;
