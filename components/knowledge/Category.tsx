@@ -1,5 +1,6 @@
 'use client';
 
+import { CategoryProps } from '@/types/knowledge/lecture';
 import {
   BookOpen,
   Brain,
@@ -21,8 +22,7 @@ const categories = [
   { id: 'leadership', icon: Users, label: '리더십' },
 ];
 
-const Category = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -63,7 +63,7 @@ const Category = () => {
       {categories.map(({ id, icon: Icon, label }) => (
         <button
           key={id}
-          onClick={() => setSelectedCategory(id)}
+          onClick={() => onCategoryClick(id)}
           className={`flex min-w-[80px] select-none flex-col items-center justify-center py-4 ${
             selectedCategory === id
               ? 'border-b-2 border-blue-500 text-blue-500'

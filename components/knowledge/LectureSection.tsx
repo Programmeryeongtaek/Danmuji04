@@ -4,8 +4,9 @@ import Dropdown from '../common/Dropdown';
 import Pagination from '../common/Pagination';
 import Filter from './Filter';
 import { lectures } from '@/dummy/lectureData';
+import { LectureSectionProps } from '@/types/knowledge/lecture';
 
-const LectureSection = () => {
+const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   return (
     <div className="flex flex-col">
       <div className="flex justify-between">
@@ -16,19 +17,8 @@ const LectureSection = () => {
         <Dropdown />
       </div>
       <div className="flex flex-wrap justify-center gap-4">
-        {lectures.map((lecture) => (
-          <Card
-            id={lecture.id}
-            key={lecture.id}
-            title={lecture.title}
-            instructor={lecture.instructor}
-            href={`/lecture/${lecture.id}`}
-            thumbnailUrl={lecture.thumbnailUrl}
-            level={lecture.level}
-            keyword={lecture.keyword}
-            likes={lecture.likes}
-            students={lecture.students}
-          />
+        {filteredLectures.map((lecture) => (
+          <Card key={lecture.id} {...lecture} />
         ))}
       </div>
       <Pagination />
