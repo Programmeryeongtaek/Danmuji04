@@ -1,8 +1,15 @@
+'use client';
+
 import { Menu } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import LoginModal from '../home/LoginModal';
+import { useState } from 'react';
+import Button from './Button/Button';
 
 const Header = () => {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
   return (
     <>
       <section className="flex h-10 w-full items-center">
@@ -42,13 +49,18 @@ const Header = () => {
               <Menu className="h-6 w-6" />
             </div>
           </div>
-          <div>
+          <div className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-transparent">
             <Link href={'/'}>단무지</Link>
           </div>
           <div>
             {/* TODO: 로그인 누르면 간편 로그인 및 회원가입 모달창 */}
-            <button>로그인</button>
+            <Button onClick={() => setIsLoginModalOpen(true)}>로그인</Button>
           </div>
+
+          <LoginModal
+            isOpen={isLoginModalOpen}
+            onClose={() => setIsLoginModalOpen(false)}
+          />
         </nav>
       </header>
     </>
