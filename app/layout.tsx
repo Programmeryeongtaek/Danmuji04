@@ -1,4 +1,3 @@
-import './globals.css';
 import Header from '@/components/common/Header';
 import Navbar from '@/components/common/Navbar';
 import { ReactNode } from 'react';
