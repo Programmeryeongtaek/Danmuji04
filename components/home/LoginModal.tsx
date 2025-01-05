@@ -1,0 +1,62 @@
+import Button from '../common/Button/Button';
+import Modal from '../common/Modal';
+
+interface LoginModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
+  return (
+    <Modal.Root isOpen={isOpen} onClose={onClose}>
+      <Modal.CloseButton />
+      <Modal.Content>
+        <h1 className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-center text-3xl text-transparent">
+          단무지
+        </h1>
+        <div className="flex justify-end">
+          <div className="w-20">
+            <Button>회원가입</Button>
+          </div>
+        </div>
+
+        <form className="flex-col">
+          <input
+            type="text"
+            placeholder="아이디"
+            className="my-1 h-9 w-full rounded-lg border pl-3"
+          />
+          <input
+            type="password"
+            placeholder="비밀번호"
+            className="my-1 h-9 w-full rounded-lg border pl-3"
+          />
+          <div className="my-2 flex h-9">
+            <Button>로그인</Button>
+          </div>
+        </form>
+        <div className="flex justify-center gap-3">
+          <button className="border-b border-gray-500 text-gray-700">
+            아이디 찾기
+          </button>
+          <span className="text-gray-700">|</span>
+          <button className="border-b border-gray-500 text-gray-700">
+            비밀번호 찾기
+          </button>
+        </div>
+        <div className="relative mt-16 flex h-20 items-center justify-center border-t border-gray-700">
+          <span className="absolute -top-3 bg-light px-2 text-gray-700">
+            간편 로그인
+          </span>
+          <div className="flex gap-3">
+            <button className="h-10 w-10 rounded-xl bg-gray-100">간편</button>
+            <button className="h-10 w-10 rounded-xl bg-gray-100">간편</button>
+            <button className="h-10 w-10 rounded-xl bg-gray-100">간편</button>
+          </div>
+        </div>
+      </Modal.Content>
+    </Modal.Root>
+  );
+};
+
+export default LoginModal;
