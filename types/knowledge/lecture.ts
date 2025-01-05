@@ -9,3 +9,12 @@ export interface Lecture {
   likes: number;
   students: number;
 }
+
+export interface CategoryProps {
+  selectedCategory: string;
+  onCategoryClick: (category: string) => void;
+}
+
+export interface LectureSectionProps {
+  selectedCategory: string;
+}
