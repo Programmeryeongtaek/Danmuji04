@@ -1,4 +1,3 @@
-import './globals.css';
 import Header from '@/components/common/Header';
 import Navbar from '@/components/common/Navbar';
 import { ReactNode } from 'react';
@@ -10,7 +9,7 @@ interface RootLayoutProps {
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html lang="ko">
-      <body className="h-full bg-light">
+      <body>
         <div>
           <Header />
           <main>{children}</main>
