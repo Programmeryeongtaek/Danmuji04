@@ -2,12 +2,17 @@
 
 import Card from '../common/Card';
 import KeywordSelector from './KeywordSelector';
-import Dropdown from '../common/Dropdown';
 import Pagination from '../common/Pagination';
 import Filter from './Filter';
-import { lectures } from '@/dummy/lectureData';
-import { FilterState, LectureSectionProps } from '@/types/knowledge/lecture';
+import {
+  FilterState,
+  Lecture,
+  LectureSectionProps,
+} from '@/types/knowledge/lecture';
 import { useEffect, useState } from 'react';
+import Dropdown from '../common/Dropdown/Dropdown';
+import { SortOption } from '../common/Dropdown/Type';
+import { lectures } from '@/dummy/lectureData';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -21,6 +26,7 @@ const categoryLabelMap = new Map([
 ]);
 
 const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
+  const [lectureList, setLectureList] = useState<Lecture[]>(lectures);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
     fields: [],
@@ -40,44 +46,46 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     });
   }, [selectedCategory]);
 
-  const filteredLectures = lectures.filter((lecture) => {
-    // 검색 카테고리 처리
+  const filteredLectures = lectureList.filter((lecture) => {
     if (selectedCategory === 'search') return false;
-
-    // 카테고리 필터링 ('전체'가 아닐 경우)
     if (selectedCategory !== 'all') {
       const categoryLabel = categoryLabelMap.get(selectedCategory);
-      if (lecture.category !== categoryLabel) {
-        return false;
-      }
+      if (lecture.category !== categoryLabel) return false;
     }
 
-    // 전체 카테고리일 때만 필터 적용
     if (selectedCategory === 'all') {
-      // 깊이
       if (
         activeFilters.depth.length > 0 &&
         !activeFilters.depth.includes(lecture.depth)
       ) {
         return false;
       }
-
-      // 분야
       if (
         activeFilters.fields.length > 0 &&
         !activeFilters.fields.includes(lecture.category)
       ) {
         return false;
       }
-
-      // 모임
-      if (activeFilters.hasGroup && !lecture.group) {
+      if (activeFilters.hasGroup && lecture.group !== '오프라인') {
         return false;
       }
     }
-
     return true;
   });
+
+  const handleSort = (option: SortOption) => {
+    const sorted = [...lectureList].sort((a, b) => {
+      switch (option) {
+        case 'latest':
+          return b.id - a.id;
+        case 'students':
+          return b.students - a.students;
+        case 'likes':
+          return b.likes - a.likes;
+      }
+    });
+    setLectureList(sorted);
+  };
 
   return (
     <div className="flex flex-col">
@@ -86,7 +94,10 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
           <KeywordSelector />
           <Filter onApply={onApply} />
         </div>
-        <Dropdown />
+        <Dropdown.Root onSort={handleSort}>
+          <Dropdown.Trigger />
+          <Dropdown.Context />
+        </Dropdown.Root>
       </div>
       <div className="flex flex-wrap justify-center gap-4">
         {filteredLectures.map((lecture) => (
