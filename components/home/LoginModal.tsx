@@ -9,7 +9,7 @@ interface LoginModalProps {
 const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
-      <Modal.CloseButton />
+      <Modal.CloseButton className="absolute right-8 top-32" />
       <Modal.Content>
         <h1 className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-center text-3xl text-transparent">
           단무지
