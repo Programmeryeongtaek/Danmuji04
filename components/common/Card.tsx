@@ -22,13 +22,17 @@ const Card = (lecture: Lecture) => {
       </div>
       <div className="flex-col">
         <div className="flex h-[60px] flex-col justify-between">
+          <div className="flex gap-2">
+            <span>{lecture.group}</span>
+            <div>{lecture.category}</div>
+          </div>
           <div>{lecture.title}</div>
           <div>{lecture.instructor}</div>
         </div>
 
         <div className="flex flex-col">
           <div className="flex gap-1">
-            <span>{lecture.level}</span>
+            <span>{lecture.depth}</span>
             <span>/</span>
             <span>{lecture.keyword}</span>
           </div>
