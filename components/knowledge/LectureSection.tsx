@@ -7,7 +7,7 @@ import Pagination from '../common/Pagination';
 import Filter from './Filter';
 import { lectures } from '@/dummy/lectureData';
 import { FilterState, LectureSectionProps } from '@/types/knowledge/lecture';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -31,32 +31,49 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     setActiveFilters(newFilters);
   };
 
+  // 카테고리 선택시, 필터 초기화
+  useEffect(() => {
+    setActiveFilters({
+      depth: [],
+      fields: [],
+      hasGroup: false,
+    });
+  }, [selectedCategory]);
+
   const filteredLectures = lectures.filter((lecture) => {
+    // 검색 카테고리 처리
     if (selectedCategory === 'search') return false;
 
-    if (
-      selectedCategory !== 'all' &&
-      lecture.category !== categoryLabelMap.get(selectedCategory)
-    ) {
-      return false;
+    // 카테고리 필터링 ('전체'가 아닐 경우)
+    if (selectedCategory !== 'all') {
+      const categoryLabel = categoryLabelMap.get(selectedCategory);
+      if (lecture.category !== categoryLabel) {
+        return false;
+      }
     }
 
-    if (
-      activeFilters.depth.length > 0 &&
-      !activeFilters.depth.includes(lecture.depth)
-    ) {
-      return false;
-    }
+    // 전체 카테고리일 때만 필터 적용
+    if (selectedCategory === 'all') {
+      // 깊이
+      if (
+        activeFilters.depth.length > 0 &&
+        !activeFilters.depth.includes(lecture.depth)
+      ) {
+        return false;
+      }
 
-    if (
-      activeFilters.fields.length > 0 &&
-      !activeFilters.fields.includes(lecture.category)
-    ) {
-      return false;
-    }
+      // 분야
+      if (
+        activeFilters.fields.length > 0 &&
+        !activeFilters.fields.includes(lecture.category)
+      ) {
+        return false;
+      }
 
-    if (activeFilters.hasGroup && !lecture.group) {
-      return false;
+      // 모임
+      if (activeFilters.hasGroup && !lecture.group) {
+        return false;
+      }
     }
 
     return true;
