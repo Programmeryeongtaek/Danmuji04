@@ -2,14 +2,14 @@ export interface Lecture {
   id: number;
   title: string;
   instructor: string;
-  href: string;
   thumbnailUrl: string;
   depth: string;
   category: string;
   keyword: string;
-  likes: number;
+  likes: number; 
   students: number;
   group: string;
+  href: string;
 }
 
 export interface CategoryProps {
