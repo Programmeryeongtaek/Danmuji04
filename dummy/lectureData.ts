@@ -5,10 +5,12 @@ export const lectures = [
     title: "서양 문학의 이해와 감상",
     instructor: "김인문",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "인문학",
+    depth: "초급",
+    category: "인문학",
+    keyword: '',
     likes: 128,
     students: 256,
+    group: '온라인',
     href: "/lectures/1"
   },
   {
@@ -16,10 +18,12 @@ export const lectures = [
     title: "동양 고전 읽기의 즐거움",
     instructor: "이고전",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "인문학",
+    depth: "중급",
+    category: "인문학",
+    keyword: '',
     likes: 156,
     students: 189,
+    group: '오프라인',
     href: "/lectures/2"
   },
   {
@@ -27,10 +31,12 @@ export const lectures = [
     title: "세계 신화와 문화 이야기",
     instructor: "박문화",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "인문학",
+    depth: "초급",
+    category: "인문학",
+    keyword: '',
     likes: 245,
     students: 312,
+    group: '온라인',
     href: "/lectures/3"
   },
   {
@@ -38,10 +44,12 @@ export const lectures = [
     title: "현대 문예의 흐름과 해석",
     instructor: "최예술",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "인문학",
+    depth: "중급",
+    category: "인문학",
+    keyword: '',
     likes: 167,
     students: 289,
+    group: '온라인',
     href: "/lectures/4"
   },
   {
@@ -49,10 +57,12 @@ export const lectures = [
     title: "한국 문학사의 이해",
     instructor: "정문학",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "인문학",
+    depth: "고급",
+    category: "인문학",
+    keyword: '',
     likes: 198,
     students: 234,
+    group: '오프라인',
     href: "/lectures/5"
   },
   {
@@ -60,10 +70,12 @@ export const lectures = [
     title: "비교문학으로 보는 세계",
     instructor: "김비교",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "인문학",
+    depth: "중급",
+    category: "인문학",
+    keyword: '',
     likes: 178,
     students: 245,
+    group: '온라인',
     href: "/lectures/6"
   },
   {
@@ -71,10 +83,12 @@ export const lectures = [
     title: "문화인류학 입문",
     instructor: "이인류",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "인문학",
+    depth: "초급",
+    category: "인문학",
+    keyword: '',
     likes: 223,
     students: 278,
+    group: '오프라인',
     href: "/lectures/7"
   },
   {
@@ -82,10 +96,12 @@ export const lectures = [
     title: "언어학의 기초",
     instructor: "박언어",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "인문학",
+    depth: "초급",
+    category: "인문학",
+    keyword: '',
     likes: 145,
     students: 198,
+    group: '온라인',
     href: "/lectures/8"
   },
   {
@@ -93,10 +109,12 @@ export const lectures = [
     title: "예술사의 흐름",
     instructor: "최예술",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "인문학",
+    depth: "중급",
+    category: "인문학",
+    keyword: '',
     likes: 167,
     students: 223,
+    group: '온라인',
     href: "/lectures/9"
   },
   {
@@ -104,10 +122,12 @@ export const lectures = [
     title: "고전 강독과 해석",
     instructor: "정고전",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "인문학",
+    depth: "고급",
+    category: "인문학",
+    keyword: '',
     likes: 189,
     students: 245,
+    group: '오프라인',
     href: "/lectures/10"
   },
 
@@ -117,10 +137,12 @@ export const lectures = [
     title: "서양철학의 역사",
     instructor: "김철학",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "철학",
+    depth: "중급",
+    category: "철학",
+    keyword: '',
     likes: 234,
     students: 312,
+    group: '온라인',
     href: "/lectures/11"
   },
   {
@@ -128,10 +150,12 @@ export const lectures = [
     title: "동양철학 입문",
     instructor: "이동양",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "철학",
+    depth: "초급",
+    category: "철학",
+    keyword: '',
     likes: 156,
     students: 234,
+    group: '온라인',
     href: "/lectures/12"
   },
   {
@@ -139,10 +163,12 @@ export const lectures = [
     title: "현대철학의 이해",
     instructor: "박현대",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "철학",
+    depth: "고급",
+    category: "철학",
+    keyword: '',
     likes: 178,
     students: 245,
+    group: '오프라인',
     href: "/lectures/13"
   },
   {
@@ -150,10 +176,12 @@ export const lectures = [
     title: "윤리학의 기초",
     instructor: "최윤리",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "철학",
+    depth: "초급",
+    category: "철학",
+    keyword: '',
     likes: 203,
     students: 289,
+    group: '온라인',
     href: "/lectures/14"
   },
   {
@@ -161,10 +189,12 @@ export const lectures = [
     title: "논리학 입문",
     instructor: "정논리",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "철학",
+    depth: "중급",
+    category: "철학",
+    keyword: '',
     likes: 167,
     students: 223,
+    group: '온라인',
     href: "/lectures/15"
   },
   {
@@ -172,10 +202,12 @@ export const lectures = [
     title: "실존주의 철학",
     instructor: "김실존",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "철학",
+    depth: "고급",
+    category: "철학",
+    keyword: '',
     likes: 189,
     students: 256,
+    group: '오프라인',
     href: "/lectures/16"
   },
   {
@@ -183,10 +215,12 @@ export const lectures = [
     title: "형이상학의 세계",
     instructor: "이형이",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "철학",
+    depth: "고급",
+    category: "철학",
+    keyword: '',
     likes: 145,
     students: 198,
+    group: '온라인',
     href: "/lectures/17"
   },
   {
@@ -194,10 +228,12 @@ export const lectures = [
     title: "철학적 사고법",
     instructor: "박사고",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "철학",
+    depth: "초급",
+    category: "철학",
+    keyword: '',
     likes: 223,
     students: 289,
+    group: '온라인',
     href: "/lectures/18"
   },
   {
@@ -205,10 +241,12 @@ export const lectures = [
     title: "도덕철학의 이해",
     instructor: "최도덕",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "철학",
+    depth: "중급",
+    category: "철학",
+    keyword: '',
     likes: 156,
     students: 212,
+    group: '오프라인',
     href: "/lectures/19"
   },
   {
@@ -216,10 +254,12 @@ export const lectures = [
     title: "정치철학 입문",
     instructor: "정정치",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "철학",
+    depth: "중급",
+    category: "철학",
+    keyword: '',
     likes: 178,
     students: 234,
+    group: '온라인',
     href: "/lectures/20"
   },
 
@@ -229,10 +269,12 @@ export const lectures = [
     title: "심리학의 기초",
     instructor: "김심리",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "심리학",
+    depth: "초급",
+    category: "심리학",
+    keyword: '',
     likes: 289,
     students: 345,
+    group: '온라인',
     href: "/lectures/21"
   },
   {
@@ -240,10 +282,12 @@ export const lectures = [
     title: "발달심리학",
     instructor: "이발달",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "심리학",
+    depth: "중급",
+    category: "심리학",
+    keyword: '',
     likes: 198,
     students: 267,
+    group: '오프라인',
     href: "/lectures/22"
   },
   {
@@ -251,10 +295,12 @@ export const lectures = [
     title: "성격심리학",
     instructor: "박성격",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "심리학",
+    depth: "중급",
+    category: "심리학",
+    keyword: '',
     likes: 167,
     students: 223,
+    group: '온라인',
     href: "/lectures/23"
   },
   {
@@ -262,10 +308,12 @@ export const lectures = [
     title: "임상심리학 입문",
     instructor: "최임상",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "심리학",
+    depth: "고급",
+    category: "심리학",
+    keyword: '',
     likes: 234,
     students: 289,
+    group: '온라인',
     href: "/lectures/24"
   },
   {
@@ -273,10 +321,12 @@ export const lectures = [
     title: "상담심리학의 이해",
     instructor: "정상담",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "심리학",
+    depth: "중급",
+    category: "심리학",
+    keyword: '',
     likes: 178,
     students: 245,
+    group: '오프라인',
     href: "/lectures/25"
   },
   {
@@ -284,10 +334,12 @@ export const lectures = [
     title: "인지심리학",
     instructor: "김인지",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "심리학",
+    depth: "고급",
+    category: "심리학",
+    keyword: '',
     likes: 156,
     students: 212,
+    group: '온라인',
     href: "/lectures/26"
   },
   {
@@ -295,10 +347,12 @@ export const lectures = [
     title: "사회심리학",
     instructor: "이사회",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "심리학",
+    depth: "중급",
+    category: "심리학",
+    keyword: '',
     likes: 203,
     students: 278,
+    group: '오프라인',
     href: "/lectures/27"
   },
   {
@@ -306,10 +360,12 @@ export const lectures = [
     title: "학습심리학",
     instructor: "박학습",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "심리학",
+    depth: "초급",
+    category: "심리학",
+    keyword: '',
     likes: 189,
     students: 256,
+    group: '온라인',
     href: "/lectures/28"
   },
 
@@ -319,10 +375,12 @@ export const lectures = [
     title: "경제학 원론",
     instructor: "김경제",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "경제학",
+    depth: "초급",
+    category: "경제학",
+    keyword: '',
     likes: 245,
     students: 312,
+    group: '오프라인',
     href: "/lectures/29"
   },
   {
@@ -330,10 +388,12 @@ export const lectures = [
     title: "미시경제학",
     instructor: "이미시",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "경제학",
+    depth: "중급",
+    category: "경제학",
+    keyword: '',
     likes: 178,
     students: 234,
+    group: '온라인',
     href: "/lectures/30"
   },
   {
@@ -341,10 +401,12 @@ export const lectures = [
     title: "거시경제학",
     instructor: "박거시",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "경제학",
+    depth: "중급",
+    category: "경제학",
+    keyword: '',
     likes: 203,
     students: 278,
+    group: '오프라인',
     href: "/lectures/31"
   },
   {
@@ -352,10 +414,12 @@ export const lectures = [
     title: "금융경제학",
     instructor: "최금융",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "경제학",
+    depth: "고급",
+    category: "경제학",
+    keyword: '',
     likes: 167,
     students: 223,
+    group: '온라인',
     href: "/lectures/32"
   },
   {
@@ -363,10 +427,12 @@ export const lectures = [
     title: "국제경제학",
     instructor: "정국제",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "경제학",
+    depth: "고급",
+    category: "경제학",
+    keyword: '',
     likes: 189,
     students: 245,
+    group: '오프라인',
     href: "/lectures/33"
   },
   {
@@ -374,10 +440,12 @@ export const lectures = [
     title: "행동경제학",
     instructor: "김행동",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "경제학",
+    depth: "중급",
+    category: "경제학",
+    keyword: '',
     likes: 156,
     students: 212,
+    group: '온라인',
     href: "/lectures/34"
   },
   {
@@ -385,10 +453,12 @@ export const lectures = [
     title: "개발경제학",
     instructor: "이개발",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "경제학",
+    depth: "중급",
+    category: "경제학",
+    keyword: '',
     likes: 223,
     students: 289,
+    group: '오프라인',
     href: "/lectures/35"
   },
   {
@@ -396,10 +466,12 @@ export const lectures = [
     title: "환경경제학",
     instructor: "박환경",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "경제학",
+    depth: "중급",
+    category: "경제학",
+    keyword: '',
     likes: 178,
     students: 234,
+    group: '온라인',
     href: "/lectures/36"
   },
 
@@ -409,10 +481,12 @@ export const lectures = [
     title: "시간 관리의 기술",
     instructor: "김시간",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "자기계발",
+    depth: "초급",
+    category: "자기계발",
+    keyword: '',
     likes: 289,
     students: 356,
+    group: '오프라인',
     href: "/lectures/37"
   },
   {
@@ -420,10 +494,12 @@ export const lectures = [
     title: "목표 설정과 실천",
     instructor: "이목표",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "자기계발",
+    depth: "초급",
+    category: "자기계발",
+    keyword: '',
     likes: 234,
     students: 312,
+    group: '온라인',
     href: "/lectures/38"
   },
   {
@@ -431,10 +507,12 @@ export const lectures = [
     title: "습관 형성의 심리학",
     instructor: "박습관",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "자기계발",
+    depth: "중급",
+    category: "자기계발",
+    keyword: '',
     likes: 198,
     students: 267,
+    group: '온라인',
     href: "/lectures/39"
   },
   {
@@ -442,10 +520,12 @@ export const lectures = [
     title: "효과적인 의사소통",
     instructor: "최소통",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "자기계발",
+    depth: "중급",
+    category: "자기계발",
+    keyword: '',
     likes: 167,
     students: 223,
+    group: '오프라인',
     href: "/lectures/40"
   },
   {
@@ -453,10 +533,12 @@ export const lectures = [
     title: "창의적 문제해결",
     instructor: "정창의",
     thumbnailUrl: "/placeholder.jpg",
-    level: "고급",
-    keyword: "자기계발",
+    depth: "고급",
+    category: "자기계발",
+    keyword: '',
     likes: 223,
     students: 289,
+    group: '온라인',
     href: "/lectures/41"
   },
   {
@@ -464,10 +546,12 @@ export const lectures = [
     title: "감정 관리와 스트레스 해소",
     instructor: "김감정",
     thumbnailUrl: "/placeholder.jpg",
-    level: "중급",
-    keyword: "자기계발",
+    depth: "중급",
+    category: "자기계발",
+    keyword: '',
     likes: 178,
     students: 245,
+    group: '오프라인',
     href: "/lectures/42"
   },
   {
@@ -475,10 +559,12 @@ export const lectures = [
     title: "자기주도적 학습법",
     instructor: "이학습",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "자기계발",
+    depth: "초급",
+    category: "자기계발",
+    keyword: '',
     likes: 156,
     students: 212,
+    group: '온라인',
     href: "/lectures/43"
   },
 
@@ -488,10 +574,12 @@ export const lectures = [
     title: "리더십의 기초",
     instructor: "박리더",
     thumbnailUrl: "/placeholder.jpg",
-    level: "초급",
-    keyword: "리더십",
+    depth: "초급",
+    category: "리더십",
+    keyword: '',
     likes: 245,
     students: 323,
+    group: '온라인',
     href: "/lectures/44"
   },
 ]

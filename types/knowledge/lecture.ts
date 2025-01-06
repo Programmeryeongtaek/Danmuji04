@@ -4,10 +4,12 @@ export interface Lecture {
   instructor: string;
   href: string;
   thumbnailUrl: string;
-  level: string;
+  depth: string;
+  category: string;
   keyword: string;
   likes: number;
   students: number;
+  group: string;
 }
 
 export interface CategoryProps {
@@ -17,4 +19,20 @@ export interface CategoryProps {
 
 export interface LectureSectionProps {
   selectedCategory: string;
+}
+
+export interface FilterState {
+  depth: string[];
+  fields: string[];
+  hasGroup: boolean;
+}
+
+export interface FilterModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onApply: (filters: FilterState) => void
+}
+
+export interface FilterChangeProps {
+  onApply: (filters: FilterState) => void
 }
