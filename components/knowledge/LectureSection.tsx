@@ -6,7 +6,8 @@ import Dropdown from '../common/Dropdown';
 import Pagination from '../common/Pagination';
 import Filter from './Filter';
 import { lectures } from '@/dummy/lectureData';
-import { LectureSectionProps } from '@/types/knowledge/lecture';
+import { FilterState, LectureSectionProps } from '@/types/knowledge/lecture';
+import { useState } from 'react';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -20,11 +21,45 @@ const categoryLabelMap = new Map([
 ]);
 
 const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
+  const [activeFilters, setActiveFilters] = useState<FilterState>({
+    depth: [],
+    fields: [],
+    hasGroup: false,
+  });
+
+  const onApply = (newFilters: FilterState) => {
+    setActiveFilters(newFilters);
+  };
+
   const filteredLectures = lectures.filter((lecture) => {
-    if (selectedCategory === 'all') return true;
     if (selectedCategory === 'search') return false;
 
-    return lecture.keyword === categoryLabelMap.get(selectedCategory);
+    if (
+      selectedCategory !== 'all' &&
+      lecture.category !== categoryLabelMap.get(selectedCategory)
+    ) {
+      return false;
+    }
+
+    if (
+      activeFilters.depth.length > 0 &&
+      !activeFilters.depth.includes(lecture.depth)
+    ) {
+      return false;
+    }
+
+    if (
+      activeFilters.fields.length > 0 &&
+      !activeFilters.fields.includes(lecture.category)
+    ) {
+      return false;
+    }
+
+    if (activeFilters.hasGroup && !lecture.group) {
+      return false;
+    }
+
+    return true;
   });
 
   return (
@@ -32,7 +67,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
       <div className="flex justify-between">
         <div className="flex">
           <KeywordSelector />
-          <Filter />
+          <Filter onApply={onApply} />
         </div>
         <Dropdown />
       </div>
