@@ -10,22 +10,21 @@ export interface CourseItem {
   duration: string;
   watched: boolean;
   hasWriting: boolean;
-  videoUrl?: string;
+  youtubeId: string;
 }
 
 export interface VideoPageProps {
-  param: {
+  params: {
     slug: 'reading' | 'writing' | 'question';
     videoId: string;
   }
 }
 
 export interface VideoPlayerProps {
-  videoUrl: string;
+  youtubeId: string;
   onComplete?: () => void;
 }
 
 export interface WriteSectionProps {
-  videoId: string;
   onSubmit?: (content: string) => void;
 }

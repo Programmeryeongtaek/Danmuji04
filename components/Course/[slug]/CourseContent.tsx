@@ -13,6 +13,7 @@ const CourseContent = ({ category }: { category: string }) => {
       duration: '10:00',
       watched: true,
       hasWriting: true,
+      youtubeId: 'YOUTUBE_ID_1',
     },
     {
       id: '2',
@@ -20,6 +21,7 @@ const CourseContent = ({ category }: { category: string }) => {
       duration: '15:00',
       watched: false,
       hasWriting: false,
+      youtubeId: 'YOUTUBE_ID_2',
     },
   ]);
 

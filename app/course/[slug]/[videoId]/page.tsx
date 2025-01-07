@@ -6,7 +6,7 @@ const VideoPage = ({ params }: VideoPageProps) => {
   return (
     <div>
       <div>
-        <VideoPlayer videoUrl="/mock-video-url.mp4" />
+        <VideoPlayer youtubeId="YOUTUBE_VIDEO_ID" />
       </div>
       <div className="flex flex-col">
         <div className="flex flex-col">
@@ -16,7 +16,7 @@ const VideoPage = ({ params }: VideoPageProps) => {
         </div>
       </div>
       <div>
-        <WriteSection videoId={params.videoId} />
+        <WriteSection youtubeId={params.videoId} />
       </div>
     </div>
   );

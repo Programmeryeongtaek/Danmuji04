@@ -4,7 +4,7 @@ import Button from '@/components/common/Button/Button';
 import { WriteSectionProps } from '@/types/course/courseType';
 import { useState } from 'react';
 
-const WriteSection = ({ videoId, onSubmit }: WriteSectionProps) => {
+const WriteSection = ({ onSubmit }: WriteSectionProps) => {
   const [content, setContent] = useState('');
 
   const handleSubmit = () => {
