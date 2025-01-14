@@ -1,6 +1,10 @@
-import CourseContent from '@/components/Course/[slug]/CourseContent';
-import QuoteSection from '@/components/Course/QuotesSection';
-import { useParams } from 'next/navigation';
+import { CourseDynamicContent } from '@/components/Course/[slug]/CourseDynamicContent';
+
+interface CourseDynamicPageProps {
+  params: {
+    slug: 'reading' | 'writing' | 'question';
+  };
+}
 
 const courseTitles = {
   reading: '독서',
@@ -14,22 +18,11 @@ export function generateStaticParams() {
   }));
 }
 
-const CoursePage = () => {
-  const params = useParams();
-  const slug = params.slug as 'reading' | 'writing' | 'question';
-  const title = courseTitles[slug];
+const CourseDynamicPage = async ({ params }: CourseDynamicPageProps) => {
+  const { slug } = await params;
+  const title = courseTitles[slug as keyof typeof courseTitles];
 
-  return (
-    <div>
-      <QuoteSection category={slug} />
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-2xl font-bold">{title}</h1>
-        <div>
-          <CourseContent category={slug} />
-        </div>
-      </div>
-    </div>
-  );
+  return <CourseDynamicContent slug={slug} title={title} />;
 };
 
-export default CoursePage;
+export default CourseDynamicPage;
