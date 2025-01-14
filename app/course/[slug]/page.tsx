@@ -1,11 +1,6 @@
 import CourseContent from '@/components/Course/[slug]/CourseContent';
 import QuoteSection from '@/components/Course/QuotesSection';
-
-interface CoursePageProps {
-  params: {
-    slug: 'reading' | 'writing' | 'question';
-  };
-}
+import { useParams } from 'next/navigation';
 
 const courseTitles = {
   reading: '독서',
@@ -19,16 +14,18 @@ export function generateStaticParams() {
   }));
 }
 
-const CoursePage = ({ params }: CoursePageProps) => {
-  const title = courseTitles[params.slug];
+const CoursePage = () => {
+  const params = useParams();
+  const slug = params.slug as 'reading' | 'writing' | 'question';
+  const title = courseTitles[slug];
 
   return (
     <div>
-      <QuoteSection category={params.slug} />
+      <QuoteSection category={slug} />
       <div className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="text-2xl font-bold">{title}</h1>
         <div>
-          <CourseContent category={params.slug} />
+          <CourseContent category={slug} />
         </div>
       </div>
     </div>

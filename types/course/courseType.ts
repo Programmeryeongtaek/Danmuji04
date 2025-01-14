@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 
 export interface BasicCourseProps {
@@ -27,4 +28,19 @@ export interface VideoPlayerProps {
 
 export interface WriteSectionProps {
   onSubmit?: (content: string) => void;
+}
+
+export interface YoutubeMock {
+  id: string;
+  title: string;
+  youtubeId: string;
+  duration: string;
+  watched: boolean;
+  hasWriting: boolean;
+  description: string;
+  keywords: string[];
+}
+
+export type YoutubeMocks = {
+  [K in 'reading' | 'writing' | 'question']: YoutubeMock[];
 }
