@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import Button from '../common/Button/Button';
 import Modal from '../common/Modal';
+import LoginForm from './auth/LoginForm';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -7,6 +9,11 @@ interface LoginModalProps {
 }
 
 const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
+  const handleLogin = async (email: string, password: string) => {
+    // TODO: Supabase 연동
+    console.log('Login attempt:', { email, password });
+  };
+
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
       <Modal.CloseButton className="absolute right-8 top-32" />
@@ -16,7 +23,9 @@ const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
         </h1>
         <div className="flex justify-end">
           <div className="w-20">
-            <Button>회원가입</Button>
+            <Link href="/signup">
+              <Button>회원가입</Button>
+            </Link>
           </div>
         </div>
 
