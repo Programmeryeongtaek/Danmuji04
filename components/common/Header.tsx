@@ -40,7 +40,7 @@ const Header = () => {
           </ul>
         </header>
       </section>
-      <header className="border-title flex h-[50px] w-full items-center border-t bg-light">
+      <header className="border-title sticky top-0 z-50 flex h-[50px] w-full items-center border-t bg-light">
         {/* TODO: navbar sticky 적용 */}
         <nav className="flex w-full justify-between px-8">
           <div>
