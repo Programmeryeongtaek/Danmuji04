@@ -1,6 +1,7 @@
 'use client';
 
 import CompletionModal from '@/components/Course/[slug]/[videoId]/CompletionModal';
+import VideoNavigationButtons from '@/components/Course/[slug]/[videoId]/VideoNavigationButtons';
 import VideoPlayer from '@/components/Course/[slug]/[videoId]/VideoPlayer';
 import WriteSection from '@/components/Course/[slug]/[videoId]/WriteSection';
 import { mockCourses } from '@/dummy/YoutubeData';
@@ -38,18 +39,23 @@ const VideoPage = () => {
     setShowModal(false);
   }, [currentCourseVideo, currentIndex, router, slug]);
 
+  const handlePreviousVideo = () => {
+    const prevVideo = currentCourseVideo[currentIndex - 1];
+    if (prevVideo) {
+      router.push(`/course/${slug}/${prevVideo.id}`);
+    }
+  };
+
   if (!video) {
     return <div>Video not found</div>;
   }
 
   return (
     <div className="relative">
-      <div>
-        <VideoPlayer
-          youtubeId={video.youtubeId}
-          onComplete={handleVideoComplete}
-        />
-      </div>
+      <VideoPlayer
+        youtubeId={video.youtubeId}
+        onComplete={handleVideoComplete}
+      />
       <div className="flex flex-col">
         <div className="flex flex-col">
           <h1>강의 제목</h1>
@@ -64,6 +70,12 @@ const VideoPage = () => {
       <div>
         <WriteSection onSubmit={(content) => console.log(content)} />
       </div>
+      <VideoNavigationButtons
+        onPrevious={handlePreviousVideo}
+        onNext={handleNextVideo}
+        isFirst={currentIndex === 0}
+        isLast={currentIndex === currentCourseVideo.length - 1}
+      />
       <CompletionModal
         isOpen={showModal}
         onClose={handleModalClose}
