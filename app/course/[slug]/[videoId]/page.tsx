@@ -1,33 +1,52 @@
 'use client';
 
+import CompletionModal from '@/components/Course/[slug]/[videoId]/CompletionModal';
 import VideoPlayer from '@/components/Course/[slug]/[videoId]/VideoPlayer';
 import WriteSection from '@/components/Course/[slug]/[videoId]/WriteSection';
 import { mockCourses } from '@/dummy/YoutubeData';
-import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
 
 const VideoPage = () => {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as 'reading' | 'writing' | 'question';
   const videoId = params.videoId as string;
 
-  const video = mockCourses[slug].find((v) => v.id === videoId);
+  const currentCourseVideo = mockCourses[slug];
+  const currentIndex = currentCourseVideo.findIndex((v) => v.id === videoId);
+  const isLastVideo = currentIndex === currentCourseVideo.length - 1;
+  const video = currentCourseVideo[currentIndex];
 
   const [isWatched, setIsWatched] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  const handleVideoComplete = useCallback(() => {
+    setIsWatched(true);
+    setShowModal(true);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    setShowModal(false);
+  }, []);
+
+  const handleNextVideo = useCallback(() => {
+    const nextVideo = currentCourseVideo[currentIndex + 1];
+    if (nextVideo) {
+      router.push(`/course/${slug}/${nextVideo.id}`);
+    }
+    setShowModal(false);
+  }, [currentCourseVideo, currentIndex, router, slug]);
 
   if (!video) {
     return <div>Video not found</div>;
   }
 
-  const handleVideoComplete = () => {
-    setIsWatched(true);
-  };
-
   return (
-    <div>
+    <div className="relative">
       <div>
         <VideoPlayer
-          youtubeId={video?.youtubeId}
+          youtubeId={video.youtubeId}
           onComplete={handleVideoComplete}
         />
       </div>
@@ -45,7 +64,12 @@ const VideoPage = () => {
       <div>
         <WriteSection onSubmit={(content) => console.log(content)} />
       </div>
-      {isWatched && <div>시청 완료</div>}
+      <CompletionModal
+        isOpen={showModal}
+        onClose={handleModalClose}
+        isLastVideo={isLastVideo}
+        onNextVideo={!isLastVideo ? handleNextVideo : undefined}
+      />
     </div>
   );
 };
