@@ -1,5 +1,12 @@
 'use client';
 
+import {
+  BookOpen,
+  GraduationCap,
+  Home,
+  LayoutDashboard,
+  MoreHorizontal,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -7,11 +14,11 @@ const Navbar = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { name: '대시보드', path: '/dashboard' },
-    { name: '지식', path: '/knowledge' },
-    { name: '홈', path: '/' },
-    { name: '코스', path: '/course' },
-    { name: '더보기', path: '/more' },
+    { name: '대시보드', path: '/dashboard', icon: LayoutDashboard },
+    { name: '지식', path: '/knowledge', icon: BookOpen },
+    { name: '홈', path: '/', icon: Home },
+    { name: '코스', path: '/course', icon: GraduationCap },
+    { name: '더보기', path: '/more', icon: MoreHorizontal },
   ];
 
   return (
@@ -26,7 +33,10 @@ const Navbar = () => {
                   : 'border-transparent text-light-subtext'
               }`}
             >
-              {item.name}
+              <div className="flex flex-col items-center">
+                <item.icon size={20} />
+                <span>{item.name}</span>
+              </div>
             </button>
           </Link>
         ))}
