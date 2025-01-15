@@ -4,6 +4,7 @@ import { CourseItem } from '@/types/course/courseType';
 import { Check, Play } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import ProgressBar from './ProgressBar';
 
 const CourseContent = ({ category }: { category: string }) => {
   const [courseItems, setCourseItems] = useState<CourseItem[]>([
@@ -19,16 +20,25 @@ const CourseContent = ({ category }: { category: string }) => {
       id: '2',
       title: '두 번째 강의',
       duration: '15:00',
-      watched: false,
+      watched: true,
       hasWriting: false,
       youtubeId: 'YOUTUBE_ID_2',
     },
   ]);
 
+  const completedCount = courseItems.reduce(
+    (count, item) => count + (item.watched && item.hasWriting ? 1 : 0),
+    0
+  );
+
   const isCompleted = (item: CourseItem) => item.watched && item.hasWriting;
 
   return (
     <div>
+      <div className="mb-6">
+        <ProgressBar current={completedCount} total={courseItems.length} />
+      </div>
+
       {courseItems.map((item) => (
         <Link
           href={`/course/${category}/${item.id}`}
