@@ -20,21 +20,8 @@ const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
           </div>
         </div>
 
-        <form className="flex-col">
-          <input
-            type="text"
-            placeholder="아이디"
-            className="my-1 h-9 w-full rounded-lg border pl-3"
-          />
-          <input
-            type="password"
-            placeholder="비밀번호"
-            className="my-1 h-9 w-full rounded-lg border pl-3"
-          />
-          <div className="my-2 flex h-9">
-            <Button>로그인</Button>
-          </div>
-        </form>
+        <LoginForm onSubmit={handleLogin} />
+
         <div className="flex justify-center gap-3">
           <button className="border-b border-gray-500 text-gray-700">
             아이디 찾기
