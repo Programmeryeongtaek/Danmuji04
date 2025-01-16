@@ -2,6 +2,7 @@
 
 import useSignUpForm from '@/hooks/useSignUpForm';
 import { ArrowBigLeft, Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 const SignUpPage = () => {
@@ -19,10 +20,10 @@ const SignUpPage = () => {
   return (
     <div className="mx-auto max-w-md p-6">
       <div className="flex justify-between">
-        <div className="flex items-center gap-1">
+        <Link href="/?login=true" className="flex items-center gap-1">
           <ArrowBigLeft />
           <button>뒤로 가기</button>
-        </div>
+        </Link>
         <h1 className="mb-8 text-2xl font-bold">회원가입</h1>
       </div>
 
