@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Button from '../common/Button/Button';
 import Modal from '../common/Modal';
-import LoginForm from './auth/LoginForm';
+import LoginForm from '../auth/LoginForm';
 
 interface LoginModalProps {
   isOpen: boolean;
