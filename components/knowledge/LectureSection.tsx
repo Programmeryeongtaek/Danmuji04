@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
 import { lectures } from '@/dummy/lectureData';
+import { useSearchParams } from 'next/navigation';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -26,6 +27,8 @@ const categoryLabelMap = new Map([
 ]);
 
 const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('q')?.toLowerCase() || '';
   const [lectureList, setLectureList] = useState<Lecture[]>(lectures);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
@@ -47,28 +50,35 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   }, [selectedCategory]);
 
   const filteredLectures = lectureList.filter((lecture) => {
-    if (selectedCategory === 'search') return false;
-    if (selectedCategory !== 'all') {
+    // 검색어 필터링
+    if (searchQuery) {
+      const matchsSearch =
+        lecture.title.toLowerCase().includes(searchQuery) ||
+        lecture.keyword.toLowerCase().includes(searchQuery);
+      if (!matchsSearch) return false;
+    }
+
+    // 카테고리 필터링
+    if (selectedCategory !== 'search' && selectedCategory !== 'all') {
       const categoryLabel = categoryLabelMap.get(selectedCategory);
       if (lecture.category !== categoryLabel) return false;
     }
 
-    if (selectedCategory === 'all') {
-      if (
-        activeFilters.depth.length > 0 &&
-        !activeFilters.depth.includes(lecture.depth)
-      ) {
-        return false;
-      }
-      if (
-        activeFilters.fields.length > 0 &&
-        !activeFilters.fields.includes(lecture.category)
-      ) {
-        return false;
-      }
-      if (activeFilters.hasGroup && lecture.group !== '오프라인') {
-        return false;
-      }
+    // 필터 적용
+    if (
+      activeFilters.depth.length > 0 &&
+      !activeFilters.depth.includes(lecture.depth)
+    ) {
+      return false;
+    }
+    if (
+      activeFilters.fields.length > 0 &&
+      !activeFilters.fields.includes(lecture.category)
+    ) {
+      return false;
+    }
+    if (activeFilters.hasGroup && lecture.group !== '오프라인') {
+      return false;
     }
     return true;
   });
@@ -89,6 +99,13 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
 
   return (
     <div className="flex flex-col">
+      {searchQuery && (
+        <div>
+          <h2>
+            {searchQuery} 검색 결과 ({filteredLectures.length}개)
+          </h2>
+        </div>
+      )}
       <div className="flex justify-between">
         <div className="flex">
           <KeywordSelector />
@@ -99,11 +116,17 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
           <Dropdown.Context />
         </Dropdown.Root>
       </div>
-      <div className="flex flex-wrap justify-center gap-4">
-        {filteredLectures.map((lecture) => (
-          <Card key={lecture.id} {...lecture} />
-        ))}
-      </div>
+
+      {filteredLectures.length > 0 ? (
+        <div className="flex flex-wrap justify-center gap-4">
+          {filteredLectures.map((lecture) => (
+            <Card key={lecture.id} {...lecture} />
+          ))}
+        </div>
+      ) : (
+        <div>검색 결과가 없습니다.</div>
+      )}
+
       <Pagination />
     </div>
   );
