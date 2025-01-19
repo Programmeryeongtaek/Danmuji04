@@ -40,31 +40,33 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     setActiveFilters(newFilters);
   };
 
-  // 카테고리 선택시, 필터 초기화
+  // 카테고리가 변경될 때만 필터 초기화
   useEffect(() => {
-    setActiveFilters({
-      depth: [],
-      fields: [],
-      hasGroup: false,
-    });
+    if (selectedCategory !== 'search') {
+      setActiveFilters({
+        depth: [],
+        fields: [],
+        hasGroup: false,
+      });
+    }
   }, [selectedCategory]);
 
   const filteredLectures = lectureList.filter((lecture) => {
-    // 검색어 필터링
+    // 1. 검색어 필터링 (검색어가 있을 때만)
     if (searchQuery) {
-      const matchsSearch =
+      const matchesSearch =
         lecture.title.toLowerCase().includes(searchQuery) ||
         lecture.keyword.toLowerCase().includes(searchQuery);
-      if (!matchsSearch) return false;
+      if (!matchesSearch) return false;
     }
 
-    // 카테고리 필터링
-    if (selectedCategory !== 'search' && selectedCategory !== 'all') {
+    // 2. 카테고리 필터링
+    if (selectedCategory !== 'all' && selectedCategory !== 'search') {
       const categoryLabel = categoryLabelMap.get(selectedCategory);
       if (lecture.category !== categoryLabel) return false;
     }
 
-    // 필터 적용
+    // 3. 상세 필터 적용
     if (
       activeFilters.depth.length > 0 &&
       !activeFilters.depth.includes(lecture.depth)
@@ -80,6 +82,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     if (activeFilters.hasGroup && lecture.group !== '오프라인') {
       return false;
     }
+
     return true;
   });
 
