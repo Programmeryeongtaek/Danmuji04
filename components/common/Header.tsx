@@ -6,9 +6,19 @@ import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
 import { useState } from 'react';
 import Button from './Button/Button';
+import { useAtomValue } from 'jotai';
+import { isLoadingAtom, userAtom } from '@/store/auth';
+import { createClient } from '@/utils/supabase/client';
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const user = useAtomValue(userAtom);
+  const isLoading = useAtomValue(isLoadingAtom);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+  };
 
   return (
     <>
@@ -40,7 +50,7 @@ const Header = () => {
           </ul>
         </header>
       </section>
-      <header className="border-title flex h-[50px] w-full items-center border-t bg-light">
+      <header className="border-title sticky top-0 z-50 flex h-[50px] w-full items-center border-t bg-light">
         {/* TODO: navbar sticky 적용 */}
         <nav className="flex w-full justify-between px-8">
           <div>
@@ -53,8 +63,16 @@ const Header = () => {
             <Link href={'/'}>단무지</Link>
           </div>
           <div>
-            {/* TODO: 로그인 누르면 간편 로그인 및 회원가입 모달창 */}
-            <Button onClick={() => setIsLoginModalOpen(true)}>로그인</Button>
+            {isLoading ? (
+              <span>로딩중...</span>
+            ) : user ? (
+              <div className="flex items-center gap-4">
+                <span className="text=sm">{user.email}</span>
+                <Button onClick={handleLogout}>로그아웃</Button>
+              </div>
+            ) : (
+              <Button onClick={() => setIsLoginModalOpen(true)}>로그인</Button>
+            )}
           </div>
 
           <LoginModal

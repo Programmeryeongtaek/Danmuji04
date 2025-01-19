@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import Button from '../common/Button/Button';
 import Modal from '../common/Modal';
+import LoginForm from '../auth/LoginForm';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -7,34 +9,28 @@ interface LoginModalProps {
 }
 
 const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
+  const handleLogin = async (email: string, password: string) => {
+    // TODO: Supabase 연동
+    console.log('Login attempt:', { email, password });
+  };
+
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
-      <Modal.CloseButton />
+      <Modal.CloseButton className="absolute right-8 top-32" />
       <Modal.Content>
         <h1 className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-center text-3xl text-transparent">
           단무지
         </h1>
         <div className="flex justify-end">
           <div className="w-20">
-            <Button>회원가입</Button>
+            <Link href="/signup">
+              <Button>회원가입</Button>
+            </Link>
           </div>
         </div>
 
-        <form className="flex-col">
-          <input
-            type="text"
-            placeholder="아이디"
-            className="my-1 h-9 w-full rounded-lg border pl-3"
-          />
-          <input
-            type="password"
-            placeholder="비밀번호"
-            className="my-1 h-9 w-full rounded-lg border pl-3"
-          />
-          <div className="my-2 flex h-9">
-            <Button>로그인</Button>
-          </div>
-        </form>
+        <LoginForm onSubmit={handleLogin} />
+
         <div className="flex justify-center gap-3">
           <button className="border-b border-gray-500 text-gray-700">
             아이디 찾기
