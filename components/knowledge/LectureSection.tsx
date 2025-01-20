@@ -14,6 +14,11 @@ import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
 import { lectures } from '@/dummy/lectureData';
 import { useSearchParams } from 'next/navigation';
+import {
+  fetchLectures,
+  fetchLecturesByCategory,
+  searchLectures,
+} from '@/utils/supabase/client';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -29,7 +34,7 @@ const categoryLabelMap = new Map([
 const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';
-  const [lectureList, setLectureList] = useState<Lecture[]>(lectures);
+  const [lectureList, setLectureList] = useState<Lecture[]>([]);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
     fields: [],
@@ -40,7 +45,6 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     setActiveFilters(newFilters);
   };
 
-  // 카테고리가 변경될 때만 필터 초기화
   useEffect(() => {
     if (selectedCategory !== 'search') {
       setActiveFilters({
@@ -52,21 +56,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   }, [selectedCategory]);
 
   const filteredLectures = lectureList.filter((lecture) => {
-    // 1. 검색어 필터링 (검색어가 있을 때만)
-    if (searchQuery) {
-      const matchesSearch =
-        lecture.title.toLowerCase().includes(searchQuery) ||
-        lecture.keyword.toLowerCase().includes(searchQuery);
-      if (!matchesSearch) return false;
-    }
-
-    // 2. 카테고리 필터링
-    if (selectedCategory !== 'all' && selectedCategory !== 'search') {
-      const categoryLabel = categoryLabelMap.get(selectedCategory);
-      if (lecture.category !== categoryLabel) return false;
-    }
-
-    // 3. 상세 필터 적용
+    // 필터 적용
     if (
       activeFilters.depth.length > 0 &&
       !activeFilters.depth.includes(lecture.depth)
@@ -79,18 +69,20 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     ) {
       return false;
     }
-    if (activeFilters.hasGroup && lecture.group !== '오프라인') {
+    if (activeFilters.hasGroup && lecture.groupType !== '오프라인') {
       return false;
     }
 
     return true;
   });
 
-  const handleSort = (option: SortOption) => {
+  const handleSort = async (option: SortOption) => {
     const sorted = [...lectureList].sort((a, b) => {
       switch (option) {
         case 'latest':
-          return b.id - a.id;
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         case 'students':
           return b.students - a.students;
         case 'likes':

@@ -1,14 +1,15 @@
 export interface Lecture {
   id: number;
   title: string;
-  instructor: string;
   thumbnailUrl: string;
-  depth: string;
   category: string;
+  instructor: string;
+  depth: string;
   keyword: string;
-  likes: number; 
+  groupType: string;
+  likes: number;
   students: number;
-  group: string;
+  createdAt: string;
   href: string;
 }
 
