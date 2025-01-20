@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 const Card = (lecture: Lecture) => {
+  const fallbackImageUrl = '/images/danmuji.png';
+
   return (
     <Link
       href={lecture.href}
@@ -11,7 +13,7 @@ const Card = (lecture: Lecture) => {
     >
       <div className="relative h-[105px] w-full border border-gray-700">
         <Image
-          src={lecture.thumbnailUrl}
+          src={lecture.thumbnailUrl || fallbackImageUrl}
           alt={lecture.title}
           width={160}
           height={105}

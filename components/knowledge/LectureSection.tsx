@@ -12,7 +12,6 @@ import {
 import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
-import { lectures } from '@/dummy/lectureData';
 import { useSearchParams } from 'next/navigation';
 import {
   fetchLectures,
@@ -35,11 +34,39 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
     fields: [],
     hasGroup: false,
   });
+
+  // 강의 데이터 가져오기
+  useEffect(() => {
+    const loadLectures = async () => {
+      try {
+        setIsLoading(true);
+        let data;
+
+        if (selectedCategory === 'search' && searchQuery) {
+          data = await searchLectures(searchQuery);
+        } else if (selectedCategory !== 'all') {
+          const categoryLabel = categoryLabelMap.get(selectedCategory);
+          data = await fetchLecturesByCategory(categoryLabel || '');
+        } else {
+          data = await fetchLectures();
+        }
+
+        setLectureList(data || []);
+      } catch (error) {
+        console.error('Failed to fetch lectures:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLectures();
+  }, [selectedCategory, searchQuery]);
 
   const onApply = (newFilters: FilterState) => {
     setActiveFilters(newFilters);
@@ -91,6 +118,10 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     });
     setLectureList(sorted);
   };
+
+  if (isLoading) {
+    return <div>로딩 중...</div>;
+  }
 
   return (
     <div className="flex flex-col">

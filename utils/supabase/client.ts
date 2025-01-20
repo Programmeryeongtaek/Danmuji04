@@ -17,3 +17,41 @@ export function createClient() {
     }
   })
 }
+
+// 강의 관련 함수들
+export async function fetchLectures() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('lectures')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function searchLectures(query: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('lectures')
+    .select('*')
+    .or(
+      `title.ilike.%${query}%,keyword.ilike.%${query}%`
+    )
+
+  if (error) throw error;
+  return data;
+}
+
+// 카테고리별 강의 조회
+export async function fetchLecturesByCategory(category: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('lectures')
+    .select('*')
+    .eq('category', category)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
