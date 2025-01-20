@@ -1,4 +1,6 @@
 import EnrollBar from '@/components/knowledge/lecture/EnrollBar';
+import LickButton from '@/components/knowledge/lecture/LikeButton';
+import ReviewSection from '@/components/knowledge/lecture/ReviewSection';
 import { createClient } from '@/utils/supabase/client';
 
 async function getLectureById(id: string) {
@@ -46,7 +48,11 @@ const LecturePage = async ({ params }: { params: { id: string } }) => {
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <button>좋아요</button>
+            <LickButton
+              lectureId={lecture.id}
+              initialLikeCount={lecture.like}
+              initialIsLiked={false}
+            />
             <button>공유하기 링크</button>
           </div>
         </div>
@@ -56,28 +62,7 @@ const LecturePage = async ({ params }: { params: { id: string } }) => {
         <div>강의 소개 영역</div>
 
         {/* 수강평 */}
-        <div className="flex flex-col border border-black">
-          <div className="flex justify-between">
-            <h3>수강평</h3>
-            <span>전체 00개</span>
-          </div>
-          <div className="flex justify-between">
-            <span>수강평을 남겨주세요.</span>
-            {/* 버튼 누르면, 작은 모달이 나와서 작성할 수 있게 구현 */}
-            <button>수강평 남기기</button>
-          </div>
-          <button className="flex justify-end">드롭다운</button>
-
-          {/* 수강평 영역 */}
-          <div className="flex flex-col">
-            <div className="flex flex-col">
-              <span>수강평</span>
-              <span>별 색 채워짐</span>
-              <span>00개의 수강평</span>
-            </div>
-            <div>수강평 리스트</div>
-          </div>
-        </div>
+        <ReviewSection lectureId={lecture.id} />
       </div>
       <EnrollBar />
     </>
