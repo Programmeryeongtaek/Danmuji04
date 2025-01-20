@@ -3,6 +3,7 @@
 import './globals.css';
 import Header from '@/components/common/Header';
 import Navbar from '@/components/common/Navbar';
+import { Toast } from '@/components/common/Toast';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useSetAtom } from 'jotai';
@@ -64,11 +65,13 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html lang="ko">
       <body className={inter.className}>
-        <div className="flex min-h-screen flex-col">
-          <Header />
-          <main>{children}</main>
-          {!isLecturePage && <Navbar />}
-        </div>
+        <Toast.Provider>
+          <div className="flex min-h-screen flex-col">
+            <Header />
+            <main>{children}</main>
+            {!isLecturePage && <Navbar />}
+          </div>
+        </Toast.Provider>
       </body>
     </html>
   );
