@@ -1,6 +1,7 @@
 import EnrollBar from '@/components/knowledge/lecture/EnrollBar';
 import LickButton from '@/components/knowledge/lecture/LikeButton';
 import ReviewSection from '@/components/knowledge/lecture/ReviewSection';
+import ShareButton from '@/components/knowledge/lecture/ShareButton';
 import { createClient } from '@/utils/supabase/client';
 
 async function getLectureById(id: string) {
@@ -53,7 +54,7 @@ const LecturePage = async ({ params }: { params: { id: string } }) => {
               initialLikeCount={lecture.like}
               initialIsLiked={false}
             />
-            <button>공유하기 링크</button>
+            <ShareButton lectureId={lecture.id} />
           </div>
         </div>
 
