@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ReviewModal from './ReviewsModal';
+import Button from '@/components/common/Button/Button';
 
 interface ReviewSectionProps {
   lectureId: number;
@@ -18,12 +19,7 @@ const ReviewSection = ({ lectureId }: ReviewSectionProps) => {
       </div>
       <div className="mt-4 flex justify-between border-b border-t py-4">
         <span>수강평을 남겨주세요.</span>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-        >
-          수강평 남기기
-        </button>
+        <Button onClick={() => setIsModalOpen(true)}>수강평 남기기</Button>
       </div>
 
       <ReviewModal
