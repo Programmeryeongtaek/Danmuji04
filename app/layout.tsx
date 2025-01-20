@@ -18,6 +18,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 const RootLayout = ({ children }: RootLayoutProps) => {
   const pathname = usePathname();
+  const isLecturePage = pathname?.includes('/knowledge/lecture/');
   const isSignUpPage = pathname === '/signup';
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
@@ -66,7 +67,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         <div className="flex min-h-screen flex-col">
           <Header />
           <main>{children}</main>
-          <Navbar />
+          {!isLecturePage && <Navbar />}
         </div>
       </body>
     </html>
