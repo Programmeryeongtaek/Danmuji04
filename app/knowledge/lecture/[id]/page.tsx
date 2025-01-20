@@ -1,3 +1,4 @@
+import EnrollBar from '@/components/knowledge/lecture/EnrollBar';
 import { createClient } from '@/utils/supabase/client';
 
 async function getLectureById(id: string) {
@@ -16,36 +17,70 @@ const LecturePage = async ({ params }: { params: { id: string } }) => {
   const lecture = await getLectureById(params.id);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* 강의 상세 내용 */}
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        {/* 왼쪽: 강의 정보 */}
-        <div className="md:col-span-2">
-          <h1 className="mb-4 text-2xl font-bold">{lecture.title}</h1>
-          <div className="mb-4">
-            <span className="mr-2 rounded-full bg-gold-start px-3 py-1 text-sm text-white">
-              {lecture.category}
-            </span>
-            <span className="rounded-full bg-gray-200 px-3 py-1 text-sm">
-              {lecture.depth}
-            </span>
+    <>
+      <div className="min-h-screen bg-light">
+        {/* 강의 정보 섹션 */}
+        <div className="h-[525px] w-full border border-black px-4 py-8">
+          <div className="flex h-full flex-col items-center gap-6 border border-black">
+            <div className="flex h-[250px] w-[350px] border border-black">
+              동영상 영역
+            </div>
+            <div className="flex w-full flex-col gap-4 border border-black">
+              <div className="flex flex-col gap-1">
+                <span>
+                  {lecture.category} / {lecture.depth}
+                </span>
+                <h1>{lecture.title}</h1>
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-1">
+                  <span>{lecture.likes}</span>
+                  <span>수강평 00개</span>
+                  <span>수강생 {lecture.students}명</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span>{lecture.instructor}</span>
+                  <span>{lecture.keyword}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="mb-4 text-gray-600">강사: {lecture.instructor}</p>
-          {/* 추가 강의 정보 */}
+          <div className="flex justify-end gap-2">
+            <button>좋아요</button>
+            <button>공유하기 링크</button>
+          </div>
         </div>
 
-        {/* 오른쪽: 수강신청 섹션 */}
-        <div className="rounded-lg bg-white p-6 shadow-lg">
-          <div className="mb-4">
-            <h2 className="mb-2 text-xl font-bold">수강 정보</h2>
-            <p className="text-gray-600">수강생: {lecture.students}명</p>
+        {/* 강의 소개 */}
+        {/*TODO: 강의 생성자가 작성한 것이 반영되도록 구현 */}
+        <div>강의 소개 영역</div>
+
+        {/* 수강평 */}
+        <div className="flex flex-col border border-black">
+          <div className="flex justify-between">
+            <h3>수강평</h3>
+            <span>전체 00개</span>
           </div>
-          <button className="w-full rounded-lg bg-gold-start px-4 py-2 text-white transition-colors hover:bg-gold-end">
-            수강신청하기
-          </button>
+          <div className="flex justify-between">
+            <span>수강평을 남겨주세요.</span>
+            {/* 버튼 누르면, 작은 모달이 나와서 작성할 수 있게 구현 */}
+            <button>수강평 남기기</button>
+          </div>
+          <button className="flex justify-end">드롭다운</button>
+
+          {/* 수강평 영역 */}
+          <div className="flex flex-col">
+            <div className="flex flex-col">
+              <span>수강평</span>
+              <span>별 색 채워짐</span>
+              <span>00개의 수강평</span>
+            </div>
+            <div>수강평 리스트</div>
+          </div>
         </div>
       </div>
-    </div>
+      <EnrollBar />
+    </>
   );
 };
 
