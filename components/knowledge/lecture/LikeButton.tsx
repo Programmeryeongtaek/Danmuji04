@@ -11,7 +11,7 @@ interface LikeButtonProps {
   initialIsLiked: boolean;
 }
 
-const LickButton = ({
+const LikeButton = ({
   lectureId,
   initialLikeCount,
   initialIsLiked,
@@ -54,4 +54,4 @@ const LickButton = ({
   );
 };
 
-export default LickButton;
+export default LikeButton;

@@ -1,5 +1,5 @@
 import EnrollBar from '@/components/knowledge/lecture/EnrollBar';
-import LickButton from '@/components/knowledge/lecture/LikeButton';
+import LikeButton from '@/components/knowledge/lecture/LikeButton';
 import ReviewSection from '@/components/knowledge/lecture/ReviewSection';
 import ShareButton from '@/components/knowledge/lecture/ShareButton';
 import { createClient } from '@/utils/supabase/client';
@@ -49,7 +49,7 @@ const LecturePage = async ({ params }: { params: { id: string } }) => {
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <LickButton
+            <LikeButton
               lectureId={lecture.id}
               initialLikeCount={lecture.like}
               initialIsLiked={false}
