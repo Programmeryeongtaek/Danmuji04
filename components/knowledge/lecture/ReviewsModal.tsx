@@ -1,6 +1,6 @@
 'use client';
 
-import { createClient } from '@/utils/supabase/client';
+import { createClient, createReview } from '@/utils/supabase/client';
 import { Star } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 
@@ -11,32 +11,47 @@ interface ReviewModalProps {
   onSubmit: () => void;
 }
 
-const ReviewModal = ({
+export default function ReviewModal({
   lectureId,
   isOpen,
   onClose,
   onSubmit,
-}: ReviewModalProps) => {
+}: ReviewModalProps) {
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
+    setIsSubmitting(true);
 
-    const { error } = await supabase.from('reviews').insert([
-      {
-        lecture_id: lectureId,
-        rating,
-        content,
-      },
-    ]);
+    try {
+      if (rating === 0) throw new Error('평점을 선택해주세요.');
+      if (!content.trim()) throw new Error('수강평 내용을 작성해주세요.');
 
-    if (!error) {
+      const supabase = createClient();
+
+      // 현재 로그인한 사용자 정보 가져오기
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      await createReview(lectureId, rating, content);
       onSubmit();
+      setRating(0);
+      setContent('');
       onClose();
+    } catch (error) {
+      console.error('Failed to submit reviews:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+      }
+      // 에러의 전체 구조 확인
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -85,6 +100,7 @@ const ReviewModal = ({
             </button>
             <button
               type="submit"
+              disabled={isSubmitting}
               className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
             >
               작성하기
@@ -94,6 +110,4 @@ const ReviewModal = ({
       </div>
     </div>
   );
-};
-
-export default ReviewModal;
+}
