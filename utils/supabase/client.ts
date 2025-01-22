@@ -1,5 +1,10 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+interface EnrollmentResponse {
+  data: { status: string } | null;
+  error: Error | null;
+}
+
 export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -69,14 +74,16 @@ export async function fetchReviewsByLectureId(lectureId: number) {
   return data;
 }
 
-export async function getActiveEnrollment(lectureId: number, userId: string) {
+export async function getActiveEnrollment(
+  lectureId: number, 
+  userId: string 
+): Promise<EnrollmentResponse> {
   const supabase = createClient();
   return await supabase
     .from('enrollments')
     .select('status')
     .eq('lecture_id', lectureId)
     .eq('user_id', userId)
-    .eq('status', 'active')
     .single();
 }
 
@@ -87,7 +94,8 @@ export async function insertEnrollment(lectureId: number, userId: string) {
     .insert({
       lecture_id: lectureId,
       user_id: userId,
-      status: 'active'
+      status: 'active',
+      payment_status: 'free'
     });
 }
 
@@ -148,12 +156,17 @@ export async function updateLectureStudentCount(lectureId: number, count: number
 // 기본 함수들을 조합하여 더 복잡한 작업을 수행하는 함수를 생성성
 export async function enrollLecture(lectureId: number) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('로그인이 필요합니다.');
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
+    throw new Error('로그인이 필요합니다.');
+  }
 
   // 수강 신청
-  const { error } = await insertEnrollment(lectureId, user.id);
-  if (error) throw error;
+  const { error: enrollError } = await insertEnrollment(lectureId, user.id);
+  if (enrollError) {
+    throw enrollError;
+  }
 
   // 수강생 수 업데이트
   const count = await getActiveEnrollmentCount(lectureId);
@@ -178,7 +191,7 @@ export async function createReview(lectureId: number, rating: number, content: s
 }
 
 // 유료 강의 체크
-export async function isFreeLecture(lectureId: number) {
+export async function isFreeLecture(lectureId: number): Promise<boolean> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('lectures')
@@ -187,7 +200,7 @@ export async function isFreeLecture(lectureId: number) {
     .single();
 
   if (error) throw error;
-  return data.price === 0;
+  return data?.price === 0;
 }
 
 // 수강 취소

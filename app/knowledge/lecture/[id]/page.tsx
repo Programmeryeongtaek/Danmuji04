@@ -65,7 +65,7 @@ const LecturePage = async ({ params }: { params: { id: string } }) => {
         {/* 수강평 */}
         <ReviewSection lectureId={lecture.id} />
       </div>
-      <EnrollBar />
+      <EnrollBar lectureId={Number(lecture.id)} />
     </>
   );
 };
