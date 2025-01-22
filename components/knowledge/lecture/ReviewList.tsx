@@ -8,11 +8,9 @@ interface ReviewProps {
   id: number;
   rating: number;
   content: string;
-  createdAt: string;
-  profiles: {
-    id: string;
-    role: string;
-  };
+  created_at: string;
+  user_id: string;
+  lecture_id: number;
 }
 
 interface ReviewListProps {
@@ -28,7 +26,7 @@ export function ReviewList({ reviews }: ReviewListProps) {
             <div className="flex items-center gap-2">
               <StarRating rating={review.rating} size={16} readonly />
               <span className="text-sm text-gray-600">
-                {formatDistanceToNow(new Date(review.createdAt), {
+                {formatDistanceToNow(new Date(review.created_at), {
                   addSuffix: true,
                   locale: ko,
                 })}

@@ -66,7 +66,7 @@ export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('reviews')
-    .select(`*, profiles:user_id (role )`)
+    .select('*')  // reviews 테이블의 모든 컬럼만 조회
     .eq('lecture_id', lectureId)
     .order('created_at', { ascending: false });
 
@@ -126,8 +126,7 @@ export async function insertReview(lectureId: number, userId: string, rating: nu
       lecture_id: lectureId,
       user_id: userId,
       rating,
-      content,
-      is_active: true
+      content
     })
     .select()
     .single();
