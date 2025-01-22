@@ -64,14 +64,33 @@ export async function fetchLecturesByCategory(category: string) {
 // 수강평 관련 함수들 추가
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
-  const { data, error } = await supabase
+  
+  // 두 단계로 데이터 조회
+  const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
-    .select('*')  // reviews 테이블의 모든 컬럼만 조회
+    .select('*')
     .eq('lecture_id', lectureId)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data;
+  if (reviewsError) throw reviewsError;
+
+  // 각 리뷰의 사용자 정보 조회
+  const reviewsWithProfiles = await Promise.all(
+    reviews.map(async (review) => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', review.user_id)
+        .single();
+      
+      return {
+        ...review,
+        user_profile: profile
+      };
+    })
+  );
+
+  return reviewsWithProfiles;
 }
 
 export async function getActiveEnrollment(
