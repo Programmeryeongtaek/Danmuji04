@@ -71,10 +71,10 @@ export async function fetchReviewsByLectureId(lectureId: number) {
     .select('*')
     .eq('lecture_id', lectureId)
     .order('created_at', { ascending: false });
- 
+
   if (reviewsError) throw reviewsError;
   if (!reviews) return [];
- 
+
   // 프로필과 부가 정보 추가
   const reviewsWithProfiles = await Promise.all(
     reviews.map(async (review) => {
@@ -84,13 +84,13 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         .select('*')
         .eq('id', review.user_id)
         .single();
- 
+
       // 좋아요 수 조회
       const { count: likes_count } = await supabase
         .from('review_likes')
         .select('count', { count: 'exact' })
         .eq('review_id', review.id);
- 
+
       // 해당 리뷰 좋아요 여부 확인
       const { data: like } = await supabase
         .from('review_likes')
@@ -98,7 +98,7 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         .eq('review_id', review.id)
         .eq('user_id', profile?.id)
         .single();
- 
+
       // 답글 조회
       const { data: replies } = await supabase
         .from('review_replies')
@@ -107,7 +107,7 @@ export async function fetchReviewsByLectureId(lectureId: number) {
           user_profile:user_id (*)
         `)
         .eq('review_id', review.id);
- 
+
       return {
         ...review,
         user_profile: profile,
@@ -117,9 +117,9 @@ export async function fetchReviewsByLectureId(lectureId: number) {
       };
     })
   );
- 
+
   return reviewsWithProfiles;
- }
+}
 
 export async function getActiveEnrollment(
   lectureId: number, 

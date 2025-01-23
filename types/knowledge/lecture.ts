@@ -69,16 +69,16 @@ export interface ReplyProps {
 
 export interface ReviewListProps {
   reviews: ReviewProps[];
-  currentUserId?: string;
+  currentUserId: string;
 }
 
 export interface ReviewItemProps {
   review: ReviewProps;
-  currentUserId?: string;
+  currentUserId: string;
 }
 
 export interface ReviewReplyProps {
   reply: ReplyProps;
-  currentUserId?: string;
+  currentUserId: string;
   onDelete: (replyId: number) => void;
 }

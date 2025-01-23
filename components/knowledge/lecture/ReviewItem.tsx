@@ -1,6 +1,6 @@
 'use client';
 
-import { ReviewItemProps, ReviewProps } from '@/types/knowledge/lecture';
+import { ReviewItemProps } from '@/types/knowledge/lecture';
 import {
   addReviewReply,
   deleteReview,
@@ -15,7 +15,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 export function ReviewItem({ review, currentUserId }: ReviewItemProps) {
-  const [reviews, setReviews] = useState<ReviewProps[]>([]);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isLiked, setIsLiked] = useState(review.is_liked);

@@ -38,6 +38,8 @@ export default function ReviewModal({
         data: { user },
       } = await supabase.auth.getUser();
 
+      if (!user) throw new Error('로그인이 필요합니다.');
+
       await createReview(lectureId, rating, content);
       onSubmit();
       setRating(0);

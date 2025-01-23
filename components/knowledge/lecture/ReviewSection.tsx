@@ -12,16 +12,17 @@ import {
 import { ToastType } from '@/components/common/Toast/type';
 import { StarRating } from './StarRating';
 import { ReviewList } from './ReviewList';
+import { ReviewProps } from '@/types/knowledge/lecture';
 
 interface ReviewSectionProps {
   lectureId: number;
-  currentUserId?: string;
+  currentUserId: string;
 }
 
 const ReviewSection = ({ lectureId }: ReviewSectionProps) => {
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<ReviewProps[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
@@ -31,7 +32,7 @@ const ReviewSection = ({ lectureId }: ReviewSectionProps) => {
     const supabase = createClient();
 
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setCurrentUserId(user?.id);
+      setCurrentUserId(user!.id);
     });
   }, []);
 
