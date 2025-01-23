@@ -3,7 +3,11 @@
 import { ReviewListProps } from '@/types/knowledge/lecture';
 import { ReviewItem } from './ReviewItem';
 
-export function ReviewList({ reviews, currentUserId }: ReviewListProps) {
+export function ReviewList({
+  reviews,
+  currentUserId,
+  onDelete,
+}: ReviewListProps) {
   return (
     <div className="space-y-6">
       {reviews.map((review) => (
@@ -11,6 +15,7 @@ export function ReviewList({ reviews, currentUserId }: ReviewListProps) {
           key={review.id}
           review={review}
           currentUserId={currentUserId}
+          onDelete={onDelete}
         />
       ))}
     </div>

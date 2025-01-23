@@ -70,11 +70,13 @@ export interface ReplyProps {
 export interface ReviewListProps {
   reviews: ReviewProps[];
   currentUserId: string;
+  onDelete: (reviewId: number) => void;
 }
 
 export interface ReviewItemProps {
   review: ReviewProps;
   currentUserId: string;
+  onDelete: (reviewId: number) => void;
 }
 
 export interface ReviewReplyProps {

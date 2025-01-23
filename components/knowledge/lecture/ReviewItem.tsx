@@ -14,7 +14,11 @@ import { ReviewReply } from './ReviewPeply';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
-export function ReviewItem({ review, currentUserId }: ReviewItemProps) {
+export function ReviewItem({
+  review,
+  currentUserId,
+  onDelete,
+}: ReviewItemProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isLiked, setIsLiked] = useState(review.is_liked);
@@ -35,6 +39,7 @@ export function ReviewItem({ review, currentUserId }: ReviewItemProps) {
   const handleDelete = async () => {
     if (!currentUserId) return;
     if (!window.confirm('수강평을 삭제하시겠습니까?')) return;
+    onDelete(review.id);
 
     try {
       await deleteReview(review.id, currentUserId);

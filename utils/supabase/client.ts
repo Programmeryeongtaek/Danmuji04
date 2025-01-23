@@ -239,6 +239,8 @@ export async function createReview(lectureId: number, rating: number, content: s
 // 수강평 삭제
 export async function deleteReview(reviewId: number, userId: string) {
   const supabase = createClient();
+
+  console.log('Deleting review:', reviewId, userId); // 디버깅용
   const { error } = await supabase
     .from('reviews')
     .delete()
