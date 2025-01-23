@@ -5,6 +5,7 @@ import ReviewModal from './ReviewsModal';
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import {
+  createClient,
   fetchAverageRating,
   fetchReviewsByLectureId,
 } from '@/utils/supabase/client';
@@ -14,14 +15,25 @@ import { ReviewList } from './ReviewList';
 
 interface ReviewSectionProps {
   lectureId: number;
+  currentUserId?: string;
 }
 
 const ReviewSection = ({ lectureId }: ReviewSectionProps) => {
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
+
+  // 사용자 ID 가져오기
+  useEffect(() => {
+    const supabase = createClient();
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id);
+    });
+  }, []);
 
   // 데이터 불러오기
   const loadReviews = async () => {
@@ -65,7 +77,7 @@ const ReviewSection = ({ lectureId }: ReviewSectionProps) => {
           <span>로딩 중...</span>
         </div>
       ) : reviews.length > 0 ? (
-        <ReviewList reviews={reviews} />
+        <ReviewList reviews={reviews} currentUserId={currentUserId} />
       ) : (
         <div className="flex justify-center py-8 text-gray-500">
           아직 수강평이 없습니다.

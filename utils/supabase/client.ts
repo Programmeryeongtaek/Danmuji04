@@ -65,33 +65,61 @@ export async function fetchLecturesByCategory(category: string) {
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
   
-  // 두 단계로 데이터 조회
+  // 기본 리뷰 데이터 조회
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*')
     .eq('lecture_id', lectureId)
     .order('created_at', { ascending: false });
-
+ 
   if (reviewsError) throw reviewsError;
-
-  // 각 리뷰의 사용자 정보 조회
+  if (!reviews) return [];
+ 
+  // 프로필과 부가 정보 추가
   const reviewsWithProfiles = await Promise.all(
     reviews.map(async (review) => {
+      // 프로필 정보 조회
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', review.user_id)
         .single();
-      
+ 
+      // 좋아요 수 조회
+      const { count: likes_count } = await supabase
+        .from('review_likes')
+        .select('count', { count: 'exact' })
+        .eq('review_id', review.id);
+ 
+      // 해당 리뷰 좋아요 여부 확인
+      const { data: like } = await supabase
+        .from('review_likes')
+        .select()
+        .eq('review_id', review.id)
+        .eq('user_id', profile?.id)
+        .single();
+ 
+      // 답글 조회
+      const { data: replies } = await supabase
+        .from('review_replies')
+        .select(`
+          *,
+          user_profile:user_id (*)
+        `)
+        .eq('review_id', review.id);
+ 
       return {
         ...review,
-        user_profile: profile
+        user_profile: profile,
+        likes_count: likes_count || 0,
+        is_liked: !!like,
+        replies: replies || []
       };
     })
   );
-
+ 
   return reviewsWithProfiles;
-}
+ }
 
 export async function getActiveEnrollment(
   lectureId: number, 
@@ -206,6 +234,73 @@ export async function createReview(lectureId: number, rating: number, content: s
 
   // 리뷰 작성
   return await insertReview(lectureId, user.id, rating, content);
+}
+
+// 수강평 삭제
+export async function deleteReview(reviewId: number, userId: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', reviewId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+}
+
+// 수강평 좋아요
+export async function toggleReviewLike(reviewId: number, userId: string) {
+  const supabase = createClient();
+  const { data: existingLike } = await supabase
+    .from('review_likes')
+    .select()
+    .eq('review_id', reviewId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingLike) {
+    await supabase
+      .from('review_likes')
+      .delete()
+      .eq('review_id', reviewId)
+      .eq('user_id', userId);
+  } else {
+    await supabase
+      .from('review_likes')
+      .insert({
+        review_id: reviewId,
+        user_id: userId,
+      });
+  }
+}
+
+// 수강평 답글 작성
+export async function addReviewReply(reviewId: number, userId: string, content: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('review_replies')
+    .insert({
+      review_id: reviewId,
+      user_id: userId,
+      content
+    })
+    .select('*, profiles!user_id(*)')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// 수강평 답글 삭제
+export async function deleteReviewReply(replyId: number, userId: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('review_replies')
+    .delete()
+    .eq('id', replyId)
+    .eq('user_id', userId);
+    
+  if (error) throw error;
 }
 
 // 유료 강의 체크

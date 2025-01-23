@@ -37,3 +37,48 @@ export interface FilterModalProps {
 export interface FilterChangeProps {
   onApply: (filters: FilterState) => void
 }
+
+// 수강평
+export interface ReviewProps {
+  id: number;
+  rating: number;
+  content: string;
+  created_at: string;
+  user_id: string;
+  lecture_id: number;
+  user_profile?: {
+    id: string;
+    user_name: string;
+    avatar_url: string | null;
+  } | null;
+  likes_count: number;
+  is_liked: boolean;
+  replies:ReplyProps[];
+}
+
+export interface ReplyProps {
+  id: number;
+  content: string;
+  created_at: string;
+  user_profile: {
+    id: string;
+    user_name: string;
+    avatar_url: string | null;
+  };
+}
+
+export interface ReviewListProps {
+  reviews: ReviewProps[];
+  currentUserId?: string;
+}
+
+export interface ReviewItemProps {
+  review: ReviewProps;
+  currentUserId?: string;
+}
+
+export interface ReviewReplyProps {
+  reply: ReplyProps;
+  currentUserId?: string;
+  onDelete: (replyId: number) => void;
+}
