@@ -200,6 +200,17 @@ export async function updateLectureStudentCount(lectureId: number, count: number
     .eq('id', lectureId);
 }
 
+// 수강신청을 위한 로그인 확인
+export async function checkEnrollment(lectureId: number) {
+  const supabase = createClient();
+  const {data: {user} } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다.');
+
+  const { data: enrollment } = await getActiveEnrollment(lectureId, user.id);
+  return !!enrollment;
+}
+
 // 기본 함수들을 조합하여 더 복잡한 작업을 수행하는 함수를 생성성
 export async function enrollLecture(lectureId: number) {
   const supabase = createClient();

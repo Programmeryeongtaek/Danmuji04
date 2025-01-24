@@ -5,9 +5,11 @@ import ReviewModal from './ReviewsModal';
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import {
+  createClient,
   deleteReview,
   fetchAverageRating,
   fetchReviewsByLectureId,
+  getActiveEnrollment,
 } from '@/utils/supabase/client';
 import { ToastType } from '@/components/common/Toast/type';
 import { StarRating } from './StarRating';
@@ -58,6 +60,30 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
     }
   };
 
+  // 수강평 작성 버튼
+  const handleReviewButtonClick = async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    try {
+      if (!user) throw new Error('로그인이 필요합니다.');
+
+      const { error, data } = await getActiveEnrollment(lectureId, user.id);
+      if (error || !data?.status) {
+        showToast('수강생만 수강평을 작성할 수 있습니다.', 'error');
+        return;
+      }
+
+      setIsModalOpen(true);
+    } catch (error) {
+      if (error instanceof Error) {
+        showToast(error.message, 'error');
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col border border-black p-4">
       <div className="flex justify-between">
@@ -70,7 +96,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       </div>
       <div className="mt-4 flex justify-between border-b border-t py-4">
         <span>수강평을 남겨주세요.</span>
-        <Button onClick={() => setIsModalOpen(true)}>수강평 남기기</Button>
+        <Button onClick={handleReviewButtonClick}>수강평 남기기</Button>
       </div>
 
       {/* 수강평 목록 */}
