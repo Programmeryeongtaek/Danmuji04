@@ -60,6 +60,7 @@ export interface ReplyProps {
   id: number;
   content: string;
   created_at: string;
+  user_id: string;
   user_profile: {
     id: string;
     user_name: string;

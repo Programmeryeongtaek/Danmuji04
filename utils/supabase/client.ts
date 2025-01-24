@@ -65,7 +65,6 @@ export async function fetchLecturesByCategory(category: string) {
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
   
-  // 기본 리뷰 데이터 조회
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*')
@@ -75,23 +74,19 @@ export async function fetchReviewsByLectureId(lectureId: number) {
   if (reviewsError) throw reviewsError;
   if (!reviews) return [];
 
-  // 프로필과 부가 정보 추가
   const reviewsWithProfiles = await Promise.all(
     reviews.map(async (review) => {
-      // 프로필 정보 조회
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', review.user_id)
         .single();
 
-      // 좋아요 수 조회
       const { count: likes_count } = await supabase
         .from('review_likes')
         .select('count', { count: 'exact' })
         .eq('review_id', review.id);
 
-      // 해당 리뷰 좋아요 여부 확인
       const { data: like } = await supabase
         .from('review_likes')
         .select()
@@ -99,18 +94,24 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         .eq('user_id', profile?.id)
         .single();
 
-      // 답글 조회
       const { data: replies } = await supabase
         .from('review_replies')
         .select(`
-          *,
-          user_profile:user_id (*)
+          id,
+          content,
+          created_at,
+          user_id,
+          profiles:user_id (
+            id,
+            user_name,
+            avatar_url
+          )
         `)
         .eq('review_id', review.id);
 
       return {
         ...review,
-        user_profile: profile,
+        profiles: profile,
         likes_count: likes_count || 0,
         is_liked: !!like,
         replies: replies || []
@@ -279,18 +280,35 @@ export async function toggleReviewLike(reviewId: number, userId: string) {
 // 수강평 답글 작성
 export async function addReviewReply(reviewId: number, userId: string, content: string) {
   const supabase = createClient();
-  const { data, error } = await supabase
+  console.log('Adding reply with:', { reviewId, userId, content });
+
+  const response = await supabase
     .from('review_replies')
     .insert({
       review_id: reviewId,
       user_id: userId,
       content
     })
-    .select('*, profiles!user_id(*)')
+    .select(`
+      id,
+      content,
+      created_at,
+      user_id,
+      user_profile:profiles(
+        id,
+        user_name,
+        avatar_url
+      )
+    `)
     .single();
 
-  if (error) throw error;
-  return data;
+  console.log('Response:', response);
+  
+  if (response.error) {
+    console.error('Error:', response.error);
+    throw response.error;
+  }
+  return response.data;
 }
 
 // 수강평 답글 삭제
