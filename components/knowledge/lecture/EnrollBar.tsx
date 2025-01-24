@@ -61,7 +61,6 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
 
     setIsLoading(true);
     try {
-      await enrollLecture(Number(lectureId)); // lectureId를 number로 확실하게 변환
       const supabase = createClient();
       const {
         data: { user },
@@ -69,17 +68,17 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
 
       if (!user) {
         setEnrollmentStatus(null);
+        showToast('로그인이 필요합니다.', 'error');
         return;
       }
 
+      await enrollLecture(Number(lectureId));
       const response = await getActiveEnrollment(Number(lectureId), user.id);
       if (!response.error && response.data) {
         setEnrollmentStatus(response.data.status as EnrollmentStatus);
+        showToast('수강 신청이 완료되었습니다.', 'success');
       }
-
-      showToast('수강 신청이 완료되었습니다.', 'success');
     } catch (err) {
-      console.error('Enrollment error:', err); // 상세 에러 확인용
       if (err instanceof Error) {
         showToast(err.message, 'error');
       }
