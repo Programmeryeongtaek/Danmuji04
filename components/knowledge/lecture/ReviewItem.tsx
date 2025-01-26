@@ -98,6 +98,29 @@ export function ReviewItem({
     );
   };
 
+  const handleReplyClick = () => {
+    setIsReplying(!isReplying);
+
+    if (!isReplying) {
+      setTimeout(() => {
+        const replyForm = document.getElementById(`reply-form-${review.id}`);
+        if (replyForm) {
+          const windowHeight = window.innerHeight;
+          const formRect = replyForm.getBoundingClientRect();
+          const scrollPosition =
+            window.scrollY +
+            formRect.top -
+            (windowHeight - formRect.height - 150);
+
+          window.scrollTo({
+            top: scrollPosition,
+            behavior: 'smooth',
+          });
+        }
+      }, 100);
+    }
+  };
+
   return (
     <div className="border-b pb-6">
       <div className="flex items-start gap-4">
@@ -144,7 +167,7 @@ export function ReviewItem({
                 <span>{likesCount}</span>
               </button>
               <button
-                onClick={() => setIsReplying(!isReplying)}
+                onClick={handleReplyClick}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <MessageCircle className="h-5 w-5" />
