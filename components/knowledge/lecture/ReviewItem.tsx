@@ -1,6 +1,6 @@
 'use client';
 
-import { ReviewItemProps } from '@/types/knowledge/lecture';
+import { ReplyProps, ReviewItemProps } from '@/types/knowledge/lecture';
 import {
   addReviewReply,
   deleteReview,
@@ -58,12 +58,44 @@ export function ReviewItem({
         currentUserId,
         replyContent
       );
-      setReplies((prev) => [...prev, newReply]);
+
+      // user_profile 타입 안전하게 처리
+      const userProfile = {
+        id: currentUserId,
+        user_name: review.user_profile?.user_name || '익명',
+        avatar_url: review.user_profile?.avatar_url || null,
+      } as const;
+
+      const formattedReply: ReplyProps = {
+        id: newReply.id,
+        content: newReply.content,
+        created_at: newReply.created_at,
+        user_id: currentUserId,
+        user_profile: userProfile,
+        likes_count: 0,
+        is_liked: false,
+      };
+
+      setReplies((prev) => [...prev, formattedReply]);
       setReplyContent('');
       setIsReplying(false);
     } catch (error) {
       console.error('Error posting reply:', error);
     }
+  };
+
+  const handleReplyUpdate = (
+    replyId: number,
+    isLiked: boolean,
+    likesCount: number
+  ) => {
+    setReplies((prev) =>
+      prev.map((reply) =>
+        reply.id === replyId
+          ? { ...reply, is_liked: isLiked, likes_count: likesCount }
+          : reply
+      )
+    );
   };
 
   return (
@@ -140,6 +172,7 @@ export function ReviewItem({
                   onDelete={(replyId) => {
                     setReplies((prev) => prev.filter((r) => r.id !== replyId));
                   }}
+                  onUpdate={handleReplyUpdate}
                 />
               ))}
             </div>

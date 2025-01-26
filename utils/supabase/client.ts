@@ -95,19 +95,22 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         .single();
 
       const { data: replies } = await supabase
-        .from('review_replies')
-        .select(`
+      .from('review_replies')
+      .select(`
+        id,
+        content,
+        created_at,
+        user_id,
+        user_profile:profiles (
           id,
-          content,
-          created_at,
-          user_id,
-          profiles:user_id (
-            id,
-            user_name,
-            avatar_url
-          )
-        `)
-        .eq('review_id', review.id);
+          user_name,
+          avatar_url
+        ),
+        likes_count:review_reply_likes(count),
+        is_liked:review_reply_likes!inner(reply_id)
+      `)
+      .eq('review_id', review.id)
+      .order('created_at', { ascending: true });
 
       return {
         ...review,
@@ -288,12 +291,37 @@ export async function toggleReviewLike(reviewId: number, userId: string) {
   }
 }
 
+// 답글 좋아요
+export async function toggleReplyLike(replyId: number, userId: string) {
+  const supabase = createClient();
+  const { data: existingLike } = await supabase
+    .from('review_reply_likes')
+    .select()
+    .eq('reply_id', replyId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingLike) {
+    await supabase
+      .from('review_reply_likes')
+      .delete()
+      .eq('reply_id', replyId)
+      .eq('user_id', userId);
+  } else {
+    await supabase
+      .from('review_reply_likes')
+      .insert({
+        reply_id: replyId,
+        user_id: userId,
+      });
+  }
+}
+
 // 수강평 답글 작성
 export async function addReviewReply(reviewId: number, userId: string, content: string) {
   const supabase = createClient();
-  console.log('Adding reply with:', { reviewId, userId, content });
-
-  const response = await supabase
+  
+  const { data: newReply, error: insertError } = await supabase
     .from('review_replies')
     .insert({
       review_id: reviewId,
@@ -305,21 +333,30 @@ export async function addReviewReply(reviewId: number, userId: string, content: 
       content,
       created_at,
       user_id,
-      user_profile:profiles(
-        id,
-        user_name,
-        avatar_url
-      )
+      user_profile:profiles (*)
     `)
     .single();
 
-  console.log('Response:', response);
-  
-  if (response.error) {
-    console.error('Error:', response.error);
-    throw response.error;
-  }
-  return response.data;
+  if (insertError) throw insertError;
+
+  // 좋아요 수와 좋아요 여부를 별도로 조회
+  const { count: likes_count } = await supabase
+    .from('review_reply_likes')
+    .select('*', { count: 'exact' })
+    .eq('reply_id', newReply.id);
+
+  const { data: like } = await supabase
+    .from('review_reply_likes')
+    .select()
+    .eq('reply_id', newReply.id)
+    .eq('user_id', userId)
+    .single();
+
+  return {
+    ...newReply,
+    likes_count: likes_count || 0,
+    is_liked: !!like
+  };
 }
 
 // 수강평 답글 삭제

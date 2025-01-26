@@ -1,7 +1,7 @@
 'user client';
 
 import { ReviewReplyProps } from '@/types/knowledge/lecture';
-import { deleteReviewReply, toggleReviewLike } from '@/utils/supabase/client';
+import { deleteReviewReply, toggleReplyLike } from '@/utils/supabase/client';
 import { Heart, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -12,9 +12,10 @@ export function ReviewReply({
   reply,
   currentUserId,
   onDelete,
+  onUpdate,
 }: ReviewReplyProps) {
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(reply.is_liked);
+  const [likesCount, setLikesCount] = useState(reply.likes_count);
 
   const avatarUrl = reply.user_profile?.avatar_url;
   const userName = reply.user_profile?.user_name || '익명';
@@ -34,9 +35,13 @@ export function ReviewReply({
   const handleLike = async () => {
     if (!currentUserId) return;
     try {
-      await toggleReviewLike(reply.id, currentUserId);
-      setIsLiked(!isLiked);
-      setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
+      await toggleReplyLike(reply.id, currentUserId);
+      const newIsLiked = !isLiked;
+      const newLikesCount = likesCount + (newIsLiked ? 1 : -1);
+
+      setIsLiked(newIsLiked);
+      setLikesCount(newLikesCount);
+      onUpdate(reply.id, newIsLiked, newLikesCount);
     } catch (error) {
       console.error('Error toggling like:', error);
     }
@@ -81,7 +86,7 @@ export function ReviewReply({
             />
             <span className="text-sm">{likesCount}</span>
           </button>
-          {reply.user_id === currentUserId && ( // user_profile?.id -> user_id
+          {reply.user_id === currentUserId && (
             <button
               onClick={handleDelete}
               className="text-gray-500 hover:text-red-500"

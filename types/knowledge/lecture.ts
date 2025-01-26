@@ -66,6 +66,8 @@ export interface ReplyProps {
     user_name: string;
     avatar_url: string | null;
   };
+  likes_count: number;
+  is_liked: boolean;
 }
 
 export interface ReviewListProps {
@@ -84,4 +86,5 @@ export interface ReviewReplyProps {
   reply: ReplyProps;
   currentUserId: string;
   onDelete: (replyId: number) => void;
+  onUpdate: (replyId: number, isLiked: boolean, likesCount: number) => void;
 }
