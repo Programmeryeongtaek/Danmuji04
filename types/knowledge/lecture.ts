@@ -87,4 +87,5 @@ export interface ReviewReplyProps {
   currentUserId: string;
   onDelete: (replyId: number) => void;
   onUpdate: (replyId: number, isLiked: boolean, likesCount: number) => void;
+  onEdit: (replyId: number, content: string) => void;
 }

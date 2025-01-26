@@ -1,8 +1,12 @@
 'user client';
 
 import { ReviewReplyProps } from '@/types/knowledge/lecture';
-import { deleteReviewReply, toggleReplyLike } from '@/utils/supabase/client';
-import { Heart, Trash2 } from 'lucide-react';
+import {
+  deleteReviewReply,
+  toggleReplyLike,
+  updateReviewReply,
+} from '@/utils/supabase/client';
+import { Heart, Pencil, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Image from 'next/image';
@@ -13,9 +17,12 @@ export function ReviewReply({
   currentUserId,
   onDelete,
   onUpdate,
+  onEdit,
 }: ReviewReplyProps) {
   const [isLiked, setIsLiked] = useState(reply.is_liked);
   const [likesCount, setLikesCount] = useState(reply.likes_count);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(reply.content);
 
   const avatarUrl = reply.user_profile?.avatar_url;
   const userName = reply.user_profile?.user_name || '익명';
@@ -44,6 +51,21 @@ export function ReviewReply({
       onUpdate(reply.id, newIsLiked, newLikesCount);
     } catch (error) {
       console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!currentUserId || editContent.trim() === reply.content) {
+      setIsEditing(false);
+      return;
+    }
+
+    try {
+      await updateReviewReply(reply.id, currentUserId, editContent);
+      onEdit(reply.id, editContent);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating reply:', error);
     }
   };
 
@@ -87,16 +109,54 @@ export function ReviewReply({
             <span className="text-sm">{likesCount}</span>
           </button>
           {reply.user_id === currentUserId && (
-            <button
-              onClick={handleDelete}
-              className="text-gray-500 hover:text-red-500"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            <>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-gray-500 hover:text-blue-500"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="text-gray-500 hover:text-red-500"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
           )}
         </div>
       </div>
-      <p className="mt-2 text-gray-700">{reply.content}</p>
+      {isEditing ? (
+        <div className="mt-2">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full rounded border p-2"
+            rows={3}
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setEditContent(reply.content);
+              }}
+              className="flex items-center gap-1 rounded px-3 py-1 text-gray-500 hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+              취소
+            </button>
+            <button
+              onClick={handleEdit}
+              className="rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
+              disabled={!editContent.trim() || editContent === reply.content}
+            >
+              수정완료
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-gray-700">{reply.content}</p>
+      )}
     </div>
   );
 }

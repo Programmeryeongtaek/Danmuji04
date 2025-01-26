@@ -359,6 +359,25 @@ export async function addReviewReply(reviewId: number, userId: string, content: 
   };
 }
 
+// 수강평 답글 수정
+export async function updateReviewReply(replyId: number, userId: string, content: string) {
+  const supabase = createClient();
+
+  return await supabase
+    .from('review_replies')
+    .update({ content })
+    .eq('id', replyId)
+    .eq('user_id', userId)
+    .select(`
+      id,
+      content,
+      created_at,
+      user_id,
+      user_profile:profiles (*)
+    `)
+    .single();
+}
+
 // 수강평 답글 삭제
 export async function deleteReviewReply(replyId: number, userId: string) {
   const supabase = createClient();

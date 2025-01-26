@@ -185,21 +185,26 @@ export function ReviewItem({
 
           <p className="mt-2 text-gray-700">{review.content}</p>
 
-          {replies.length > 0 && (
-            <div className="mt-4 space-y-4">
-              {replies.map((reply) => (
-                <ReviewReply
-                  key={reply.id}
-                  reply={reply}
-                  currentUserId={currentUserId}
-                  onDelete={(replyId) => {
-                    setReplies((prev) => prev.filter((r) => r.id !== replyId));
-                  }}
-                  onUpdate={handleReplyUpdate}
-                />
-              ))}
-            </div>
-          )}
+          {replies.map((reply) => (
+            <ReviewReply
+              key={reply.id}
+              reply={reply}
+              currentUserId={currentUserId}
+              onDelete={(replyId) => {
+                setReplies((prev) => prev.filter((r) => r.id !== replyId));
+              }}
+              onUpdate={handleReplyUpdate}
+              onEdit={(replyId, newContent) => {
+                setReplies((prev) =>
+                  prev.map((reply) =>
+                    reply.id === replyId
+                      ? { ...reply, content: newContent }
+                      : reply
+                  )
+                );
+              }}
+            />
+          ))}
 
           {isReplying && (
             <form onSubmit={handleReplySubmit} className="mt-4">
