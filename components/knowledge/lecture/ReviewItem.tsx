@@ -49,7 +49,12 @@ export function ReviewItem({
       setContent(editContent);
       setIsEditing(false);
     } catch (error) {
-      console.error('Error updating review:', error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('수정 중 오류가 발생했습니다.');
+      }
+      setEditContent(content);
     }
   };
 

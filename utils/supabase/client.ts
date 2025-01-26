@@ -254,6 +254,23 @@ export async function createReview(lectureId: number, rating: number, content: s
 // 수강평 수정
 export async function updateReview(reviewId: number, userId: string, content: string) {
   const supabase = createClient();
+  
+  // 리뷰 생성 시간 확인
+  const { data: review } = await supabase
+    .from('reviews')
+    .select('created_at')
+    .eq('id', reviewId)
+    .single();
+
+  if (!review) throw new Error('리뷰를 찾을 수 없습니다.');
+
+  const createdAt = new Date(review.created_at);
+  const now = new Date();
+  const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+  if (hoursSinceCreation > 24) {
+    throw new Error('작성 후 24시간이 지난 리뷰는 수정할 수 없습니다.');
+  }
 
   return await supabase
     .from('reviews')
@@ -375,19 +392,27 @@ export async function addReviewReply(reviewId: number, userId: string, content: 
 // 수강평 답글 수정
 export async function updateReviewReply(replyId: number, userId: string, content: string) {
   const supabase = createClient();
+  
+  const { data: reply } = await supabase
+    .from('review_replies')
+    .select('created_at')
+    .eq('id', replyId)
+    .single();
+
+  if (!reply) throw new Error('답글을 찾을 수 없습니다.');
+
+  const hoursSinceCreation = (new Date().getTime() - new Date(reply.created_at).getTime()) / (1000 * 60 * 60);
+
+  if (hoursSinceCreation > 24) {
+    throw new Error('작성 후 24시간이 지난 답글은 수정할 수 없습니다.');
+  }
 
   return await supabase
     .from('review_replies')
     .update({ content })
     .eq('id', replyId)
     .eq('user_id', userId)
-    .select(`
-      id,
-      content,
-      created_at,
-      user_id,
-      user_profile:profiles (*)
-    `)
+    .select()
     .single();
 }
 
