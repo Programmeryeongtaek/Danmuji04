@@ -11,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Image from 'next/image';
 import { useState } from 'react';
+import { useTimeLimit } from '@/app/hooks/useTimeLimit';
 
 export function ReviewReply({
   reply,
@@ -23,6 +24,7 @@ export function ReviewReply({
   const [likesCount, setLikesCount] = useState(reply.likes_count);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
+  const { checkTimeLimit } = useTimeLimit(24);
 
   const avatarUrl = reply.user_profile?.avatar_url;
   const userName = reply.user_profile?.user_name || '익명';
@@ -72,6 +74,12 @@ export function ReviewReply({
     }
   };
 
+  const handleEditClick = () => {
+    if (checkTimeLimit(reply.created_at)) {
+      setIsEditing(true);
+    }
+  };
+
   return (
     <div className="ml-8 border-l-2 border-gray-200 pl-4">
       <div className="flex items-start justify-between">
@@ -114,7 +122,7 @@ export function ReviewReply({
           {reply.user_id === currentUserId && (
             <>
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={handleEditClick}
                 className="text-gray-500 hover:text-blue-500"
               >
                 <Pencil className="h-4 w-4" />

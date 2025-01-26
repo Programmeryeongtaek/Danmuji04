@@ -14,6 +14,7 @@ import { Heart, MessageCircle, Pencil, Trash2, X } from 'lucide-react';
 import { ReviewReply } from './ReviewPeply';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useTimeLimit } from '@/app/hooks/useTimeLimit';
 
 export function ReviewItem({
   review,
@@ -28,6 +29,7 @@ export function ReviewItem({
   const [likesCount, setLikesCount] = useState(review.likes_count);
   const [replies, setReplies] = useState(review.replies);
   const [content, setContent] = useState(review.content);
+  const { checkTimeLimit } = useTimeLimit(24);
 
   const handleLike = async () => {
     if (!currentUserId) return;
@@ -67,6 +69,12 @@ export function ReviewItem({
       await deleteReview(review.id, currentUserId);
     } catch (error) {
       console.error('Error deleting review:', error);
+    }
+  };
+
+  const handleEditClick = () => {
+    if (checkTimeLimit(review.created_at)) {
+      setIsEditing(true);
     }
   };
 
@@ -197,7 +205,7 @@ export function ReviewItem({
               {review.user_id === currentUserId && (
                 <>
                   <button
-                    onClick={() => setIsEditing(true)}
+                    onClick={handleEditClick}
                     className="text-gray-500 hover:text-blue-500"
                   >
                     <Pencil className="h-5 w-5" />
