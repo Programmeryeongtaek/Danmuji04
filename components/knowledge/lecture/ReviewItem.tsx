@@ -5,11 +5,12 @@ import {
   addReviewReply,
   deleteReview,
   toggleReviewLike,
+  updateReview,
 } from '@/utils/supabase/client';
 import Image from 'next/image';
 import { FormEvent, useState } from 'react';
 import { StarRating } from './StarRating';
-import { Heart, MessageCircle, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Pencil, Trash2, X } from 'lucide-react';
 import { ReviewReply } from './ReviewPeply';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -20,10 +21,13 @@ export function ReviewItem({
   onDelete,
 }: ReviewItemProps) {
   const [isReplying, setIsReplying] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(review.content);
   const [replyContent, setReplyContent] = useState('');
   const [isLiked, setIsLiked] = useState(review.is_liked);
   const [likesCount, setLikesCount] = useState(review.likes_count);
   const [replies, setReplies] = useState(review.replies);
+  const [content, setContent] = useState(review.content);
 
   const handleLike = async () => {
     if (!currentUserId) return;
@@ -33,6 +37,19 @@ export function ReviewItem({
       setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
     } catch (error) {
       console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!currentUserId) return;
+    if (!editContent.trim()) return;
+
+    try {
+      await updateReview(review.id, currentUserId, editContent);
+      setContent(editContent);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating review:', error);
     }
   };
 
@@ -173,17 +190,55 @@ export function ReviewItem({
                 <MessageCircle className="h-5 w-5" />
               </button>
               {review.user_id === currentUserId && (
-                <button
-                  onClick={handleDelete}
-                  className="text-gray-500 hover:text-red-500"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
+                <>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="text-gray-500 hover:text-blue-500"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="text-gray-500 hover:text-red-500"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </>
               )}
             </div>
           </div>
 
-          <p className="mt-2 text-gray-700">{review.content}</p>
+          {isEditing ? (
+            <div className="mt-2">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full rounded border p-2"
+                rows={3}
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(content);
+                  }}
+                  className="flex items-center gap-1 rounded px-3 py-1 text-gray-500 hover:bg-gray-100"
+                >
+                  <X className="h-4 w-4" />
+                  취소
+                </button>
+                <button
+                  onClick={handleEdit}
+                  className="rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
+                  disabled={!editContent.trim() || editContent === content}
+                >
+                  수정완료
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 text-gray-700">{content}</p>
+          )}
 
           {replies.map((reply) => (
             <ReviewReply
@@ -207,7 +262,11 @@ export function ReviewItem({
           ))}
 
           {isReplying && (
-            <form onSubmit={handleReplySubmit} className="mt-4">
+            <form
+              id={`reply-form-${review.id}`}
+              onSubmit={handleReplySubmit}
+              className="mt-4"
+            >
               <textarea
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}

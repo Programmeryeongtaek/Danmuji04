@@ -251,6 +251,19 @@ export async function createReview(lectureId: number, rating: number, content: s
   return await insertReview(lectureId, user.id, rating, content);
 }
 
+// 수강평 수정
+export async function updateReview(reviewId: number, userId: string, content: string) {
+  const supabase = createClient();
+
+  return await supabase
+    .from('reviews')
+    .update({ content })
+    .eq('id', reviewId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+}
+
 // 수강평 삭제
 export async function deleteReview(reviewId: number, userId: string) {
   const supabase = createClient();
