@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { FormEvent, useEffect, useState } from 'react';
 import { StarRating } from './StarRating';
 import { Heart, MessageCircle, Pencil, Trash2, X } from 'lucide-react';
-import { ReviewReply } from './ReviewPeply';
+import { ReviewReply } from './ReviewReply';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useTimeLimit } from '@/app/hooks/useTimeLimit';
