@@ -2,6 +2,8 @@ import Link from 'next/link';
 import Button from '../common/Button/Button';
 import Modal from '../common/Modal';
 import LoginForm from '../auth/LoginForm';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -9,9 +11,21 @@ interface LoginModalProps {
 }
 
 const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
+  const router = useRouter();
+  const supabase = createClient();
+
   const handleLogin = async (email: string, password: string) => {
-    // TODO: Supabase 연동
-    console.log('Login attempt:', { email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error('error.message');
+    }
+
+    onClose();
+    router.refresh();
   };
 
   return (
