@@ -21,7 +21,7 @@ export function ReviewReply({
   onEdit,
 }: ReviewReplyProps) {
   const [isLiked, setIsLiked] = useState(reply.is_liked);
-  const [likesCount, setLikesCount] = useState(reply.likes_count.count);
+  const [likesCount, setLikesCount] = useState(reply.likes_count.count || 0);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
   const { checkTimeLimit } = useTimeLimit(24);
@@ -43,14 +43,18 @@ export function ReviewReply({
 
   const handleLike = async () => {
     if (!currentUserId) return;
+
     try {
       await toggleReplyLike(reply.id, currentUserId);
       const newIsLiked = !isLiked;
-      const newLikesCount = likesCount + (newIsLiked ? 1 : -1);
+      const newLikesCount = Number(likesCount) + (newIsLiked ? 1 : -1);
+
+      // 음수가 되지 않도록 방지
+      const finalCount = Math.max(0, newLikesCount);
 
       setIsLiked(newIsLiked);
-      setLikesCount(newLikesCount);
-      onUpdate(reply.id, newIsLiked, newLikesCount);
+      setLikesCount(finalCount);
+      onUpdate(reply.id, newIsLiked, finalCount);
     } catch (error) {
       console.error('Error toggling like:', error);
     }

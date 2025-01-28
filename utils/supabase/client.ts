@@ -65,6 +65,7 @@ export async function fetchLecturesByCategory(category: string) {
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
   
+  // 기본 리뷰 데이터 먼저 가져오기
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*')
@@ -74,55 +75,66 @@ export async function fetchReviewsByLectureId(lectureId: number) {
   if (reviewsError) throw reviewsError;
   if (!reviews) return [];
 
-  const reviewsWithProfiles = await Promise.all(
+  const reviewsWithData = await Promise.all(
     reviews.map(async (review) => {
+      // 프로필 데이터 가져오기
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, user_name, avatar_url')
         .eq('id', review.user_id)
         .single();
 
-      const { count: likes_count } = await supabase
+      // 좋아요 데이터 가져오기
+      const { data: likes } = await supabase
         .from('review_likes')
-        .select('count', { count: 'exact' })
+        .select('*')
         .eq('review_id', review.id);
 
-      const { data: like } = await supabase
-        .from('review_likes')
-        .select()
-        .eq('review_id', review.id)
-        .eq('user_id', profile?.id)
-        .single();
-
+      // 답글 데이터 가져오기
       const { data: replies } = await supabase
-      .from('review_replies')
-      .select(`
-        id,
-        content,
-        created_at,
-        user_id,
-        user_profile:profiles (
-          id,
-          user_name,
-          avatar_url
-        ),
-        likes_count:review_reply_likes(count),
-        is_liked:review_reply_likes!inner(reply_id)
-      `)
-      .eq('review_id', review.id)
-      .order('created_at', { ascending: true });
+        .from('review_replies')
+        .select('*')
+        .eq('review_id', review.id)
+        .order('created_at', { ascending: true });
+
+      // 답글에 대한 사용자 정보와 좋아요 정보 가져오기
+      const repliesWithProfiles = await Promise.all(
+        (replies || []).map(async (reply) => {
+          const [profileResult, likesResult] = await Promise.all([
+            // 답글 작성자 프로필
+            supabase
+              .from('profiles')
+              .select('id, user_name, avatar_url')
+              .eq('id', reply.user_id)
+              .single(),
+            
+            // 답글 좋아요 정보
+            supabase
+              .from('review_reply_likes')
+              .select('*')
+              .eq('reply_id', reply.id)
+          ]);
+
+          return {
+            ...reply,
+            user_profile: profileResult.data,
+            likes_count: { count: likesResult.data?.length || 0 },
+            is_liked: likesResult.data?.some(like => like.user_id === reply.user_id) || false
+          };
+        })
+      );
 
       return {
         ...review,
-        profiles: profile,
-        likes_count: likes_count || 0,
-        is_liked: !!like,
-        replies: replies || []
+        user_profile: profile || null,
+        likes_count: likes?.length || 0,
+        is_liked: likes?.some(like => like.user_id === review.user_id) || false,
+        replies: repliesWithProfiles
       };
     })
   );
 
-  return reviewsWithProfiles;
+  return reviewsWithData;
 }
 
 export async function getActiveEnrollment(
@@ -351,46 +363,35 @@ export async function toggleReplyLike(replyId: number, userId: string) {
 export async function addReviewReply(reviewId: number, userId: string, content: string) {
   const supabase = createClient();
   
+  // 1. 먼저 답글 추가
   const { data: newReply, error: insertError } = await supabase
     .from('review_replies')
     .insert({
       review_id: reviewId,
       user_id: userId,
-      content
-    })
-    .select(`
-      id,
       content,
-      created_at,
-      user_id,
-      user_profile:profiles (
-        id,
-        user_name,
-        avatar_url
-      ),
-      likes_count:review_reply_likes(count)
-    `)
+    })
+    .select('*')
     .single();
 
-  if (insertError) throw insertError;  
+  if (insertError) throw insertError;
 
-  // 좋아요 수와 좋아요 여부를 별도로 조회
-  const { count: likes_count } = await supabase
-    .from('review_reply_likes')
-    .select('*', { count: 'exact' })
-    .eq('reply_id', newReply.id);
-
-  const { data: like } = await supabase
-    .from('review_reply_likes')
-    .select()
-    .eq('reply_id', newReply.id)
-    .eq('user_id', userId)
+  // 2. 답글 작성자의 프로필 정보 가져오기
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, user_name, avatar_url')
+    .eq('id', userId)
     .single();
 
+  // 3. 응답 데이터 포맷팅
   return {
-    ...newReply,
-    likes_count: likes_count || 0,
-    is_liked: !!like
+    id: newReply.id,
+    content: newReply.content,
+    created_at: newReply.created_at,
+    user_id: userId,
+    user_profile: profile || null,
+    likes_count: { count: 0 },
+    is_liked: false
   };
 }
 
