@@ -62,25 +62,49 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
 
   // 수강평 작성 버튼
   const handleReviewButtonClick = async () => {
+    if (!currentUserId) {
+      showToast('로그인이 필요합니다.', 'warning' as ToastType);
+      return;
+    }
+
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
     try {
-      if (!user) throw new Error('로그인이 필요합니다.');
+      // 1. 수강 여부 확인
+      const { data: enrollment } = await getActiveEnrollment(
+        lectureId,
+        currentUserId
+      );
 
-      const { error, data } = await getActiveEnrollment(lectureId, user.id);
-      if (error || !data?.status) {
-        showToast('수강생만 수강평을 작성할 수 있습니다.', 'error');
+      if (!enrollment?.status) {
+        showToast(
+          '수강생만 수강평을 작성할 수 있습니다.',
+          'warning' as ToastType
+        );
         return;
       }
 
+      // 2. 기존 수강평 확인
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('lecture_id', lectureId)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+
+      if (existingReview) {
+        showToast('이미 수강평을 작성하였습니다.', 'warning' as ToastType);
+        return;
+      }
+
+      // 3. 모든 조건 통과시 모달 열기
       setIsModalOpen(true);
     } catch (error) {
-      if (error instanceof Error) {
-        showToast(error.message, 'error');
-      }
+      console.error('Error checking review status:', error);
+      showToast(
+        '오류가 발생했습니다. 다시 시도해주세요.',
+        'error' as ToastType
+      );
     }
   };
 
@@ -96,7 +120,9 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       </div>
       <div className="mt-4 flex justify-between border-b border-t py-4">
         <span>수강평을 남겨주세요.</span>
-        <Button onClick={handleReviewButtonClick}>수강평 남기기</Button>
+        <Button onClick={handleReviewButtonClick}>
+          <span>수강평 남기기</span>
+        </Button>
       </div>
 
       {/* 수강평 목록 */}
@@ -115,7 +141,6 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
           아직 수강평이 없습니다.
         </div>
       )}
-      <div className="mt-4">{/* TODO: 수강평 데이터 불러오기 및 표시 */}</div>
 
       <ReviewModal
         lectureId={lectureId}
