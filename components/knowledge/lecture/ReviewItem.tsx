@@ -3,12 +3,13 @@
 import { ReplyProps, ReviewItemProps } from '@/types/knowledge/lecture';
 import {
   addReviewReply,
+  createClient,
   deleteReview,
   toggleReviewLike,
   updateReview,
 } from '@/utils/supabase/client';
 import Image from 'next/image';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { StarRating } from './StarRating';
 import { Heart, MessageCircle, Pencil, Trash2, X } from 'lucide-react';
 import { ReviewReply } from './ReviewPeply';
@@ -30,6 +31,7 @@ export function ReviewItem({
   const [replies, setReplies] = useState(review.replies);
   const [content, setContent] = useState(review.content);
   const { checkTimeLimit } = useTimeLimit(24);
+  const supabase = createClient();
 
   const handleLike = async () => {
     if (!currentUserId) return;
@@ -89,7 +91,6 @@ export function ReviewItem({
         replyContent
       );
 
-      // user_profile 타입 안전하게 처리
       const userProfile = {
         id: currentUserId,
         user_name: review.user_profile?.user_name || '익명',
@@ -102,7 +103,7 @@ export function ReviewItem({
         created_at: newReply.created_at,
         user_id: currentUserId,
         user_profile: userProfile,
-        likes_count: 0,
+        likes_count: { count: 0 },
         is_liked: false,
       };
 
@@ -122,7 +123,7 @@ export function ReviewItem({
     setReplies((prev) =>
       prev.map((reply) =>
         reply.id === replyId
-          ? { ...reply, is_liked: isLiked, likes_count: likesCount }
+          ? { ...reply, is_liked: isLiked, likes_count: { count: likesCount } }
           : reply
       )
     );
@@ -150,6 +151,38 @@ export function ReviewItem({
       }, 100);
     }
   };
+
+  useEffect(() => {
+    const loadReplies = async () => {
+      const { data: fetchedReplies } = await supabase
+        .from('review_replies')
+        .select('*, user:user_id(*)')
+        .eq('review_id', review.id)
+        .order('created_at', { ascending: true });
+
+      if (fetchedReplies) {
+        const formattedReplies = fetchedReplies.map((reply) => ({
+          id: reply.id,
+          content: reply.content,
+          created_at: reply.created_at,
+          user_id: reply.user_id,
+          user_profile: reply.user
+            ? {
+                id: reply.user.id,
+                user_name: reply.user.user_name || '익명',
+                avatar_url: reply.user.avatar_url,
+              }
+            : null,
+          likes_count: { count: 0 },
+          is_liked: false,
+        }));
+
+        setReplies(formattedReplies);
+      }
+    };
+
+    loadReplies();
+  }, [review.id, supabase]);
 
   return (
     <div className="border-b pb-6">

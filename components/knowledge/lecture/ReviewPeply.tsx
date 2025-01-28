@@ -21,7 +21,7 @@ export function ReviewReply({
   onEdit,
 }: ReviewReplyProps) {
   const [isLiked, setIsLiked] = useState(reply.is_liked);
-  const [likesCount, setLikesCount] = useState(reply.likes_count);
+  const [likesCount, setLikesCount] = useState(reply.likes_count.count);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
   const { checkTimeLimit } = useTimeLimit(24);

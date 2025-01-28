@@ -55,7 +55,6 @@ export interface ReviewProps {
   is_liked: boolean;
   replies:ReplyProps[];
 }
-
 export interface ReplyProps {
   id: number;
   content: string;
@@ -65,9 +64,22 @@ export interface ReplyProps {
     id: string;
     user_name: string;
     avatar_url: string | null;
-  };
-  likes_count: number;
+  } | null;
+  likes_count: { count: number };
   is_liked: boolean;
+}
+
+export interface FetchedReply {
+  id: number;
+  content: string;
+  created_at: string;
+  user_id: string;
+  user_profile: {
+    id: string;
+    user_name: string;
+    avatar_url: string | null;
+  } | null;
+  likes_count: { count: number }[];
 }
 
 export interface ReviewListProps {

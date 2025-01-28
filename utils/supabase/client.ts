@@ -363,11 +363,16 @@ export async function addReviewReply(reviewId: number, userId: string, content: 
       content,
       created_at,
       user_id,
-      user_profile:profiles (*)
+      user_profile:profiles (
+        id,
+        user_name,
+        avatar_url
+      ),
+      likes_count:review_reply_likes(count)
     `)
     .single();
 
-  if (insertError) throw insertError;
+  if (insertError) throw insertError;  
 
   // 좋아요 수와 좋아요 여부를 별도로 조회
   const { count: likes_count } = await supabase
