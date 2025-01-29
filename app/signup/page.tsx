@@ -7,12 +7,14 @@ import { ChangeEvent, useState } from 'react';
 import EmailVerifyModal from '@/components/auth/EmailVerifyModal';
 import useSignUpForm, { CATEGORIES } from '@/hooks/useSignUpForm';
 import Image from 'next/image';
+import MarketingAgreementModal from '@/components/auth/MarketingAgreementModal';
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showMarketingModal, setShowMarketingModal] = useState(false);
 
   const {
     formData,
@@ -353,6 +355,13 @@ const SignUpPage = () => {
                   <br />
                   관심 분야에 맞는 맞춤 콘텐츠 추천을 받아보실 수 있습니다.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMarketingModal(true)}
+                  className="text-sm text-gray-500 underline hover:text-gray-700"
+                >
+                  자세히 보기
+                </button>
               </div>
             </div>
           </div>
@@ -382,6 +391,16 @@ const SignUpPage = () => {
         isOpen={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}
         email={formData.email}
+      />
+
+      {/* 마케팅 동의 모달 */}
+      <MarketingAgreementModal
+        isOpen={showMarketingModal}
+        onClose={() => setShowMarketingModal(false)}
+        formData={formData}
+        onAgree={(agreed) =>
+          setFormData((prev) => ({ ...prev, marketingAgree: agreed }))
+        }
       />
     </>
   );
