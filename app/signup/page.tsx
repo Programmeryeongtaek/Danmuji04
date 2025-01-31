@@ -2,7 +2,7 @@
 
 import { ArrowBigLeft, Eye, EyeOff, Plus, X } from 'lucide-react';
 import Link from 'next/link';
-import { signup } from './action';
+import { signup } from './auth';
 import { ChangeEvent, useState } from 'react';
 import EmailVerifyModal from '@/components/auth/EmailVerifyModal';
 import useSignUpForm, { CATEGORIES } from '@/hooks/useSignUpForm';

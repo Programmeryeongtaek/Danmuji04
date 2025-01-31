@@ -1,52 +1,74 @@
-'use server';
+import { createClient } from '@/utils/supabase/client';
 
-import { createClient } from '@/utils/supabase/server';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+export async function signup(formData: FormData) {
+  const supabase = createClient();
 
-export async function login(formData: FormData) {
-  const supabase = await createClient();
-
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
   const data = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
-  }
+    name: formData.get('name') as string,
+    nickname: formData.get('nickname') as string,
+    interests: JSON.parse(formData.get('interests') as string),
+    marketingAgree: formData.get('marketingAgree') === 'true'
+  };
 
-  const { error } = await supabase.auth.signInWithPassword(data);
-
-  if (error) {
-    redirect('/error');
-  }
-
-  revalidatePath('/', 'layout');
-  redirect('/');
-}
-
-export async function signup(formData: FormData) {
-  try {
-    const supabase = await createClient();
-
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    const { error } = await supabase.auth.signUp({
-      email, password, options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-      }
-    })
-
-    if (error) {
-      console.error('Signup error:', error.message);
-      return { error: error.message };
+  // 1. 사용자 인증 계정 생성
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
     }
+  });
 
-    revalidatePath('/', 'layout');
-    return { success: true };
-  } catch (error) {
-    console.error('Unknown error:', error);
-    return { error: 'An unexpected error occurred'};
+  if (authError) {
+    return { error: authError.message };
   }
 
+  // 2. 프로필 이미지가 있다면 Storage에 업로드
+  let avatarUrl = null;
+  const avatarFile = formData.get('profileImage') as File;
+
+  if (avatarFile && authData.user) {
+    const { data: fileData, error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(`${authData.user.id}/${Date.now()}`, avatarFile);
+
+    if (uploadError) {
+      console.error('Avatar upload error:', uploadError);
+    } else {
+      avatarUrl = fileData.path;
+    }
+  }
+
+  // 3. 사용자 프로필 정보 저장
+  const { error: profileError } = await supabase
+  .from('profiles')
+  .insert({
+    id: authData.user!.id,
+    name: data.name,
+    nickname: data.nickname,
+    email: data.email,
+    avatar_url: avatarUrl,
+    interests: data.interests
+  });
+
+  if (profileError) {
+    return { error: profileError.message };
+  }
+
+  // 4. 마케팅 동의 정보 저장
+  const { error: marketingError } = await supabase
+    .from('marketing_agreements')
+    .insert({
+      user_id: authData.user!.id,
+      email_agreed: data.marketingAgree,
+      agreed_at: data.marketingAgree ? new Date().toISOString() : null
+    });
+
+  if (marketingError) {
+    return { error: marketingError.message}
+  }
+
+  return { error: null };
 }
