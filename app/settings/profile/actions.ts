@@ -43,3 +43,21 @@ export async function updateProfile(formData: FormData) {
   
   return { success: true };
 }
+
+// 아이디 중복 체크
+export async function checkNicknameDuplicate(nickname: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('nickname')
+    .eq('nickname', nickname)
+    .single();
+
+  if (error && error.code === 'PGRST116') {
+    // 결과가 없는 경우 = 중복 없음
+    return { isDuplicate: false };
+  }
+
+  return { isDuplicate: Boolean(data) };
+}

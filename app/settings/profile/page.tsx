@@ -2,7 +2,7 @@
 
 import { createClient } from '@/utils/supabase/client';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { updateProfile } from './actions';
+import { checkNicknameDuplicate, updateProfile } from './actions';
 import { Upload, X } from 'lucide-react';
 
 type Interest = '인문학' | '철학' | '심리학' | '경제학' | '자기계발' | '리더십';
@@ -34,6 +34,9 @@ const ProfileSettingsPage = () => {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [newInterest, setNewInterest] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [nicknameError, setNicknameError] = useState<string>('');
+  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
+
   const supabase = createClient();
 
   const fetchProfile = useCallback(async () => {
@@ -77,6 +80,26 @@ const ProfileSettingsPage = () => {
     fetchProfile();
   }, [fetchProfile]);
 
+  const checkNickname = useCallback(
+    async (nickname: string) => {
+      if (!nickname || nickname === profile?.nickname) {
+        setNicknameError('');
+        return;
+      }
+
+      setIsCheckingNickname(true);
+      const { isDuplicate } = await checkNicknameDuplicate(nickname);
+      setIsCheckingNickname(false);
+
+      if (isDuplicate) {
+        setNicknameError('이미 사용 중인 닉네임입니다.');
+      } else {
+        setNicknameError('');
+      }
+    },
+    [profile?.nickname]
+  );
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -113,7 +136,7 @@ const ProfileSettingsPage = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isEditing) return;
+    if (!isEditing || nicknameError) return;
 
     setLoading(true);
     const formData = new FormData(e.currentTarget);
@@ -180,14 +203,29 @@ const ProfileSettingsPage = () => {
                 </span>
               )}
             </div>
-            <input
-              type="text"
-              name="nickname"
-              defaultValue={profile.nickname || ''}
-              onChange={() => setIsEditing(true)}
-              className="w-full rounded-lg border border-gray-300 p-2"
-              placeholder="닉네임을 입력해주세요"
-            />
+            <div className="space-y-1">
+              <input
+                type="text"
+                name="nickname"
+                defaultValue={profile.nickname || ''}
+                onChange={(e) => {
+                  setIsEditing(true);
+                  checkNickname(e.target.value);
+                }}
+                className={`w-full rounded-lg border p-2 ${
+                  nicknameError
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
+                    : 'border-gray-300 focus:border-gold-start focus:ring-gold-start/20'
+                }`}
+                placeholder="닉네임을 입력해주세요"
+              />
+              {isCheckingNickname && (
+                <p className="text-sm text-gray-500">중복 확인 중...</p>
+              )}
+              {nicknameError && (
+                <p className="text-sm text-red-500">{nicknameError}</p>
+              )}
+            </div>
           </section>
 
           {/* 프로필 이미지 */}
