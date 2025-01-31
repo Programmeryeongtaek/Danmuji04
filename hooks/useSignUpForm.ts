@@ -1,7 +1,8 @@
 'use client'
 
+import { checkEmailDuplicate, checkNicknameDuplicate } from '@/app/signup/auth';
 import { atom, useAtom } from 'jotai';
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useCallback, useRef, useState } from 'react';
 
 // 관심 분야 카테고리 정의
 // TODO: 추후에 카테고리 자동으로 업데이트
@@ -66,16 +67,62 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
   const [errors, setErrors] = useAtom(signUpErrorAtom);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customInterest, setCustomInterest] = useState('');
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
 
-  const validateForm = () => {
+  const checkEmail = useCallback(async (email: string) => {
+    if (!email) return;
+
+    setIsCheckingEmail(true);
+    const { isDuplicate, error } = await checkEmailDuplicate(email);
+    setIsCheckingEmail(false);
+
+    if (error) {
+      setErrors(prev => ({ ...prev, email: '이메일 확인 중 오류가 발생했습니다.' }));
+      return false;
+    }
+
+    if (isDuplicate) {
+      setErrors(prev => ({ ...prev, email: '이미 사용 중인 이메일입니다.' }));
+      return false;
+    }
+
+    setErrors(prev => ({ ...prev, email: '' }));
+    return true;
+  }, [setErrors]);
+
+  const checkNickname = useCallback(async (nickname: string) => {
+    if (!nickname) return;
+
+    setIsCheckingNickname(true);
+    const { isDuplicate, error } = await checkNicknameDuplicate(nickname);
+    setIsCheckingNickname(false);
+
+    if (error) {
+      setErrors(prev => ({ ...prev, nickname: '닉네임 확인 중 오류가 발생했습니다.' }));
+      return false;
+    }
+
+    if (isDuplicate) {
+      setErrors(prev => ({ ...prev, nickname: '이미 사용 중인 닉네임입니다.' }));
+      return false;
+    }
+
+    setErrors(prev => ({ ...prev, nickname: '' }));
+    return true;
+  }, [setErrors]);
+
+
+  const validateForm = async () => {
     let isValid = true;
     const newErrors = {
       email: '',
       password: '',
       passwordConfirm: '',
       name: '',
+      nickname: '',
       customInterest: '',
     };
 
@@ -86,6 +133,15 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = '올바른 이메일 형식이 아닙니다';
       isValid = false;
+    } else {
+      const emailValid = await checkEmail(formData.email);
+      if (!emailValid) isValid = false;
+    }
+
+    // 닉네임 검증 (선택사항이지만, 입력된 경우 중복 체크)
+    if (formData.nickname) {
+      const nicknameValid = await checkNickname(formData.nickname);
+      if (!nicknameValid) isValid = false;
     }
 
     // 비밀번호 검증
@@ -119,6 +175,10 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
+    if (isCheckingEmail || isCheckingNickname) {
+      return; // 중복 체크 중이면 제출 방지
+    }
+
     if (!validateForm()) {
       // 첫 번째 에러가 있는 필드 찾기
       const firstErrorField = formRef.current?.querySelector(
@@ -138,16 +198,28 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('SignUp failed:', error);
-      setErrors((prev) => ({
-        ...prev,
-        password: '회원가입에 실패했습니다. 다시 시도해주세요.',
-      }));
-    } finally {
-      setIsSubmitting(false);
+      
+      const err = error as { message: string };
+      if (err.message.includes('already registered')) {
+        setErrors(prev => ({
+          ...prev,
+          email: '이미 등록된 이메일입니다.'
+        }));
+      } else if (err.message === 'unknown') {
+        setErrors(prev => ({
+          ...prev,
+          email: '회원가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        }));
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          password: '회원가입에 실패했습니다. 다시 시도해주세요.'
+        }));
+      }
     }
-  };
+  }
 
   const handleFileChange = (file: File | null) => {
     setFormData((prev) => ({ ...prev, profileImage: file }));
@@ -187,6 +259,8 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
     setFormData,
     errors,
     isSubmitting,
+    isCheckingEmail,
+    isCheckingNickname,
     handleSubmit,
     handleFileChange,
     toggleInterest,
@@ -195,6 +269,8 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
     addCustomInterest,
     removeCustomInterest,
     formRef,
+    checkEmail,
+    checkNickname
   };
 };
 
