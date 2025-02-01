@@ -20,6 +20,7 @@ const inter = Inter({ subsets: ['latin'] });
 const RootLayout = ({ children }: RootLayoutProps) => {
   const pathname = usePathname();
   const isLecturePage = pathname?.includes('/knowledge/lecture/');
+  const isSettingsPage = pathname?.includes('/settings/');
   const isSignUpPage = pathname === '/signup';
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
@@ -69,7 +70,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           <div className="flex min-h-screen flex-col">
             <Header />
             <main>{children}</main>
-            {!isLecturePage && <Navbar />}
+            {!isLecturePage && !isSettingsPage && <Navbar />}
           </div>
         </Toast.Provider>
       </body>
