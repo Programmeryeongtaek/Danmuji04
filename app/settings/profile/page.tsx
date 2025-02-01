@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { checkNicknameDuplicate, updateProfile } from './actions';
 import { Upload, X } from 'lucide-react';
+import useDebounce from '@/hooks/useDebounce';
 
 type Interest = '인문학' | '철학' | '심리학' | '경제학' | '자기계발' | '리더십';
 
@@ -44,19 +45,16 @@ const ProfileSettingsPage = () => {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [newInterest, setNewInterest] = useState('');
 
-  const fetchProfile = useCallback(async () => {
-    console.log('fetchProfile 시작'); // 디버깅 1
+  const debouncedNickname = useDebounce(currentNickname, 500);
 
+  const fetchProfile = useCallback(async () => {
     try {
       const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      console.log('인증된 유저:', user); // 디버깅 2
-
       if (!user) {
-        console.log('유저 없음'); // 디버깅 3
         throw new Error('인증되지 않은 사용자입니다.');
       }
 
@@ -66,9 +64,6 @@ const ProfileSettingsPage = () => {
         .eq('id', user.id)
         .single();
 
-      console.log('프로필 데이터:', profileData); // 디버깅 4
-      console.log('프로필 에러:', error); // 디버깅 5
-
       if (error) {
         console.error('프로필 조회 오류:', error);
         throw error;
@@ -77,33 +72,26 @@ const ProfileSettingsPage = () => {
       setProfile(profileData);
       setCurrentNickname(profileData?.nickname || '');
       setSelectedInterests(profileData?.interests || []);
-
-      console.log('상태 업데이트 완료'); // 디버깅 6
     } catch (error) {
       console.error('프로필 조회 실패:', error);
     } finally {
-      console.log('loading 상태 false로 변경'); // 디버깅 7
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    console.log('useEffect 실행'); // 디버깅 8
     fetchProfile();
   }, [fetchProfile]);
 
-  const checkNickname = useCallback(
-    async (nickname: string) => {
-      if (!nickname || nickname === profile?.nickname) {
+  useEffect(() => {
+    const checkNicknameDebounced = async () => {
+      if (!debouncedNickname || debouncedNickname === profile?.nickname) {
         setNicknameError('');
         return;
       }
 
-      console.log('Checking nickname:', nickname);
-      console.log('Current profile nickname:', profile?.nickname);
-
       setIsCheckingNickname(true);
-      const { isDuplicate } = await checkNicknameDuplicate(nickname);
+      const { isDuplicate } = await checkNicknameDuplicate(debouncedNickname);
       setIsCheckingNickname(false);
 
       if (isDuplicate) {
@@ -111,9 +99,10 @@ const ProfileSettingsPage = () => {
       } else {
         setNicknameError('');
       }
-    },
-    [profile?.nickname]
-  );
+    };
+
+    checkNicknameDebounced();
+  }, [debouncedNickname, profile?.nickname]);
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -243,7 +232,6 @@ const ProfileSettingsPage = () => {
                 onChange={(e) => {
                   setCurrentNickname(e.target.value);
                   setIsEditing(true);
-                  checkNickname(e.target.value);
                 }}
                 className={`w-full rounded-lg border p-2 ${
                   nicknameError
