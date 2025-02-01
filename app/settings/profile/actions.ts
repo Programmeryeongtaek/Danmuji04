@@ -3,45 +3,45 @@
 import { createClient } from '@/utils/supabase/server';
 
 export async function updateProfile(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: '로그인 후 이용해주세요.' };
-  }
+    console.log('업데이트 시작 - 유저:', user);
 
-  let avatarUrl = null;
-  const avatarFile = formData.get('profileImage') as File;
-
-  // 새 프로필 이미지가 있다면 업로드
-  if (avatarFile)  {
-    const { data: fileData, error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(`${user.id}/${Date.now()}`, avatarFile);
-
-    if (uploadError) {
-      return { error: uploadError.message };
-
+    if (!user) {
+      return { error: '로그인 후 이용해주세요.' };
     }
-    avatarUrl = fileData.path;
-  }
 
-  // 프로필 정보 업데이트
-  const { error: profileError } = await supabase
-  .from('profiles')
-  .update({
-    nickname: formData.get('nickname'),
-    interests: JSON.parse(formData.get('interests') as string),
-    avatar_url: avatarUrl || undefined,  // 새 이미지가 없으면 기존 이미지 유지
-    updated_at: new Date().toISOString()
-  })
-  .eq('id', user.id);
+    const updateData = {
+      nickname: formData.get('nickname'),
+      interests: JSON.parse(formData.get('interests') as string || '[]'),
+      updated_at: new Date().toISOString()
+    };
 
-  if (profileError) {
-    return { error: profileError.message };
+    console.log('업데이트할 데이터:', updateData);
+
+    // update 쿼리 실행 및 결과 가져오기
+    const { data, error: updateError } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', user.id)
+      .select(); // 업데이트된 데이터 반환 요청
+
+    console.log('업데이트 결과:', { data, error: updateError });
+
+    if (updateError) {
+      console.error('업데이트 에러:', updateError);
+      return { error: updateError.message };
+    }
+
+    // 성공 시 업데이트된 데이터 반환
+    return { success: true, data };
+
+  } catch (error) {
+    console.error('서버 에러:', error);
+    return { error: '프로필 업데이트 중 오류가 발생했습니다.' };
   }
-  
-  return { success: true };
 }
 
 // 아이디 중복 체크
@@ -55,7 +55,6 @@ export async function checkNicknameDuplicate(nickname: string) {
     .single();
 
   if (error && error.code === 'PGRST116') {
-    // 결과가 없는 경우 = 중복 없음
     return { isDuplicate: false };
   }
 

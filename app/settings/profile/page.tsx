@@ -1,7 +1,13 @@
 'use client';
 
 import { createClient } from '@/utils/supabase/client';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { checkNicknameDuplicate, updateProfile } from './actions';
 import { Upload, X } from 'lucide-react';
 
@@ -28,23 +34,31 @@ const interests: Interest[] = [
 ];
 
 const ProfileSettingsPage = () => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [currentNickname, setCurrentNickname] = useState('');
+  const [nicknameError, setNicknameError] = useState('');
+  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [newInterest, setNewInterest] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [nicknameError, setNicknameError] = useState<string>('');
-  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
-
-  const supabase = createClient();
 
   const fetchProfile = useCallback(async () => {
+    console.log('fetchProfile 시작'); // 디버깅 1
+
     try {
+      const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('인증되지 않은 사용자입니다.');
+
+      console.log('인증된 유저:', user); // 디버깅 2
+
+      if (!user) {
+        console.log('유저 없음'); // 디버깅 3
+        throw new Error('인증되지 않은 사용자입니다.');
+      }
 
       const { data: profileData, error } = await supabase
         .from('profiles')
@@ -52,31 +66,29 @@ const ProfileSettingsPage = () => {
         .eq('id', user.id)
         .single();
 
+      console.log('프로필 데이터:', profileData); // 디버깅 4
+      console.log('프로필 에러:', error); // 디버깅 5
+
       if (error) {
-        console.error('Profile fetch error:', error);
+        console.error('프로필 조회 오류:', error);
         throw error;
       }
 
-      setProfile({
-        ...profileData,
-        email: user.email,
-      });
-      setSelectedInterests(profileData.interests || []);
+      setProfile(profileData);
+      setCurrentNickname(profileData?.nickname || '');
+      setSelectedInterests(profileData?.interests || []);
 
-      if (profileData.avatar_url) {
-        const { data: avatarData } = await supabase.storage
-          .from('avatars')
-          .getPublicUrl(profileData.avatar_url);
-        setImagePreview(avatarData.publicUrl);
-      }
+      console.log('상태 업데이트 완료'); // 디버깅 6
     } catch (error) {
-      console.error('Error:', error);
+      console.error('프로필 조회 실패:', error);
     } finally {
+      console.log('loading 상태 false로 변경'); // 디버깅 7
       setLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
+    console.log('useEffect 실행'); // 디버깅 8
     fetchProfile();
   }, [fetchProfile]);
 
@@ -86,6 +98,9 @@ const ProfileSettingsPage = () => {
         setNicknameError('');
         return;
       }
+
+      console.log('Checking nickname:', nickname);
+      console.log('Current profile nickname:', profile?.nickname);
 
       setIsCheckingNickname(true);
       const { isDuplicate } = await checkNicknameDuplicate(nickname);
@@ -100,7 +115,7 @@ const ProfileSettingsPage = () => {
     [profile?.nickname]
   );
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -138,17 +153,32 @@ const ProfileSettingsPage = () => {
     e.preventDefault();
     if (!isEditing || nicknameError) return;
 
-    setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    formData.set('interests', JSON.stringify(selectedInterests));
+    try {
+      setLoading(true);
 
-    const result = await updateProfile(formData);
+      const formData = new FormData();
+      formData.set('nickname', currentNickname);
+      formData.set('interests', JSON.stringify(selectedInterests));
 
-    if (!result.error) {
-      fetchProfile();
+      console.log('업데이트 시도:', formData.get('nickname')); // 디버깅
+
+      const result = await updateProfile(formData);
+
+      console.log('업데이트 결과:', result); // 디버깅
+
+      if (result.error) {
+        console.error('업데이트 실패:', result.error);
+        return;
+      }
+
+      // 성공적으로 업데이트된 경우에만 프로필 새로고침
+      await fetchProfile();
       setIsEditing(false);
+    } catch (error) {
+      console.error('제출 중 오류:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (loading) {
@@ -180,7 +210,9 @@ const ProfileSettingsPage = () => {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">닉네임</label>
-              <p className="mt-1 text-gray-900">{profile.nickname || '없음'}</p>
+              <p className="mt-1 text-gray-900">
+                {currentNickname || profile?.nickname || '없음'}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">이메일</label>
@@ -199,7 +231,7 @@ const ProfileSettingsPage = () => {
               </label>
               {profile.nickname && (
                 <span className="text-sm text-gray-500">
-                  현재: {profile.nickname}
+                  현재: {profile.nickname || '없음'}
                 </span>
               )}
             </div>
@@ -207,8 +239,9 @@ const ProfileSettingsPage = () => {
               <input
                 type="text"
                 name="nickname"
-                defaultValue={profile.nickname || ''}
+                value={currentNickname}
                 onChange={(e) => {
+                  setCurrentNickname(e.target.value);
                   setIsEditing(true);
                   checkNickname(e.target.value);
                 }}
@@ -356,7 +389,7 @@ const ProfileSettingsPage = () => {
 
         <button
           type="submit"
-          disabled={loading || !isEditing}
+          disabled={loading || !isEditing || Boolean(nicknameError)}
           className="w-full rounded-lg bg-gradient-to-r from-gold-start to-gold-end py-2 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? '저장 중...' : '변경사항 저장'}
