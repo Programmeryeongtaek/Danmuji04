@@ -1,19 +1,52 @@
 'use client';
 
-import { Menu } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from './Button/Button';
 import { useAtomValue } from 'jotai';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
+import { Profile } from '@/app/settings/profile/page';
+import RightSideBar from './RightSideBar';
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isRightSideBarOpen, setIsRightSideBarOpen] = useState(false);
+
   const user = useAtomValue(userAtom);
   const isLoading = useAtomValue(isLoadingAtom);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (!error && data) {
+        // 이미지 URL이 있는 경우 public URL 생성
+        if (data.avatar_url) {
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from('avatars').getPublicUrl(data.avatar_url);
+
+          data.avatar_url = publicUrl;
+        }
+
+        setProfile(data);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -66,14 +99,38 @@ const Header = () => {
             {isLoading ? (
               <span>로딩중...</span>
             ) : user ? (
-              <div className="flex items-center gap-4">
-                <span className="text=sm">{user.email}</span>
-                <Button onClick={handleLogout}>로그아웃</Button>
+              <div
+                className="flex cursor-pointer items-center gap-2"
+                onClick={() => setIsRightSideBarOpen(true)}
+              >
+                <div className="flex items-center gap-2">
+                  {profile?.avatar_url ? (
+                    <Image
+                      src={profile.avatar_url}
+                      alt="프로필 이미지"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                      <User className="h-5 w-5 text-gray-500" />
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <Button onClick={() => setIsLoginModalOpen(true)}>로그인</Button>
             )}
           </div>
+
+          {/* Right Side Bar */}
+          <RightSideBar
+            isOpen={isRightSideBarOpen}
+            onClose={() => setIsRightSideBarOpen(false)}
+            userProfile={profile}
+            onLogout={handleLogout}
+          />
 
           <LoginModal
             isOpen={isLoginModalOpen}

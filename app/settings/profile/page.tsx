@@ -15,7 +15,7 @@ import Image from 'next/image';
 
 type Interest = '인문학' | '철학' | '심리학' | '경제학' | '자기계발' | '리더십';
 
-interface Profile {
+export interface Profile {
   id: string;
   name: string | null;
   nickname: string | null;
