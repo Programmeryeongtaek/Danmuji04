@@ -10,12 +10,15 @@ import { useAtomValue } from 'jotai';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { Profile } from '@/app/settings/profile/page';
+import RightSideBar from './RightSideBar';
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isRightSideBarOpen, setIsRightSideBarOpen] = useState(false);
+
   const user = useAtomValue(userAtom);
   const isLoading = useAtomValue(isLoadingAtom);
-  const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -96,7 +99,10 @@ const Header = () => {
             {isLoading ? (
               <span>로딩중...</span>
             ) : user ? (
-              <div className="flex items-center gap-3">
+              <div
+                className="flex cursor-pointer items-center gap-2"
+                onClick={() => setIsRightSideBarOpen(true)}
+              >
                 <div className="flex items-center gap-2">
                   {profile?.avatar_url ? (
                     <Image
@@ -111,16 +117,20 @@ const Header = () => {
                       <User className="h-5 w-5 text-gray-500" />
                     </div>
                   )}
-                  <span className="text-sm">
-                    {profile?.nickname || profile?.name || user.email}
-                  </span>
                 </div>
-                <Button onClick={handleLogout}>로그아웃</Button>
               </div>
             ) : (
               <Button onClick={() => setIsLoginModalOpen(true)}>로그인</Button>
             )}
           </div>
+
+          {/* Right Side Bar */}
+          <RightSideBar
+            isOpen={isRightSideBarOpen}
+            onClose={() => setIsRightSideBarOpen(false)}
+            userProfile={profile}
+            onLogout={handleLogout}
+          />
 
           <LoginModal
             isOpen={isLoginModalOpen}
