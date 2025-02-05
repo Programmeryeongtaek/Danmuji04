@@ -21,7 +21,7 @@ const menuItems = [
   // TODO: 이어서 학습하기 링크 연결 (캐시해서 자동으로 연결 - 마지막에 시청한 영상 링크로 이동하도록록)
   { icon: BookOpen, label: '내 학습', href: '/my/learning' },
   { icon: Video, label: '이어서 학습하기', href: '/' },
-  { icon: Heart, label: '찜 리스트', href: '/my/mark' },
+  { icon: Heart, label: '찜 리스트', href: '/my/wishlist' },
   { icon: Settings, label: '설정', href: '/settings' },
 ];
 
