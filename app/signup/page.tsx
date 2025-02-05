@@ -1,116 +1,138 @@
 'use client';
 
-import { ArrowBigLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowBigLeft, Eye, EyeOff, Plus, X } from 'lucide-react';
 import Link from 'next/link';
-import { signup } from './action';
-import { FormEvent, useState } from 'react';
+import { ChangeEvent, useState } from 'react';
 import EmailVerifyModal from '@/components/auth/EmailVerifyModal';
-
-const isValidEmail = (email: string) => {
-  // RFC 5322 표준을 따르는 이메일 정규식
-  const emailRegex =
-    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  return emailRegex.test(email);
-};
+import useSignUpForm, {
+  CATEGORIES,
+  SignUpFormData,
+} from '@/hooks/useSignUpForm';
+import Image from 'next/image';
+import MarketingAgreementModal from '@/components/auth/MarketingAgreementModal';
+import { createClient } from '@/utils/supabase/client';
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    passwordConfirm: '',
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showMarketingModal, setShowMarketingModal] = useState(false);
+
+  const {
+    formData,
+    setFormData,
+    errors,
+    isSubmitting,
+    handleSubmit,
+    handleFileChange,
+    toggleInterest,
+    customInterest,
+    setCustomInterest,
+    addCustomInterest,
+    removeCustomInterest,
+    formRef,
+  } = useSignUpForm({
+    onSubmit: async (formData: SignUpFormData) => {
+      try {
+        const supabase = createClient();
+
+        // interests 배열을 문자열로 변환
+        const allInterests = [
+          ...formData.interests,
+          ...formData.customInterests,
+        ].join(' ');
+
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              name: formData.name,
+              nickname: formData.nickname || '',
+              interests: allInterests,
+              marketing_agree: !!formData.marketingAgree,
+            },
+          },
+        });
+
+        if (error) {
+          console.error('SignUp error:', error);
+          throw error;
+        }
+
+        if (!data.user?.id) {
+          console.error('No user data returned');
+          throw new Error('회원가입에 실패했습니다');
+        }
+
+        // 2. 이미지 업로드 (회원가입 후)
+        if (formData.profileImage && data.user) {
+          console.log('Uploading image:', formData.profileImage); // 디버깅
+
+          // 파일 확장자 추출 후 안전한 파일명 생성
+          const fileExt = formData.profileImage.name.split('.').pop();
+          // 파일명에서 한글과 특수문자 제거, userId와 타임스탬프로 고유한 파일명 생성
+          const fileName = `${data.user.id}_${Date.now()}.${fileExt}`;
+
+          // 이미지 업로드
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, formData.profileImage, {
+              cacheControl: '3600',
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error('Image upload error:', uploadError);
+            throw uploadError;
+          }
+
+          // profiles 테이블 업데이트
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              avatar_url: fileName,
+            })
+            .eq('id', data.user.id);
+
+          if (updateError) {
+            console.error('Profile update error:', updateError);
+            throw updateError;
+          }
+
+          console.log('Profile updated with avatar:', fileName);
+        }
+
+        setShowVerifyModal(true);
+      } catch (error) {
+        console.error('SignUp error:', error);
+        throw error;
+      }
+    },
   });
 
-  const [errors, setErrors] = useState({
-    email: '',
-    password: '',
-    passwordConfirm: '',
-  });
-
-  const validateForm = () => {
-    const newErrors = {
-      email: '',
-      password: '',
-      passwordConfirm: '',
-    };
-
-    if (!formData.email) {
-      newErrors.email = '이메일을 입력해주세요.';
-    } else if (!isValidEmail(formData.email)) {
-      newErrors.email = '올바른 이메일 형식이 아닙니다.';
-    }
-
-    if (!formData.password) {
-      newErrors.password = '비밀번호를 입력해주세요.';
-    } else if (formData.password.length < 6) {
-      newErrors.password = '비밀번호는 6자 이상이어야 합니다.';
-    }
-
-    if (!formData.passwordConfirm) {
-      newErrors.passwordConfirm = '비밀번호 확인을 입력해주세요.';
-    } else if (formData.password !== formData.passwordConfirm) {
-      newErrors.passwordConfirm = '비밀번호가 일치하지 않습니다.';
-    }
-
-    setErrors(newErrors);
-    return !Object.values(newErrors).some((error) => error !== '');
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setError('');
-
-      // 이메일 형식 한번 더 검증
-      if (!isValidEmail(formData.email)) {
-        setError('올바른 이메일 형식이 아닙니다.');
-        return;
-      }
-
-      const data = new FormData();
-      data.append('email', formData.email);
-      data.append('password', formData.password);
-
-      const result = await signup(data);
-
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-
-      // 회원가입 성공
-      setShowVerifyModal(true);
-    } catch (err) {
-      setError('회원가입 중 오류가 발생했습니다.');
-      console.error('SignUp error:', err);
-    } finally {
-      setIsSubmitting(false);
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileChange(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  // 이메일 입력 핸들러 - 실시간 유효성 검사
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const email = e.target.value;
-    setFormData({ ...formData, email });
-
-    if (email && !isValidEmail(email)) {
-      setErrors((prev) => ({
-        ...prev,
-        email: '올바른 이메일 형식이 아닙니다.',
-      }));
-    } else {
-      setErrors((prev) => ({ ...prev, email: '' }));
-    }
+  const handleImageRemove = () => {
+    handleFileChange(null);
+    setImagePreview(null);
+    // file input 초기화
+    const fileInput = document.getElementById(
+      'profileImage'
+    ) as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
   return (
@@ -124,14 +146,42 @@ const SignUpPage = () => {
           <h1 className="mb-8 text-2xl font-bold">회원가입</h1>
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="mb-1 block text-sm">이메일</label>
+        <form ref={formRef} className="space-y-6" onSubmit={handleSubmit}>
+          {/* 기본 정보 섹션 */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">기본 정보</h2>
+
+            {/* 이름 입력 */}
+            <div data-error={!!errors.name ? 'true' : 'false'}>
+              <label className="mb-1 block text-sm">
+                이름<span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
+                className="w-full rounded-lg border border-gray-300 p-2"
+              />
+              {errors.name && (
+                <span className="mt-1 text-sm text-red-500">{errors.name}</span>
+              )}
+            </div>
+          </div>
+
+          {/* 이메일 입력 */}
+          <div data-error={!!errors.email ? 'true' : 'false'}>
+            <label className="mb-1 block text-sm">
+              이메일<span className="text-red-500">*</span>
+            </label>
             <input
               type="email"
-              placeholder="example@inflab.com"
+              placeholder="example@email.com"
               value={formData.email}
-              onChange={handleEmailChange}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, email: e.target.value }))
+              }
               className="w-full rounded-lg border border-gray-300 p-2"
             />
             {errors.email && (
@@ -139,17 +189,23 @@ const SignUpPage = () => {
             )}
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm">비밀번호</label>
+          {/* 비밀번호 입력 */}
+          <div data-error={!!errors.password ? 'true' : 'false'}>
+            <label className="mb-1 block text-sm">
+              비밀번호<span className="text-red-500">*</span>
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
+                  setFormData((prev) => ({
+                    ...prev,
+                    password: e.target.value,
+                  }))
                 }
                 className="w-full rounded-lg border border-gray-300 p-2"
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
@@ -170,17 +226,23 @@ const SignUpPage = () => {
             )}
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm">비밀번호 확인</label>
+          {/* 비밀번호 확인 */}
+          <div data-error={!!errors.passwordConfirm ? 'true' : 'false'}>
+            <label className="mb-1 block text-sm">
+              비밀번호 확인<span className="text-red-500">*</span>
+            </label>
             <div className="relative">
               <input
                 type={showPasswordConfirm ? 'text' : 'password'}
                 value={formData.passwordConfirm}
                 onChange={(e) =>
-                  setFormData({ ...formData, passwordConfirm: e.target.value })
+                  setFormData((prev) => ({
+                    ...prev,
+                    passwordConfirm: e.target.value,
+                  }))
                 }
                 className="w-full rounded-lg border border-gray-300 p-2"
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
@@ -201,9 +263,171 @@ const SignUpPage = () => {
             )}
           </div>
 
-          {error && (
-            <div className="text-center text-sm text-red-500">{error}</div>
-          )}
+          {/* 프로필 정보 섹션 */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">추가 정보</h2>
+
+            {/* 닉네임 입력 */}
+            <div>
+              <label className="mb-1 block text-sm">닉네임</label>
+              <input
+                type="text"
+                value={formData.nickname}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, nickname: e.target.value }))
+                }
+                className="w-full rounded-lg border border-gray-300 p-2"
+                placeholder="선택사항"
+              />
+            </div>
+
+            {/* 프로필 이미지 업로드 */}
+            <div>
+              <label className="mb-1 block text-sm">프로필 이미지</label>
+              <div className="flex items-center gap-4">
+                <div className="relative h-24 w-24 overflow-hidden rounded-full border border-gray-300">
+                  {imagePreview ? (
+                    <>
+                      <Image
+                        src={imagePreview}
+                        alt="Profile preview"
+                        width={20}
+                        height={20}
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleImageRemove}
+                        className="absolute right-0 top-0 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-gray-50">
+                      <span className="text-sm text-gray-400">No image</span>
+                    </div>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  id="profile-image"
+                />
+                <label
+                  htmlFor="profile-image"
+                  className="cursor-pointer rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
+                >
+                  이미지 선택
+                </label>
+              </div>
+            </div>
+
+            {/* 관심 분야 */}
+            <div className="space-y-2">
+              <label className="mb-1 block text-sm">관심 분야</label>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORIES.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => toggleInterest(category)}
+                    className={`rounded-lg border p-2 text-sm transition-colors ${
+                      formData.interests.includes(category)
+                        ? 'border-gold-start bg-gold-end/10 text-gold-start'
+                        : 'border-gray-300 hover:border-gold-end'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+
+              {/* 기타 관심 분야 입력 */}
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customInterest}
+                    onChange={(e) => setCustomInterest(e.target.value)}
+                    placeholder="기타 관심 분야 입력"
+                    className="flex-1 rounded-lg border border-gray-300 p-2 text-sm"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomInterest();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomInterest}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:border-gold-end"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* 추가된 커스텀 관심 분야 */}
+                <div className="flex flex-wrap gap-2">
+                  {formData.customInterests.map((interest) => (
+                    <span
+                      key={interest}
+                      className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm"
+                    >
+                      {interest}
+                      <button
+                        type="button"
+                        onClick={() => removeCustomInterest(interest)}
+                        className="rounded-full hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 마케팅 동의 */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium">마케팅 정보 수신 동의</h3>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.marketingAgree}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      marketingAgree: e.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-600">
+                  마케팅 정보 수신 동의 (선택)
+                </span>
+              </label>
+              <div className="ml-6 space-y-2">
+                <p className="text-sm text-gray-600">
+                  단무지의 새로운 스터디와 모임 소식,
+                  <br />
+                  관심 분야에 맞는 맞춤 콘텐츠 추천을 받아보실 수 있습니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMarketingModal(true)}
+                  className="text-sm text-gray-500 underline hover:text-gray-700"
+                >
+                  자세히 보기
+                </button>
+              </div>
+            </div>
+          </div>
 
           <button
             type="submit"
@@ -230,6 +454,16 @@ const SignUpPage = () => {
         isOpen={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}
         email={formData.email}
+      />
+
+      {/* 마케팅 동의 모달 */}
+      <MarketingAgreementModal
+        isOpen={showMarketingModal}
+        onClose={() => setShowMarketingModal(false)}
+        formData={formData}
+        onAgree={(agreed) =>
+          setFormData((prev) => ({ ...prev, marketingAgree: agreed }))
+        }
       />
     </>
   );
