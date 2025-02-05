@@ -2,12 +2,15 @@
 
 import { ArrowBigLeft, Eye, EyeOff, Plus, X } from 'lucide-react';
 import Link from 'next/link';
-import { signup } from './auth';
 import { ChangeEvent, useState } from 'react';
 import EmailVerifyModal from '@/components/auth/EmailVerifyModal';
-import useSignUpForm, { CATEGORIES } from '@/hooks/useSignUpForm';
+import useSignUpForm, {
+  CATEGORIES,
+  SignUpFormData,
+} from '@/hooks/useSignUpForm';
 import Image from 'next/image';
 import MarketingAgreementModal from '@/components/auth/MarketingAgreementModal';
+import { createClient } from '@/utils/supabase/client';
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -30,24 +33,83 @@ const SignUpPage = () => {
     removeCustomInterest,
     formRef,
   } = useSignUpForm({
-    onSubmit: async (formData) => {
-      const data = new FormData();
-      data.append('email', formData.email);
-      data.append('password', formData.password);
-      data.append('name', formData.name);
-      if (formData.nickname) data.append('nickname', formData.nickname);
-      if (formData.profileImage)
-        data.append('profileImage', formData.profileImage);
-      data.append(
-        'interests',
-        JSON.stringify([...formData.interests, ...formData.customInterests])
-      );
+    onSubmit: async (formData: SignUpFormData) => {
+      try {
+        const supabase = createClient();
 
-      const result = await signup(data);
-      if (result?.error) {
-        throw new Error(result.error);
+        // interests 배열을 문자열로 변환
+        const allInterests = [
+          ...formData.interests,
+          ...formData.customInterests,
+        ].join(' ');
+
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              name: formData.name,
+              nickname: formData.nickname || '',
+              interests: allInterests,
+              marketing_agree: !!formData.marketingAgree,
+            },
+          },
+        });
+
+        if (error) {
+          console.error('SignUp error:', error);
+          throw error;
+        }
+
+        if (!data.user?.id) {
+          console.error('No user data returned');
+          throw new Error('회원가입에 실패했습니다');
+        }
+
+        // 2. 이미지 업로드 (회원가입 후)
+        if (formData.profileImage && data.user) {
+          console.log('Uploading image:', formData.profileImage); // 디버깅
+
+          // 파일 확장자 추출 후 안전한 파일명 생성
+          const fileExt = formData.profileImage.name.split('.').pop();
+          // 파일명에서 한글과 특수문자 제거, userId와 타임스탬프로 고유한 파일명 생성
+          const fileName = `${data.user.id}_${Date.now()}.${fileExt}`;
+
+          // 이미지 업로드
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, formData.profileImage, {
+              cacheControl: '3600',
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error('Image upload error:', uploadError);
+            throw uploadError;
+          }
+
+          // profiles 테이블 업데이트
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              avatar_url: fileName,
+            })
+            .eq('id', data.user.id);
+
+          if (updateError) {
+            console.error('Profile update error:', updateError);
+            throw updateError;
+          }
+
+          console.log('Profile updated with avatar:', fileName);
+        }
+
+        setShowVerifyModal(true);
+      } catch (error) {
+        console.error('SignUp error:', error);
+        throw error;
       }
-      setShowVerifyModal(true);
     },
   });
 
@@ -229,7 +291,8 @@ const SignUpPage = () => {
                       <Image
                         src={imagePreview}
                         alt="Profile preview"
-                        fill
+                        width={20}
+                        height={20}
                         className="object-cover"
                       />
                       <button

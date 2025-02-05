@@ -174,52 +174,34 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
-    if (isCheckingEmail || isCheckingNickname) {
-      return; // 중복 체크 중이면 제출 방지
-    }
-
-    if (!validateForm()) {
-      // 첫 번째 에러가 있는 필드 찾기
-      const firstErrorField = formRef.current?.querySelector(
-        '[data-error="true"]'
-      ) as HTMLElement;
+    if (isCheckingEmail || isCheckingNickname) return;
   
-      if (firstErrorField) {
-        // 부드러운 스크롤로 해당 필드로 이동
-        firstErrorField.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      }
+    const isValid = await validateForm();
+    if (!isValid) {
+      const firstErrorField = formRef.current?.querySelector('[data-error="true"]') as HTMLElement;
+      firstErrorField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-
+  
+    if (isSubmitting) return;
+  
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
     } catch (error: unknown) {
-      console.error('SignUp failed:', error);
-      
       const err = error as { message: string };
       if (err.message.includes('already registered')) {
-        setErrors(prev => ({
-          ...prev,
-          email: '이미 등록된 이메일입니다.'
-        }));
-      } else if (err.message === 'unknown') {
+        setErrors(prev => ({ ...prev, email: '이미 등록된 이메일입니다.' }));
+      } else {
         setErrors(prev => ({
           ...prev,
           email: '회원가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
         }));
-      } else {
-        setErrors(prev => ({
-          ...prev,
-          password: '회원가입에 실패했습니다. 다시 시도해주세요.'
-        }));
       }
+    } finally {
+      setTimeout(() => setIsSubmitting(false), 6000);
     }
-  }
+  };
 
   const handleFileChange = (file: File | null) => {
     setFormData((prev) => ({ ...prev, profileImage: file }));
