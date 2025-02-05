@@ -4,14 +4,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 const Card = (lecture: Lecture) => {
+  const fallbackImageUrl = '/images/danmuji.jpg';
+
   return (
     <Link
-      href={lecture.href}
+      href={`/knowledge/lecture/${lecture.id}`}
       className="flex h-[250px] w-[160px] flex-col border border-black bg-gold-end"
     >
       <div className="relative h-[105px] w-full border border-gray-700">
         <Image
-          src={lecture.thumbnailUrl}
+          src={lecture.thumbnailUrl || fallbackImageUrl}
           alt={lecture.title}
           width={160}
           height={105}
@@ -23,7 +25,7 @@ const Card = (lecture: Lecture) => {
       <div className="flex-col">
         <div className="flex h-[60px] flex-col justify-between">
           <div className="flex gap-2">
-            <span>{lecture.group}</span>
+            <span>{lecture.groupType}</span>
             <div>{lecture.category}</div>
           </div>
           <div>{lecture.title}</div>
