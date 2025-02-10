@@ -14,10 +14,13 @@ import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
 import { useSearchParams } from 'next/navigation';
 import {
+  createClient,
   fetchLectures,
   fetchLecturesByCategory,
   searchLectures,
 } from '@/utils/supabase/client';
+import { useToast } from '../common/Toast/Context';
+import { ToastType } from '../common/Toast/type';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -34,12 +37,96 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
+  const [bookmarkedLectures, setBookmarkedLectures] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
     fields: [],
     hasGroup: false,
   });
+  const { showToast } = useToast();
+
+  const fetchBookmarks = async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('bookmarks')
+      .select('lecture_id')
+      .eq('user_id', user.id);
+
+    if (data) {
+      setBookmarkedLectures(data.map((b) => b.lecture_id));
+    }
+  };
+
+  useEffect(() => {
+    fetchBookmarks();
+
+    // Supabase 실시간 구독 설정
+    const supabase = createClient();
+    const channel = supabase
+      .channel('bookmarks_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookmarks',
+        },
+        () => {
+          fetchBookmarks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
+
+  const handleToggleBookmark = async (lectureId: number) => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      showToast('로그인이 필요합니다.', 'warning' as ToastType);
+      return;
+    }
+
+    try {
+      const isCurrentlyBookmarked = bookmarkedLectures.includes(lectureId);
+
+      if (isCurrentlyBookmarked) {
+        await supabase
+          .from('bookmarks')
+          .delete()
+          .eq('lecture_id', lectureId)
+          .eq('user_id', user.id);
+
+        setBookmarkedLectures((prev) => prev.filter((id) => id !== lectureId));
+        showToast('찜하기가 취소되었습니다.', 'success');
+      } else {
+        await supabase.from('bookmarks').insert([
+          {
+            lecture_id: lectureId,
+            user_id: user.id,
+          },
+        ]);
+
+        setBookmarkedLectures((prev) => [...prev, lectureId]);
+        showToast('찜하기에 추가되었습니다.', 'success');
+      }
+    } catch (error) {
+      console.error('Bookmark error:', error);
+      showToast('오류가 발생했습니다.', 'error');
+    }
+  };
 
   // 강의 데이터 가져오기
   useEffect(() => {
@@ -96,7 +183,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     ) {
       return false;
     }
-    if (activeFilters.hasGroup && lecture.groupType !== '오프라인') {
+    if (activeFilters.hasGroup && lecture.group_type !== '오프라인') {
       return false;
     }
 
@@ -146,7 +233,12 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
       {filteredLectures.length > 0 ? (
         <div className="flex flex-wrap justify-center gap-4">
           {filteredLectures.map((lecture) => (
-            <Card key={lecture.id} {...lecture} />
+            <Card
+              key={lecture.id}
+              {...lecture}
+              isBookmarked={bookmarkedLectures.includes(lecture.id)}
+              onToggleBookmark={handleToggleBookmark}
+            />
           ))}
         </div>
       ) : (
