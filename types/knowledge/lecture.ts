@@ -103,3 +103,12 @@ export interface ReviewReplyProps {
   onUpdate: (replyId: number, isLiked: boolean, likesCount: number) => void;
   onEdit: (replyId: number, content: string) => void;
 }
+
+// 찜하기
+export interface Bookmark {
+  id: number;
+  user_id: string;
+  lecture_id: number;
+  created_at: string;
+  lecture: Lecture;
+}
