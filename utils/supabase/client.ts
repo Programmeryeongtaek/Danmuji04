@@ -61,6 +61,37 @@ export async function fetchLecturesByCategory(category: string) {
   return data;
 }
 
+// 찜하기
+export async function fetchWishlist() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('로그인이 필요합니다.');
+
+  const { data, error } = await supabase
+    .from('bookmarks')
+    .select(`
+      *,
+      lecture:lectures(
+        id,
+        title,
+        thumbnail_url,
+        category,
+        instructor,
+        depth,
+        keyword,
+        group_type,    
+        likes,
+        students,
+        created_at
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
 // 수강평 관련 함수들 추가
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
