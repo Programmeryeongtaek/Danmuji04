@@ -93,7 +93,8 @@ export function ReviewItem({
 
       const userProfile = {
         id: currentUserId,
-        user_name: review.user_profile?.user_name || '익명',
+        name: review.user_profile?.name || '익명',
+        nickname: review.user_profile?.nickname || null,
         avatar_url: review.user_profile?.avatar_url || null,
       } as const;
 
@@ -169,7 +170,8 @@ export function ReviewItem({
           user_profile: reply.user
             ? {
                 id: reply.user.id,
-                user_name: reply.user.user_name || '익명',
+                name: reply.user.name || '익명',
+                nickname: reply.user.nickname,
                 avatar_url: reply.user.avatar_url,
               }
             : null,
@@ -191,14 +193,14 @@ export function ReviewItem({
           {review.user_profile?.avatar_url ? (
             <Image
               src={review.user_profile.avatar_url}
-              alt={review.user_profile.user_name}
+              alt={review.user_profile?.name || '익명'}
               width={40}
               height={40}
               className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-500">
-              {review.user_profile?.user_name || '익명'}
+              {review.user_profile?.name || '익명'}
             </div>
           )}
         </div>
@@ -207,7 +209,9 @@ export function ReviewItem({
           <div className="flex justify-between">
             <div className="space-y-1">
               <div className="font-medium">
-                {review.user_profile?.user_name ?? '익명'}
+                {review.user_profile?.nickname ||
+                  review.user_profile?.name ||
+                  '익명'}
               </div>
               <div className="flex items-center gap-2">
                 <StarRating rating={review.rating} size={16} readonly />

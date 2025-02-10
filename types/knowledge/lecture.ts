@@ -48,7 +48,8 @@ export interface ReviewProps {
   lecture_id: number;
   user_profile?: {
     id: string;
-    user_name: string;
+    name: string;
+    nickname: string;
     avatar_url: string | null;
   } | null;
   likes_count: number;
@@ -62,7 +63,8 @@ export interface ReplyProps {
   user_id: string;
   user_profile: {
     id: string;
-    user_name: string;
+    name: string;
+    nickname: string | null; 
     avatar_url: string | null;
   } | null;
   likes_count: { count: number };

@@ -79,10 +79,10 @@ export async function fetchReviewsByLectureId(lectureId: number) {
     reviews.map(async (review) => {
       // 프로필 데이터 가져오기
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, user_name, avatar_url')
-        .eq('id', review.user_id)
-        .single();
+      .from('profiles')
+      .select('id, name, nickname, avatar_url')
+      .eq('id', review.user_id)
+      .single();
 
       // 좋아요 데이터 가져오기
       const { data: likes } = await supabase
@@ -123,6 +123,14 @@ export async function fetchReviewsByLectureId(lectureId: number) {
           };
         })
       );
+
+      // avatar_url이 있는 경우 완전한 URL 생성
+      if (profile && profile.avatar_url) {
+        const { data } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(profile.avatar_url);
+        profile.avatar_url = data.publicUrl;
+      }
 
       return {
         ...review,
@@ -363,33 +371,39 @@ export async function toggleReplyLike(replyId: number, userId: string) {
 export async function addReviewReply(reviewId: number, userId: string, content: string) {
   const supabase = createClient();
   
-  // 1. 먼저 답글 추가
-  const { data: newReply, error: insertError } = await supabase
-    .from('review_replies')
-    .insert({
-      review_id: reviewId,
-      user_id: userId,
-      content,
-    })
-    .select('*')
-    .single();
+  // 1. 답글 추가 및 프로필 정보 함께 가져오기
+  const [replyResult, profileResult] = await Promise.all([
+    supabase
+      .from('review_replies')
+      .insert({
+        review_id: reviewId,
+        user_id: userId,
+        content,
+      })
+      .select('*')
+      .single(),
+    
+    supabase
+      .from('profiles')
+      .select('id, name, nickname, avatar_url')
+      .eq('id', userId)
+      .single()
+  ]);
 
-  if (insertError) throw insertError;
+  if (replyResult.error) throw replyResult.error;
 
-  // 2. 답글 작성자의 프로필 정보 가져오기
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, user_name, avatar_url')
-    .eq('id', userId)
-    .single();
-
-  // 3. 응답 데이터 포맷팅
+  // 2. 응답 데이터 포맷팅
   return {
-    id: newReply.id,
-    content: newReply.content,
-    created_at: newReply.created_at,
+    id: replyResult.data.id,
+    content: replyResult.data.content,
+    created_at: replyResult.data.created_at,
     user_id: userId,
-    user_profile: profile || null,
+    user_profile: profileResult.data || {
+      id: userId,
+      name: '익명',
+      nickname: null,
+      avatar_url: null
+    },
     likes_count: { count: 0 },
     is_liked: false
   };
