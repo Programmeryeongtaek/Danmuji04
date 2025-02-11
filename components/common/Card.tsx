@@ -9,6 +9,7 @@ import { MouseEvent, useState } from 'react';
 interface CardProps extends Lecture {
   isBookmarked?: boolean;
   onToggleBookmark?: (lectureId: number) => void;
+  showBookmark?: boolean;
 }
 
 const Card = ({
@@ -24,6 +25,7 @@ const Card = ({
   students,
   isBookmarked = false,
   onToggleBookmark,
+  showBookmark = true,
 }: CardProps) => {
   const [isMarked, setIsMarked] = useState(isBookmarked);
   const fallbackImageUrl = '/images/danmuji.jpg';
@@ -48,17 +50,20 @@ const Card = ({
           alt={title}
           width={160}
           height={105}
-        ></Image>
-        <button
-          onClick={handleBookmarkClick}
-          className="absolute right-1 top-1 z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-light"
-        >
-          <Bookmark
-            className={`z-10 h-4 w-4 ${
-              isMarked ? 'fill-gold-start text-gold-start' : 'text-gold-start'
-            }`}
-          />
-        </button>
+          className="h-full w-full object-cover"
+        />
+        {showBookmark && (
+          <button
+            onClick={handleBookmarkClick}
+            className="absolute right-1 top-1 z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-light"
+          >
+            <Bookmark
+              className={`z-10 h-4 w-4 ${
+                isMarked ? 'fill-gold-start text-gold-start' : 'text-gold-start'
+              }`}
+            />
+          </button>
+        )}
       </div>
       <div className="flex-col">
         <div className="flex h-[60px] flex-col justify-between">
