@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { Lecture } from '@/types/knowledge/lecture';
 import ShareButton from './ShareButton';
 import BookmarkButton from './BookmarkButton';
+import Link from 'next/link';
 
 interface LectureContentProps {
   lecture: Lecture;
@@ -82,9 +83,14 @@ export default function LectureContent({ lecture }: LectureContentProps) {
           <div className="rounded-lg border shadow-sm">
             {/* 영상 영역 */}
             <div className="flex justify-center border-b p-8">
-              <div className="h-[300px] w-[500px] rounded-lg bg-gray-100">
-                동영상 영역
-              </div>
+              <Link
+                href={`/my/lectures/${lecture.id}/manage`}
+                className="cursor-pointer"
+              >
+                <div className="h-[300px] w-[500px] rounded-lg bg-gray-100">
+                  동영상 영역
+                </div>
+              </Link>
             </div>
 
             {/* 강의 정보 */}
