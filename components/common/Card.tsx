@@ -10,6 +10,7 @@ interface CardProps extends Lecture {
   isBookmarked?: boolean;
   onToggleBookmark?: (lectureId: number) => void;
   showBookmark?: boolean;
+  isMyLecture?: boolean;
 }
 
 const Card = ({
@@ -26,6 +27,7 @@ const Card = ({
   isBookmarked = false,
   onToggleBookmark,
   showBookmark = true,
+  isMyLecture = false,
 }: CardProps) => {
   const [isMarked, setIsMarked] = useState(isBookmarked);
   const fallbackImageUrl = '/images/danmuji.jpg';
@@ -41,7 +43,9 @@ const Card = ({
 
   return (
     <Link
-      href={`/knowledge/lecture/${id}`}
+      href={
+        isMyLecture ? `/my/lectures/${id}/manage` : `/knowledge/lecture/${id}`
+      }
       className="flex h-[250px] w-[160px] flex-col border border-black bg-gold-end"
     >
       <div className="relative h-[105px] w-full border border-gray-700">
