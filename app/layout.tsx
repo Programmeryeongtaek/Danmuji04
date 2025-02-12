@@ -22,6 +22,8 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const isLecturePage = pathname?.includes('/knowledge/lecture/');
   const isSettingsPage = pathname?.includes('/settings/');
   const isSignUpPage = pathname === '/signup';
+  const lectureCreate = pathname === '/my/lectureCreate';
+  const editLecture = pathname === '/my/lectures/[id]/edit';
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
 
@@ -70,7 +72,10 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           <div className="flex min-h-screen flex-col">
             <Header />
             <main>{children}</main>
-            {!isLecturePage && !isSettingsPage && <Navbar />}
+            {!isLecturePage &&
+              !isSettingsPage &&
+              !lectureCreate &&
+              editLecture && <Navbar />}
           </div>
         </Toast.Provider>
       </body>
