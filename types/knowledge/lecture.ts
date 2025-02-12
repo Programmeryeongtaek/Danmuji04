@@ -7,6 +7,8 @@ export interface Lecture {
   depth: string;
   keyword: string;
   group_type: string;
+  is_free: boolean;
+  price: number;
   likes: number;
   students: number;
   createdAt: string;
