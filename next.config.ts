@@ -12,7 +12,13 @@ const nextConfig: NextConfig = {
       protocol: 'https',
       hostname: 'hcqusfewtyxmpdvzpeor.supabase.co',
       port: '',
-      pathname: '/storage/v1/object/public/**',
+      pathname: '/storage/v1/object/public/avatars/**',
+    },
+    {
+      protocol: 'https',
+      hostname: 'hcqusfewtyxmpdvzpeor.supabase.co',
+      port: '',
+      pathname: '/storage/v1/object/public/videos/**',
     }]
   }
 };
