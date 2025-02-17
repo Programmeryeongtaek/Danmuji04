@@ -135,7 +135,7 @@ export async function fetchReviewsByLectureId(lectureId: number) {
             // 답글 작성자 프로필
             supabase
               .from('profiles')
-              .select('id, user_name, avatar_url')
+              .select('id, name, nickname, avatar_url')
               .eq('id', reply.user_id)
               .single(),
             
@@ -146,9 +146,21 @@ export async function fetchReviewsByLectureId(lectureId: number) {
               .eq('reply_id', reply.id)
           ]);
 
+          // avatar_url이 있는 경우 public URL 생성
+          let avatarUrl = null;
+          if (profileResult.data?.avatar_url) {
+            const { data } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(profileResult.data.avatar_url);
+            avatarUrl = data.publicUrl;
+          }                                                                                                                                                                                                                                                                                                                                                                                                                                         
+
           return {
             ...reply,
-            user_profile: profileResult.data,
+            user_profile: profileResult.data ? {
+              ...profileResult.data,
+              avatar_url: avatarUrl
+            } : null,
             likes_count: { count: likesResult.data?.length || 0 },
             is_liked: likesResult.data?.some(like => like.user_id === reply.user_id) || false
           };
