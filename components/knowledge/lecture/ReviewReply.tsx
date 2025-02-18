@@ -21,7 +21,7 @@ export function ReviewReply({
   onEdit,
 }: ReviewReplyProps) {
   const [isLiked, setIsLiked] = useState(reply.is_liked);
-  const [likesCount, setLikesCount] = useState(reply.likes_count?.count || 0);
+  const [likesCount, setLikesCount] = useState(reply.likes_count || 0);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
   const { checkTimeLimit } = useTimeLimit(24);
@@ -48,14 +48,11 @@ export function ReviewReply({
     try {
       await toggleReplyLike(reply.id, currentUserId);
       const newIsLiked = !isLiked;
-      const likeUpdate = {
-        // 먼저 객체 생성
-        count: Math.max(0, likesCount + (newIsLiked ? 1 : -1)),
-      };
+      const newCount = Math.max(0, likesCount + (newIsLiked ? 1 : -1));
 
       setIsLiked(newIsLiked);
-      setLikesCount(likeUpdate.count); // 객체에서 count 값 사용
-      onUpdate(reply.id, newIsLiked, likeUpdate); // 객체 그대로 전달
+      setLikesCount(newCount);
+      onUpdate(reply.id, newIsLiked, newCount); // 바로 숫자 전달
     } catch (error) {
       console.error('Error toggling like:', error);
     }

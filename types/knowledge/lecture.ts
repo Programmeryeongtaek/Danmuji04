@@ -69,7 +69,7 @@ export interface ReplyProps {
     nickname: string | null; 
     avatar_url: string | null;
   } | null;
-  likes_count: { count: number };
+  likes_count: number;
   is_liked: boolean;
 }
 

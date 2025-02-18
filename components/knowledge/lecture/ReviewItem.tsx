@@ -104,7 +104,7 @@ export function ReviewItem({
         created_at: newReply.created_at,
         user_id: currentUserId,
         user_profile: userProfile,
-        likes_count: { count: 0 },
+        likes_count: 0,
         is_liked: false,
       };
 
@@ -124,7 +124,7 @@ export function ReviewItem({
     setReplies((prev) =>
       prev.map((reply) =>
         reply.id === replyId
-          ? { ...reply, is_liked: isLiked, likes_count: { count: likesCount } }
+          ? { ...reply, is_liked: isLiked, likes_count: likesCount }
           : reply
       )
     );
@@ -175,7 +175,7 @@ export function ReviewItem({
                 avatar_url: reply.user.avatar_url,
               }
             : null,
-          likes_count: { count: 0 },
+          likes_count: 0, // 객체 대신 숫자로
           is_liked: false,
         }));
 
