@@ -189,18 +189,31 @@ export function ReviewItem({
   return (
     <div className="border-b pb-6">
       <div className="flex items-start gap-4">
+        {/* 프로필 이미지 부분 수정 */}
         <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
           {review.user_profile?.avatar_url ? (
             <Image
               src={review.user_profile.avatar_url}
-              alt={review.user_profile?.name || '익명'}
+              alt={
+                review.user_profile?.nickname ||
+                review.user_profile?.name ||
+                '익명'
+              }
               width={40}
               height={40}
               className="h-full w-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/images/default-avatar.png'; // 기본 이미지 경로 설정
+              }}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-500">
-              {review.user_profile?.name || '익명'}
+              {(
+                review.user_profile?.nickname?.[0] ||
+                review.user_profile?.name?.[0] ||
+                '익'
+              ).toUpperCase()}
             </div>
           )}
         </div>
@@ -208,6 +221,7 @@ export function ReviewItem({
         <div className="flex-1">
           <div className="flex justify-between">
             <div className="space-y-1">
+              {/* 사용자 이름/닉네임 표시 부분 수정 */}
               <div className="font-medium">
                 {review.user_profile?.nickname ||
                   review.user_profile?.name ||

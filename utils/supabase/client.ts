@@ -96,7 +96,6 @@ export async function fetchWishlist() {
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
   
-  // 기본 리뷰 데이터 먼저 가져오기
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*')
@@ -106,86 +105,75 @@ export async function fetchReviewsByLectureId(lectureId: number) {
   if (reviewsError) throw reviewsError;
   if (!reviews) return [];
 
-  const reviewsWithData = await Promise.all(
-    reviews.map(async (review) => {
-      // 프로필 데이터 가져오기
-      const { data: profile } = await supabase
+  const reviewsWithDetails = await Promise.all(reviews.map(async (review) => {
+    // 리뷰 작성자의 프로필 정보 가져오기
+    const { data: profile } = await supabase
       .from('profiles')
-      .select('id, name, nickname, avatar_url')
+      .select('name, nickname, avatar_url')
       .eq('id', review.user_id)
       .single();
 
-      // 좋아요 데이터 가져오기
-      const { data: likes } = await supabase
-        .from('review_likes')
-        .select('*')
-        .eq('review_id', review.id);
+    // 해당 리뷰의 답글 가져오기
+    const { data: replies } = await supabase
+      .from('review_replies')
+      .select('*')
+      .eq('review_id', review.id)
+      .order('created_at', { ascending: true });
 
-      // 답글 데이터 가져오기
-      const { data: replies } = await supabase
-        .from('review_replies')
-        .select('*')
-        .eq('review_id', review.id)
-        .order('created_at', { ascending: true });
+    // 답글이 있는 경우, 각 답글 작성자의 프로필 정보 가져오기
+    const repliesWithProfiles = replies ? await Promise.all(
+      replies.map(async (reply) => {
+        const { data: replyProfile } = await supabase
+          .from('profiles')
+          .select('name, nickname, avatar_url')
+          .eq('id', reply.user_id)
+          .single();
 
-      // 답글에 대한 사용자 정보와 좋아요 정보 가져오기
-      const repliesWithProfiles = await Promise.all(
-        (replies || []).map(async (reply) => {
-          const [profileResult, likesResult] = await Promise.all([
-            // 답글 작성자 프로필
-            supabase
-              .from('profiles')
-              .select('id, name, nickname, avatar_url')
-              .eq('id', reply.user_id)
-              .single(),
-            
-            // 답글 좋아요 정보
-            supabase
-              .from('review_reply_likes')
-              .select('*')
-              .eq('reply_id', reply.id)
-          ]);
+        // 답글 작성자 프로필 이미지 URL 생성
+        let replyAvatarUrl = null;
+        if (replyProfile?.avatar_url) {
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('avatars')
+            .getPublicUrl(replyProfile.avatar_url);
+          replyAvatarUrl = publicUrl;
+        }
 
-          // avatar_url이 있는 경우 public URL 생성
-          let avatarUrl = null;
-          if (profileResult.data?.avatar_url) {
-            const { data } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(profileResult.data.avatar_url);
-            avatarUrl = data.publicUrl;
-          }                                                                                                                                                                                                                                                                                                                                                                                                                                         
+        return {
+          ...reply,
+          user_profile: {
+            name: replyProfile?.name || '익명',
+            nickname: replyProfile?.nickname,
+            avatar_url: replyAvatarUrl
+          }
+        };
+      })
+    ) : [];
 
-          return {
-            ...reply,
-            user_profile: profileResult.data ? {
-              ...profileResult.data,
-              avatar_url: avatarUrl
-            } : null,
-            likes_count: { count: likesResult.data?.length || 0 },
-            is_liked: likesResult.data?.some(like => like.user_id === reply.user_id) || false
-          };
-        })
-      );
+    // 리뷰 작성자 프로필 이미지 URL 생성
+    let avatarUrl = null;
+    if (profile?.avatar_url) {
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(profile.avatar_url);
+      avatarUrl = publicUrl;
+    }
 
-      // avatar_url이 있는 경우 완전한 URL 생성
-      if (profile && profile.avatar_url) {
-        const { data } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(profile.avatar_url);
-        profile.avatar_url = data.publicUrl;
-      }
+    return {
+      ...review,
+      user_profile: {
+        name: profile?.name || '익명',
+        nickname: profile?.nickname,
+        avatar_url: avatarUrl
+      },
+      likes_count: 0,
+      is_liked: false,
+      replies: repliesWithProfiles
+    };
+  }));
 
-      return {
-        ...review,
-        user_profile: profile || null,
-        likes_count: likes?.length || 0,
-        is_liked: likes?.some(like => like.user_id === review.user_id) || false,
-        replies: repliesWithProfiles
-      };
-    })
-  );
-
-  return reviewsWithData;
+  return reviewsWithDetails;
 }
 
 export async function getActiveEnrollment(
