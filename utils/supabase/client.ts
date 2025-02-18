@@ -96,6 +96,9 @@ export async function fetchWishlist() {
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
   
+  // 현재 로그인한 사용자 정보 가져오기
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*')
@@ -106,30 +109,58 @@ export async function fetchReviewsByLectureId(lectureId: number) {
   if (!reviews) return [];
 
   const reviewsWithDetails = await Promise.all(reviews.map(async (review) => {
-    // 리뷰 작성자의 프로필 정보 가져오기
+    // 프로필 정보 가져오기 (기존 코드 유지)
     const { data: profile } = await supabase
       .from('profiles')
       .select('name, nickname, avatar_url')
       .eq('id', review.user_id)
       .single();
 
-    // 해당 리뷰의 답글 가져오기
+    // 리뷰 좋아요 정보 가져오기
+    const [{ count: reviewLikes }, userLikeData] = await Promise.all([
+      supabase
+        .from('review_likes')
+        .select('*', { count: 'exact' })
+        .eq('review_id', review.id),
+      user ? supabase
+        .from('review_likes')
+        .select('id')
+        .eq('review_id', review.id)
+        .eq('user_id', user.id)
+        .maybeSingle() : Promise.resolve({ data: null })
+    ]);
+
+    // 답글 정보 가져오기
     const { data: replies } = await supabase
       .from('review_replies')
       .select('*')
       .eq('review_id', review.id)
       .order('created_at', { ascending: true });
 
-    // 답글이 있는 경우, 각 답글 작성자의 프로필 정보 가져오기
     const repliesWithProfiles = replies ? await Promise.all(
       replies.map(async (reply) => {
+        // 답글 프로필 정보 (기존 코드 유지)
         const { data: replyProfile } = await supabase
           .from('profiles')
           .select('name, nickname, avatar_url')
           .eq('id', reply.user_id)
           .single();
 
-        // 답글 작성자 프로필 이미지 URL 생성
+        // 답글 좋아요 정보 가져오기
+        const [{ count: replyLikes }, replyUserLikeData] = await Promise.all([
+          supabase
+            .from('review_reply_likes')
+            .select('*', { count: 'exact' })
+            .eq('reply_id', reply.id),
+          user ? supabase
+            .from('review_reply_likes')
+            .select('id')
+            .eq('reply_id', reply.id)
+            .eq('user_id', user.id)
+            .maybeSingle() : Promise.resolve({ data: null })
+        ]);
+
+        // 답글 작성자 프로필 이미지 URL 생성 (기존 코드 유지)
         let replyAvatarUrl = null;
         if (replyProfile?.avatar_url) {
           const { data: { publicUrl } } = supabase
@@ -145,12 +176,14 @@ export async function fetchReviewsByLectureId(lectureId: number) {
             name: replyProfile?.name || '익명',
             nickname: replyProfile?.nickname,
             avatar_url: replyAvatarUrl
-          }
+          },
+          likes_count: replyLikes || 0,
+          is_liked: !!replyUserLikeData?.data  // 사용자의 좋아요 여부
         };
       })
     ) : [];
 
-    // 리뷰 작성자 프로필 이미지 URL 생성
+    // 리뷰 작성자 프로필 이미지 URL 생성 (기존 코드 유지)
     let avatarUrl = null;
     if (profile?.avatar_url) {
       const { data: { publicUrl } } = supabase
@@ -167,8 +200,8 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         nickname: profile?.nickname,
         avatar_url: avatarUrl
       },
-      likes_count: 0,
-      is_liked: false,
+      likes_count: reviewLikes || 0,
+      is_liked: !!userLikeData?.data,  // 사용자의 좋아요 여부
       replies: repliesWithProfiles
     };
   }));
