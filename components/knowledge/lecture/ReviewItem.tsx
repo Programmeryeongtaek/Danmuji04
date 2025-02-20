@@ -155,29 +155,45 @@ export function ReviewItem({
 
   useEffect(() => {
     const loadReplies = async () => {
+      // 1. 먼저 답글 데이터 조회
       const { data: fetchedReplies } = await supabase
         .from('review_replies')
-        .select('*, user:user_id(*)')
+        .select('*')
         .eq('review_id', review.id)
         .order('created_at', { ascending: true });
 
       if (fetchedReplies) {
-        const formattedReplies = fetchedReplies.map((reply) => ({
-          id: reply.id,
-          content: reply.content,
-          created_at: reply.created_at,
-          user_id: reply.user_id,
-          user_profile: reply.user
-            ? {
-                id: reply.user.id,
-                name: reply.user.name || '익명',
-                nickname: reply.user.nickname,
-                avatar_url: reply.user.avatar_url,
-              }
-            : null,
-          likes_count: 0, // 객체 대신 숫자로
-          is_liked: false,
-        }));
+        // 2. 프로필 정보 한 번에 조회
+        const userIds = [
+          ...new Set(fetchedReplies.map((reply) => reply.user_id)),
+        ];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
+        const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+        // 3. 답글과 프로필 정보 결합
+        const formattedReplies = fetchedReplies.map((reply) => {
+          const userProfile = profileMap.get(reply.user_id);
+          return {
+            id: reply.id,
+            content: reply.content,
+            created_at: reply.created_at,
+            user_id: reply.user_id,
+            user_profile: userProfile
+              ? {
+                  id: userProfile.id,
+                  name: userProfile.name || '익명',
+                  nickname: userProfile.nickname,
+                  avatar_url: userProfile.avatar_url,
+                }
+              : null,
+            likes_count: 0,
+            is_liked: false,
+          };
+        });
 
         setReplies(formattedReplies);
       }
@@ -186,6 +202,13 @@ export function ReviewItem({
     loadReplies();
   }, [review.id, supabase]);
 
+  // 함수로 URL 체크 및 생성
+  const getValidImageUrl = (url: string) => {
+    if (!url) return null;
+    if (url.startsWith('https://')) return url;
+    return `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${url}`;
+  };
+
   return (
     <div className="border-b pb-6">
       <div className="flex items-start gap-4">
@@ -193,7 +216,10 @@ export function ReviewItem({
         <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
           {review.user_profile?.avatar_url ? (
             <Image
-              src={review.user_profile.avatar_url}
+              src={
+                getValidImageUrl(review.user_profile.avatar_url) ||
+                '/images/default-avatar.png'
+              }
               alt={
                 review.user_profile?.nickname ||
                 review.user_profile?.name ||
@@ -204,7 +230,7 @@ export function ReviewItem({
               className="h-full w-full object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/images/default-avatar.png'; // 기본 이미지 경로 설정
+                target.src = '/images/default-avatar.png';
               }}
             />
           ) : (

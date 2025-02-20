@@ -96,6 +96,10 @@ export async function fetchWishlist() {
 export async function fetchReviewsByLectureId(lectureId: number) {
   const supabase = createClient();
   
+  // 현재 로그인한 사용자 정보 가져오기
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 1. 기본 리뷰 데이터 조회
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*')
@@ -105,22 +109,20 @@ export async function fetchReviewsByLectureId(lectureId: number) {
   if (reviewsError) throw reviewsError;
   if (!reviews) return [];
 
-  // 현재 로그인한 사용자 정보 가져오기
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // 프로필 정보 별도 조회
-  const profileIds = [...new Set(reviews.map(review => review.user_id))];
+  // 2. 프로필 정보를 한 번에 조회
+  const userIds = [...new Set(reviews.map(review => review.user_id))];
   const { data: profiles } = await supabase
     .from('profiles')
     .select('*')
-    .in('id', profileIds);
- 
+    .in('id', userIds);
+
   const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
- 
+
+  // 3. 각 리뷰의 답글과 프로필 정보를 처리
   const reviewsWithDetails = await Promise.all(reviews.map(async (review) => {
     const profile = profileMap.get(review.user_id);
- 
-    // 리뷰 좋아요 정보 가져오기
+
+    // 좋아요 정보 조회
     const [{ count: reviewLikes }, userLikeData] = await Promise.all([
       supabase
         .from('review_likes')
@@ -133,27 +135,29 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         .eq('user_id', user.id)
         .maybeSingle() : Promise.resolve({ data: null })
     ]);
- 
-    // 답글 정보 가져오기
+
+    // 리뷰의 답글들 조회
     const { data: replies } = await supabase
-      .from('review_replies')
-      .select('*')
-      .eq('review_id', review.id)
-      .order('created_at', { ascending: true });
- 
-    // 답글 작성자들의 프로필 정보 조회
+    .from('review_replies')
+    .select('*')
+    .eq('review_id', review.id)
+    .order('created_at', { ascending: true });
+
+    // 답글 작성자들의 프로필 정보를 한 번에 조회
     const replyUserIds = [...new Set(replies?.map(reply => reply.user_id) || [])];
     const { data: replyProfiles } = await supabase
       .from('profiles')
       .select('*')
       .in('id', replyUserIds);
- 
+
     const replyProfileMap = new Map(replyProfiles?.map(p => [p.id, p]) || []);
- 
-    const repliesWithProfiles = replies ? await Promise.all(
+
+    // 답글 정보 처리
+    const repliesWithDetails = replies ? await Promise.all(
       replies.map(async (reply) => {
         const replyProfile = replyProfileMap.get(reply.user_id);
- 
+
+        // 답글 좋아요 정보 조회
         const [{ count: replyLikes }, replyUserLikeData] = await Promise.all([
           supabase
             .from('review_reply_likes')
@@ -166,29 +170,31 @@ export async function fetchReviewsByLectureId(lectureId: number) {
             .eq('user_id', user.id)
             .maybeSingle() : Promise.resolve({ data: null })
         ]);
- 
-        let replyAvatarUrl = null;
+
+        // 프로필 이미지 URL 생성
+        let avatarUrl = null;
         if (replyProfile?.avatar_url) {
           const { data: { publicUrl } } = supabase
             .storage
             .from('avatars')
             .getPublicUrl(replyProfile.avatar_url);
-          replyAvatarUrl = publicUrl;
+          avatarUrl = publicUrl;
         }
- 
+
         return {
           ...reply,
           user_profile: {
             name: replyProfile?.name || '익명',
             nickname: replyProfile?.nickname,
-            avatar_url: replyAvatarUrl
+            avatar_url: avatarUrl
           },
           likes_count: replyLikes || 0,
           is_liked: !!replyUserLikeData?.data
         };
       })
     ) : [];
- 
+
+    // 리뷰 프로필 이미지 URL 생성
     let avatarUrl = null;
     if (profile?.avatar_url) {
       const { data: { publicUrl } } = supabase
@@ -197,7 +203,7 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         .getPublicUrl(profile.avatar_url);
       avatarUrl = publicUrl;
     }
- 
+
     return {
       ...review,
       user_profile: {
@@ -207,12 +213,12 @@ export async function fetchReviewsByLectureId(lectureId: number) {
       },
       likes_count: reviewLikes || 0,
       is_liked: !!userLikeData?.data,
-      replies: repliesWithProfiles
+      replies: repliesWithDetails
     };
   }));
- 
+
   return reviewsWithDetails;
- }
+}
 
 export async function getActiveEnrollment(
   lectureId: number, 
