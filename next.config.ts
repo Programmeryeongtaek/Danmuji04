@@ -19,7 +19,14 @@ const nextConfig: NextConfig = {
       hostname: 'hcqusfewtyxmpdvzpeor.supabase.co',
       port: '',
       pathname: '/storage/v1/object/public/videos/**',
-    }]
+    },
+    {
+      protocol: 'https',
+      hostname: 'picsum.photos',
+      port: '',
+      pathname: '/**',
+    },
+  ]
   }
 };
 
