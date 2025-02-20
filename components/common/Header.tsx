@@ -25,23 +25,35 @@ const Header = () => {
       if (!user) return;
 
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
 
-      if (!error && data) {
-        // 이미지 URL이 있는 경우 public URL 생성
-        if (data.avatar_url) {
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from('avatars').getPublicUrl(data.avatar_url);
+      try {
+        // 프로필 정보 가져오기
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-          data.avatar_url = publicUrl;
+        if (error) throw error;
+
+        console.log('Profile data before URL:', profileData); // 디버깅 로그
+
+        // avatar_url이 있는 경우 public URL 생성
+        if (profileData?.avatar_url) {
+          const { data: urlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(profileData.avatar_url);
+
+          console.log('Generated public URL:', urlData.publicUrl); // URL 확인용 로그
+
+          // 생성된 publicUrl로 profileData 업데이트
+          profileData.avatar_url = urlData.publicUrl;
         }
 
-        setProfile(data);
+        setProfile(profileData);
+        console.log('Final profile data:', profileData); // 최종 데이터 확인
+      } catch (error) {
+        console.error('Error fetching profile:', error);
       }
     };
 
@@ -63,7 +75,6 @@ const Header = () => {
                 href={'/introduce'}
                 className="divide-y-black divide-black-200 flex gap-1"
               >
-                {/* TODO: 사진 이미지 변경하기기 */}
                 <Image
                   src={'/images/danmuji.png'}
                   alt="단무지"
@@ -73,22 +84,18 @@ const Header = () => {
                 <span>단무지</span>
               </Link>
             </li>
-            {/* TODO: 수직 구분선 */}
             <li>임시1</li>
           </ul>
           <ul className="flex items-center gap-1">
             <li>임시2</li>
-            {/* TODO: 수직 구분선 */}
             <li>임시3</li>
           </ul>
         </header>
       </section>
       <header className="border-title sticky top-0 z-50 flex h-[50px] w-full items-center border-t bg-light">
-        {/* TODO: navbar sticky 적용 */}
         <nav className="flex w-full justify-between px-8">
           <div>
             <div>
-              {/* TODO: 누르면 왼쪽에서 슬라이드 열림*/}
               <Menu className="h-6 w-6" />
             </div>
           </div>
@@ -124,7 +131,6 @@ const Header = () => {
             )}
           </div>
 
-          {/* Right Side Bar */}
           <RightSideBar
             isOpen={isRightSideBarOpen}
             onClose={() => setIsRightSideBarOpen(false)}

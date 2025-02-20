@@ -18,6 +18,7 @@ import {
   fetchLecturesByCategory,
   searchLectures,
 } from '@/utils/supabase/client';
+import { useBookmarks } from '@/hooks/useBookmarks';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -33,6 +34,12 @@ const categoryLabelMap = new Map([
 const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';
+  const {
+    bookmarkedLectures,
+    handleToggleBookmark,
+    isLoading: bookmarksLoading,
+  } = useBookmarks();
+
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
@@ -96,7 +103,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     ) {
       return false;
     }
-    if (activeFilters.hasGroup && lecture.groupType !== '오프라인') {
+    if (activeFilters.hasGroup && lecture.group_type !== '오프라인') {
       return false;
     }
 
@@ -119,7 +126,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     setLectureList(sorted);
   };
 
-  if (isLoading) {
+  if (isLoading || bookmarksLoading) {
     return <div>로딩 중...</div>;
   }
 
@@ -146,7 +153,12 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
       {filteredLectures.length > 0 ? (
         <div className="flex flex-wrap justify-center gap-4">
           {filteredLectures.map((lecture) => (
-            <Card key={lecture.id} {...lecture} />
+            <Card
+              key={lecture.id}
+              {...lecture}
+              isBookmarked={bookmarkedLectures.includes(lecture.id)}
+              onToggleBookmark={handleToggleBookmark}
+            />
           ))}
         </div>
       ) : (

@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { Lecture } from '@/types/knowledge/lecture';
 import ShareButton from './ShareButton';
 import BookmarkButton from './BookmarkButton';
+import Link from 'next/link';
 
 interface LectureContentProps {
   lecture: Lecture;
@@ -19,59 +20,58 @@ export default function LectureContent({ lecture }: LectureContentProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setCurrentUserId(user.id);
-      }
-    });
-  }, []);
+    const loadUserAndReviewData = async () => {
+      try {
+        const supabase = createClient();
 
-  useEffect(() => {
-    const loadData = async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        // 1. 사용자 인증 확인
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (authError) throw authError;
 
-      if (user) {
-        setCurrentUserId(user.id);
+        // 2. 로그인한 경우에만 북마크 확인
+        if (user) {
+          setCurrentUserId(user.id);
 
-        // 찜하기 상태 확인
-        const { data: bookmark } = await supabase
-          .from('bookmarks')
-          .select('id')
-          .eq('lecture_id', lecture.id)
-          .eq('user_id', user.id)
-          .single();
+          const { data: bookmark } = await supabase
+            .from('bookmarks')
+            .select('id')
+            .eq('lecture_id', lecture.id)
+            .eq('user_id', user.id)
+            .maybeSingle();
 
-        setIsBookmarked(!!bookmark);
-      }
-
-      // 수강평 개수와 평균 평점 가져오기
-      const { data: reviews } = await supabase
-        .from('reviews')
-        .select('rating')
-        .eq('lecture_id', lecture.id);
-
-      if (reviews) {
-        const count = reviews.length;
-        setReviewCount(count);
-
-        if (count >= 5) {
-          const total = reviews.reduce(
-            (sum, review) => sum + (review?.rating || 0),
-            0
-          );
-          const average = count > 0 ? total / count : 0;
-          setAverageRating(Math.round(average * 10) / 10); // 소수점 첫째자리까지
-        } else {
-          setAverageRating(0);
+          setIsBookmarked(!!bookmark);
         }
+
+        // 3. 수강평 정보 조회
+        const { data: reviews, error: reviewError } = await supabase
+          .from('reviews')
+          .select('rating')
+          .eq('lecture_id', lecture.id);
+
+        if (reviewError) throw reviewError;
+
+        if (reviews) {
+          const count = reviews.length;
+          setReviewCount(count);
+
+          if (count >= 5) {
+            const total = reviews.reduce(
+              (sum, review) => sum + (review?.rating || 0),
+              0
+            );
+            const average = total / count;
+            setAverageRating(Math.round(average * 10) / 10);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
       }
     };
 
-    loadData();
+    loadUserAndReviewData();
   }, [lecture.id]);
 
   return (
@@ -82,9 +82,14 @@ export default function LectureContent({ lecture }: LectureContentProps) {
           <div className="rounded-lg border shadow-sm">
             {/* 영상 영역 */}
             <div className="flex justify-center border-b p-8">
-              <div className="h-[300px] w-[500px] rounded-lg bg-gray-100">
-                동영상 영역
-              </div>
+              <Link
+                href={`/my/lectures/${lecture.id}/manage`}
+                className="cursor-pointer"
+              >
+                <div className="h-[300px] w-[500px] rounded-lg bg-gray-100">
+                  동영상 영역
+                </div>
+              </Link>
             </div>
 
             {/* 강의 정보 */}
@@ -117,13 +122,15 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   <div className="font-medium">{lecture.instructor}</div>
                   <div className="text-sm text-gray-600">{lecture.keyword}</div>
                 </div>
-                <div className="flex gap-2">
-                  <BookmarkButton
-                    lectureId={lecture.id}
-                    initialIsBookmarked={isBookmarked}
-                  />
-                  <ShareButton lectureId={lecture.id} />
-                </div>
+                {currentUserId && (
+                  <div className="flex gap-2">
+                    <BookmarkButton
+                      lectureId={lecture.id}
+                      initialIsBookmarked={isBookmarked}
+                    />
+                    <ShareButton lectureId={lecture.id} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -143,8 +150,8 @@ export default function LectureContent({ lecture }: LectureContentProps) {
           </div>
         </div>
 
-        {/* 수강신청 바 */}
-        <EnrollBar lectureId={Number(lecture.id)} />
+        {/* 수강신청 바는 로그인한 사용자에게만 표시 */}
+        {currentUserId && <EnrollBar lectureId={Number(lecture.id)} />}
       </div>
     </>
   );

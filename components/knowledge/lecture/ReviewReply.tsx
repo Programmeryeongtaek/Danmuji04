@@ -21,13 +21,13 @@ export function ReviewReply({
   onEdit,
 }: ReviewReplyProps) {
   const [isLiked, setIsLiked] = useState(reply.is_liked);
-  const [likesCount, setLikesCount] = useState(reply.likes_count.count || 0);
+  const [likesCount, setLikesCount] = useState(reply.likes_count || 0);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
   const { checkTimeLimit } = useTimeLimit(24);
 
-  const avatarUrl = reply.user_profile?.avatar_url;
-  const userName = reply.user_profile?.user_name || '익명';
+  const userName =
+    reply.user_profile?.nickname || reply.user_profile?.name || '익명';
 
   const handleDelete = async () => {
     if (!currentUserId) return;
@@ -47,14 +47,11 @@ export function ReviewReply({
     try {
       await toggleReplyLike(reply.id, currentUserId);
       const newIsLiked = !isLiked;
-      const newLikesCount = Number(likesCount) + (newIsLiked ? 1 : -1);
-
-      // 음수가 되지 않도록 방지
-      const finalCount = Math.max(0, newLikesCount);
+      const newCount = Math.max(0, likesCount + (newIsLiked ? 1 : -1));
 
       setIsLiked(newIsLiked);
-      setLikesCount(finalCount);
-      onUpdate(reply.id, newIsLiked, finalCount);
+      setLikesCount(newCount);
+      onUpdate(reply.id, newIsLiked, newCount); // 바로 숫자 전달
     } catch (error) {
       console.error('Error toggling like:', error);
     }
@@ -84,22 +81,43 @@ export function ReviewReply({
     }
   };
 
+  const getValidImageUrl = (url: string) => {
+    if (!url) return null;
+    if (url.startsWith('https://')) return url;
+    return `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${url}`;
+  };
+
   return (
     <div className="ml-8 border-l-2 border-gray-200 pl-4">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
-            {avatarUrl ? (
+            {reply.user_profile?.avatar_url ? (
               <Image
-                src={avatarUrl}
-                alt={userName}
+                src={
+                  getValidImageUrl(reply.user_profile.avatar_url) ||
+                  '/images/default-avatar.png'
+                }
+                alt={
+                  reply.user_profile?.nickname ||
+                  reply.user_profile?.name ||
+                  '익명'
+                }
                 width={32}
                 height={32}
                 className="h-full w-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/images/default-avatar.png';
+                }}
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-500">
-                {userName[0]}
+                {(
+                  reply.user_profile?.nickname?.[0] ||
+                  reply.user_profile?.name?.[0] ||
+                  '익'
+                ).toUpperCase()}
               </div>
             )}
           </div>

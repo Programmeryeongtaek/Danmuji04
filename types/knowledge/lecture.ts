@@ -1,12 +1,14 @@
 export interface Lecture {
   id: number;
   title: string;
-  thumbnailUrl: string;
+  thumbnail_url: string;
   category: string;
   instructor: string;
   depth: string;
   keyword: string;
-  groupType: string;
+  group_type: string;
+  is_free: boolean;
+  price: number;
   likes: number;
   students: number;
   createdAt: string;
@@ -48,7 +50,8 @@ export interface ReviewProps {
   lecture_id: number;
   user_profile?: {
     id: string;
-    user_name: string;
+    name: string;
+    nickname: string;
     avatar_url: string | null;
   } | null;
   likes_count: number;
@@ -62,10 +65,11 @@ export interface ReplyProps {
   user_id: string;
   user_profile: {
     id: string;
-    user_name: string;
+    name: string;
+    nickname: string | null; 
     avatar_url: string | null;
   } | null;
-  likes_count: { count: number };
+  likes_count: number;
   is_liked: boolean;
 }
 
@@ -100,4 +104,13 @@ export interface ReviewReplyProps {
   onDelete: (replyId: number) => void;
   onUpdate: (replyId: number, isLiked: boolean, likesCount: number) => void;
   onEdit: (replyId: number, content: string) => void;
+}
+
+// 찜하기
+export interface Bookmark {
+  id: number;
+  user_id: string;
+  lecture_id: number;
+  created_at: string;
+  lecture: Lecture;
 }

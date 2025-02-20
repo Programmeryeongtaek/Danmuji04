@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
+  const supabaseResponse = NextResponse.next({
     request,
   })
 
@@ -12,20 +12,17 @@ export async function updateSession(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+            supabaseResponse.cookies.set(name, value);
+          });
+        }
+      }
     }
-  )
+  );
 
 // createServerClient와 supabase.auth.getUser() 사이에 코드를 작성하지 마세요.
 // 간단한 실수로도 사용자가 무작위로 로그아웃되는 문제를 디버깅하기가 매우 어려워질 수 있습니다.
