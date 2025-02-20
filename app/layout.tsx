@@ -75,7 +75,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             {!isLecturePage &&
               !isSettingsPage &&
               !lectureCreate &&
-              editLecture && <Navbar />}
+              !editLecture && <Navbar />}
           </div>
         </Toast.Provider>
       </body>
