@@ -446,42 +446,58 @@ export async function toggleReplyLike(replyId: number, userId: string) {
 export async function addReviewReply(reviewId: number, userId: string, content: string) {
   const supabase = createClient();
   
-  // 1. 답글 추가 및 프로필 정보 함께 가져오기
-  const [replyResult, profileResult] = await Promise.all([
-    supabase
+  try {
+    // 1. 먼저 프로필 정보 조회
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, name, nickname, avatar_url')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) throw profileError;
+
+    // 2. 답글 추가
+    const { data: reply, error: replyError } = await supabase
       .from('review_replies')
       .insert({
         review_id: reviewId,
         user_id: userId,
         content,
       })
-      .select('*')
-      .single(),
-    
-    supabase
-      .from('profiles')
-      .select('id, name, nickname, avatar_url')
-      .eq('id', userId)
-      .single()
-  ]);
+      .select()
+      .single();
 
-  if (replyResult.error) throw replyResult.error;
+    if (replyError) throw replyError;
 
-  // 2. 응답 데이터 포맷팅
-  return {
-    id: replyResult.data.id,
-    content: replyResult.data.content,
-    created_at: replyResult.data.created_at,
-    user_id: userId,
-    user_profile: profileResult.data || {
-      id: userId,
-      name: '익명',
-      nickname: null,
-      avatar_url: null
-    },
-    likes_count: { count: 0 },
-    is_liked: false
-  };
+    // 3. 이미지 URL 처리
+    let avatarUrl = null;
+    if (profile?.avatar_url) {
+      const { data: urlData } = supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(profile.avatar_url);
+      avatarUrl = urlData.publicUrl;
+    }
+
+    // 4. 완성된 데이터 반환
+    return {
+      id: reply.id,
+      content: reply.content,
+      created_at: reply.created_at,
+      user_id: userId,
+      user_profile: {
+        id: profile.id,
+        name: profile.name || '익명',
+        nickname: profile.nickname,
+        avatar_url: avatarUrl
+      },
+      likes_count: 0,
+      is_liked: false
+    };
+  } catch (error) {
+    console.error('Error adding review reply:', error);
+    throw error;
+  }
 }
 
 // 수강평 답글 수정
