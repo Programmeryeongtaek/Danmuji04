@@ -8,6 +8,7 @@ import { Lecture } from '@/types/knowledge/lecture';
 import ShareButton from './ShareButton';
 import BookmarkButton from './BookmarkButton';
 import Link from 'next/link';
+import { Play } from 'lucide-react';
 
 interface LectureContentProps {
   lecture: Lecture;
@@ -83,11 +84,11 @@ export default function LectureContent({ lecture }: LectureContentProps) {
             {/* 영상 영역 */}
             <div className="flex justify-center border-b p-8">
               <Link
-                href={`/my/lectures/${lecture.id}/manage`}
+                href={`/knowledge/lecture/${lecture.id}/watch`}
                 className="cursor-pointer"
               >
-                <div className="h-[300px] w-[500px] rounded-lg bg-gray-100">
-                  동영상 영역
+                <div className="flex h-[300px] w-[500px] items-center justify-center rounded-lg bg-gray-100">
+                  <Play className="h-16 w-16 text-gray-500 hover:text-blue-500" />
                 </div>
               </Link>
             </div>
