@@ -1,6 +1,6 @@
 'use client';
 
-import { ReplyProps, ReviewItemProps } from '@/types/knowledge/lecture';
+import { ReviewItemProps } from '@/types/knowledge/lecture';
 import {
   addReviewReply,
   createClient,
@@ -85,30 +85,40 @@ export function ReviewItem({
     if (!currentUserId || !replyContent.trim()) return;
 
     try {
+      // 먼저 현재 사용자의 프로필 정보 가져오기
+      const supabase = createClient();
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('name, nickname, avatar_url')
+        .eq('id', currentUserId)
+        .single();
+
+      // 프로필 이미지 URL 생성
+      let avatarUrl = null;
+      if (profileData?.avatar_url) {
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(profileData.avatar_url);
+        avatarUrl = urlData.publicUrl;
+      }
+
+      // addReviewReply 함수 호출
       const newReply = await addReviewReply(
         review.id,
         currentUserId,
         replyContent
       );
 
-      const userProfile = {
+      // 기존 코드는 그대로 두고, 방금 가져온 프로필 정보를 덮어씌우기
+      newReply.user_profile = {
         id: currentUserId,
-        name: review.user_profile?.name || '익명',
-        nickname: review.user_profile?.nickname || null,
-        avatar_url: review.user_profile?.avatar_url || null,
-      } as const;
-
-      const formattedReply: ReplyProps = {
-        id: newReply.id,
-        content: newReply.content,
-        created_at: newReply.created_at,
-        user_id: currentUserId,
-        user_profile: userProfile,
-        likes_count: 0,
-        is_liked: false,
+        name: profileData?.name || '익명',
+        nickname: profileData?.nickname,
+        avatar_url: avatarUrl,
       };
 
-      setReplies((prev) => [...prev, formattedReply]);
+      // 이제 setReplies 호출 (기존 코드)
+      setReplies((prev) => [...prev, newReply]);
       setReplyContent('');
       setIsReplying(false);
     } catch (error) {

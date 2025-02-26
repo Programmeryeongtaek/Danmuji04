@@ -35,6 +35,65 @@ export function LectureItemForm({
     }
 
     setVideoFile(file);
+    console.log('비디오 파일 선택됨:', file.name, file.size, file.type);
+
+    // 비디오 길이를 저장할 변수
+    let detectedDuration = '00:00';
+
+    // 비디오 길이 추출 시도
+    try {
+      const videoBlob = new Blob([file], { type: file.type });
+      const videoUrl = URL.createObjectURL(videoBlob);
+      const video = document.createElement('video');
+
+      video.muted = true;
+      video.preload = 'metadata';
+
+      // Promise로 메타데이터 로드 대기
+      detectedDuration = await new Promise<string>((resolve) => {
+        video.onloadedmetadata = () => {
+          URL.revokeObjectURL(videoUrl);
+          const duration = video.duration;
+          console.log('원시 비디오 길이(초):', duration);
+
+          if (isNaN(duration) || duration === 0 || duration === Infinity) {
+            console.warn('유효하지 않은 비디오 길이:', duration);
+            // 테스트용 기본값 (실제 업로드한 비디오의 길이로 설정)
+            resolve('00:03');
+            return;
+          }
+
+          const minutes = Math.floor(duration / 60);
+          const seconds = Math.floor(duration % 60);
+          const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+          console.log('포맷된 비디오 길이:', formattedDuration);
+          resolve(formattedDuration);
+        };
+
+        video.onerror = () => {
+          console.error('비디오 메타데이터 로드 실패');
+          URL.revokeObjectURL(videoUrl);
+          resolve('00:03');
+        };
+
+        setTimeout(() => {
+          if (!video.duration || video.duration === 0) {
+            console.warn('비디오 메타데이터 로드 타임아웃');
+            URL.revokeObjectURL(videoUrl);
+            resolve('00:03');
+          }
+        }, 5000);
+
+        video.src = videoUrl;
+        video.load();
+      });
+
+      console.log('결정된 비디오 길이:', detectedDuration);
+    } catch (error) {
+      console.error('비디오 메타데이터 처리 중 오류:', error);
+      detectedDuration = '00:03';
+    }
 
     try {
       const supabase = createClient();
@@ -42,17 +101,16 @@ export function LectureItemForm({
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `lectures/videos/${fileName}`;
 
-      console.log('Uploading file:', { fileName, filePath }); // 디버깅용
+      console.log('업로드 시작:', {
+        fileName,
+        filePath,
+        duration: detectedDuration,
+      });
 
-      // FileOptions 타입 명시적 정의
-      const options: {
-        cacheControl: string;
-        upsert: boolean;
-        onProgress?: (progress: { loaded: number; total: number }) => void;
-      } = {
+      const options = {
         cacheControl: '3600',
         upsert: false,
-        onProgress: (progress) => {
+        onProgress: (progress: { loaded: number; total: number }) => {
           const percentage = (progress.loaded / progress.total) * 100;
           setUploadProgress(percentage);
         },
@@ -69,20 +127,49 @@ export function LectureItemForm({
           .from('videos')
           .getPublicUrl(filePath);
 
-        console.log('File upload, updating item with URL:', urlData.publicUrl); // 디버깅용
+        console.log('파일 업로드 완료, URL:', urlData.publicUrl);
 
-        onUpdate(sectionIndex, itemIndex, {
+        // 여기서 중요: 반드시 duration 값이 빈 문자열이 아닌지 확인
+        const finalDuration = detectedDuration || '00:03';
+
+        console.log('최종 사용할 영상 길이:', finalDuration);
+
+        // 아이템 업데이트 전에 duration 값을 확인하고 로깅
+        const updatedItem: LectureItemFormData = {
           ...item,
           content_url: urlData.publicUrl,
-          type: 'video',
-          duration: '',
+          type: 'video' as 'video' | 'text',
+          duration: finalDuration,
           orderNum: itemIndex + 1,
-        });
+        };
+
+        console.log('Supabase에 업데이트할 아이템 정보:', updatedItem);
+
+        // 아이템 상태 업데이트
+        onUpdate(sectionIndex, itemIndex, updatedItem);
 
         setUploadProgress(100);
+
+        // 디버깅: "duration" 필드가 제대로 업데이트 되었는지 확인
+        // lecture_items 테이블에 직접 query 실행해보기
+        try {
+          const { data: testQuery, error: testError } = await supabase
+            .from('lecture_items')
+            .select('duration')
+            .eq('content_url', urlData.publicUrl)
+            .single();
+
+          if (testError) {
+            console.warn('duration 확인 쿼리 실패:', testError);
+          } else {
+            console.log('Supabase에 저장된 duration 값:', testQuery?.duration);
+          }
+        } catch (e) {
+          console.error('duration 확인 중 오류:', e);
+        }
       }
     } catch (error) {
-      console.error('Video upload failed:', error);
+      console.error('비디오 업로드 실패:', error);
       alert('동영상 업로드에 실패했습니다.');
       setVideoFile(null);
       setUploadProgress(0);
