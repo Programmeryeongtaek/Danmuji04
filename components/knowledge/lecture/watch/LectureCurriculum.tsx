@@ -1,5 +1,6 @@
 'use client';
 
+import ProgressBar from '@/components/common/ProgressBar';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { LectureItem, LectureSection } from '@/types/lectureFrom';
 import {
@@ -46,6 +47,28 @@ export default function LectureCurriculum({
       {} as Record<number, boolean>
     )
   );
+
+  // 진행률 계산을 위한 상태 추가
+  const [progressState, setProgressState] = useState({
+    completed: 0,
+    total: 0,
+  });
+
+  // 모든 아이템 수와 완료된 아이템 수 계산
+  useEffect(() => {
+    let totalItems = 0;
+
+    sections.forEach((section) => {
+      if (section.lecture_items) {
+        totalItems += section.lecture_items.length;
+      }
+    });
+
+    setProgressState({
+      completed: currentLectureCompleted.length,
+      total: totalItems,
+    });
+  }, [sections, currentLectureCompleted]);
 
   useEffect(() => {
     // 초기 데이터 로딩 시 로그
@@ -126,92 +149,99 @@ export default function LectureCurriculum({
   };
 
   return (
-    <div className="divide-y rounded-lg border">
-      {sections.map((section) => (
-        <div key={section.id} className="overflow-hidden">
-          {/* 섹션 헤더 */}
-          <div
-            className="flex cursor-pointer items-center justify-between bg-gray-50 p-4"
-            onClick={() => toggleSection(section.id)}
-          >
-            <div className="font-medium">{section.title}</div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                {section.lecture_items?.length || 0}개 강의
-              </span>
-              {expandedSections[section.id] ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
+    <div className="space-y-4">
+      {/* 진행률 막대 추가 */}
+      <ProgressBar
+        current={progressState.completed}
+        total={progressState.total}
+      />
+      <div className="divide-y rounded-lg border">
+        {sections.map((section) => (
+          <div key={section.id} className="overflow-hidden">
+            {/* 섹션 헤더 */}
+            <div
+              className="flex cursor-pointer items-center justify-between bg-gray-50 p-4"
+              onClick={() => toggleSection(section.id)}
+            >
+              <div className="font-medium">{section.title}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  {section.lecture_items?.length || 0}개 강의
+                </span>
+                {expandedSections[section.id] ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </div>
             </div>
+
+            {/* 섹션 콘텐츠 (강의 아이템들) */}
+            {expandedSections[section.id] && section.lecture_items && (
+              <div className="divide-y bg-white">
+                {section.lecture_items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`flex cursor-pointer items-center p-4 hover:bg-gray-50 ${
+                      currentItemId === item.id ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => onItemSelect(item)}
+                  >
+                    {/* 강의 아이콘 */}
+                    <div className="mr-3">
+                      {currentItemId === item.id ? (
+                        <Play className="h-5 w-5 text-blue-500" />
+                      ) : item.type === 'video' ? (
+                        <Video className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <FileText className="h-5 w-5 text-gray-500" />
+                      )}
+                    </div>
+
+                    {/* 강의 제목 */}
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{item.title}</div>
+                    </div>
+
+                    {/* 오른쪽 영역: 시간 및 완료 표시 */}
+                    <div className="flex items-center gap-3">
+                      {/* 시간 정보 - 비디오 타입에만 표시 */}
+                      {item.type === 'video' && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="h-3 w-3" />
+                          {/* 로그 추가 */}
+                          {console.log &&
+                            (() => {
+                              console.log(
+                                `아이템 ID: ${item.id}, duration: '${item.duration}'`
+                              );
+                              return null;
+                            })()}
+                          {formatDuration(
+                            item.duration && item.duration !== ''
+                              ? item.duration
+                              : '00:00'
+                          )}
+                        </div>
+                      )}
+
+                      {/* 완료 표시 */}
+                      {isItemCompleted(item.id) && (
+                        <div className="flex items-center gap-1">
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-600">
+                            완료
+                          </span>
+                          <Check className="h-4 w-4 text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
-          {/* 섹션 콘텐츠 (강의 아이템들) */}
-          {expandedSections[section.id] && section.lecture_items && (
-            <div className="divide-y bg-white">
-              {section.lecture_items.map((item) => (
-                <div
-                  key={item.id}
-                  className={`flex cursor-pointer items-center p-4 hover:bg-gray-50 ${
-                    currentItemId === item.id ? 'bg-blue-50' : ''
-                  }`}
-                  onClick={() => onItemSelect(item)}
-                >
-                  {/* 강의 아이콘 */}
-                  <div className="mr-3">
-                    {currentItemId === item.id ? (
-                      <Play className="h-5 w-5 text-blue-500" />
-                    ) : item.type === 'video' ? (
-                      <Video className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <FileText className="h-5 w-5 text-gray-500" />
-                    )}
-                  </div>
-
-                  {/* 강의 제목 */}
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{item.title}</div>
-                  </div>
-
-                  {/* 오른쪽 영역: 시간 및 완료 표시 */}
-                  <div className="flex items-center gap-3">
-                    {/* 시간 정보 - 비디오 타입에만 표시 */}
-                    {item.type === 'video' && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        {/* 로그 추가 */}
-                        {console.log &&
-                          (() => {
-                            console.log(
-                              `아이템 ID: ${item.id}, duration: '${item.duration}'`
-                            );
-                            return null;
-                          })()}
-                        {formatDuration(
-                          item.duration && item.duration !== ''
-                            ? item.duration
-                            : '00:00'
-                        )}
-                      </div>
-                    )}
-
-                    {/* 완료 표시 */}
-                    {isItemCompleted(item.id) && (
-                      <div className="flex items-center gap-1">
-                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-600">
-                          완료
-                        </span>
-                        <Check className="h-4 w-4 text-green-500" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
