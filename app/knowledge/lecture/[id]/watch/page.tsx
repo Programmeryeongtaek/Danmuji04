@@ -231,6 +231,7 @@ export default function LectureWatchPage() {
           sections={sections}
           currentItemId={currentItem.id}
           onItemSelect={handleItemSelect}
+          lectureId={lectureId}
         />
       )}
     </div>
