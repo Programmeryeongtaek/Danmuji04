@@ -280,14 +280,20 @@ export async function insertReview(lectureId: number, userId: string, rating: nu
 
 export async function getActiveEnrollmentCount(lectureId: number) {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('enrollments')
-    .select('id')
+    .select('id', { count: 'exact' }) // 정확한 카운트 요청
     .eq('lecture_id', lectureId)
     .eq('status', 'active');
 
-  if (error) throw error;
-  return data?.length || 0;
+    if (error) {
+      console.error('수강생 수 조회 실패:', error);
+      throw error;
+    }
+    
+    // count가 undefined인 경우 data의 길이 사용
+    const totalCount = count !== null && count !== undefined ? count : (data?.length || 0);
+    return totalCount;
 }
 
 export async function updateLectureStudentCount(lectureId: number, count: number) {
@@ -318,15 +324,38 @@ export async function enrollLecture(lectureId: number) {
     throw new Error('로그인이 필요합니다.');
   }
 
-  // 수강 신청
-  const { error: enrollError } = await insertEnrollment(lectureId, user.id);
-  if (enrollError) {
-    throw enrollError;
-  }
+  try {
+    // 수강 신청
+    const { error: enrollError } = await insertEnrollment(lectureId, user.id);
+    if (enrollError) {
+      throw enrollError;
+    }
 
-  // 수강생 수 업데이트
-  const count = await getActiveEnrollmentCount(lectureId);
-  await updateLectureStudentCount(lectureId, count);
+    // 활성 수강생 수 조회
+    const { count, error: countError } = await supabase
+      .from('enrollments')
+      .select('*', { count: 'exact' })
+      .eq('lecture_id', lectureId)
+      .eq('status', 'active');
+      
+    if (countError) throw countError;
+    
+    // 수강생 수 직접 업데이트
+    const { error: updateError } = await supabase
+      .from('lectures')
+      .update({ students: count || 0 })
+      .eq('id', lectureId);
+      
+    if (updateError) {
+      console.error('수강생 수 업데이트 실패:', updateError);
+      throw updateError;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('수강 신청 처리 중 오류:', error);
+    throw error;
+  }
 }
 
 export async function createReview(lectureId: number, rating: number, content: string) {
