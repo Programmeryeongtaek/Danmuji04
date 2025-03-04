@@ -1,5 +1,6 @@
 'use client';
 
+import CompletionModal from '@/components/Course/[slug]/[videoId]/CompletionModal';
 import LectureCurriculum from '@/components/knowledge/lecture/watch/LectureCurriculum';
 import NavigationButtons from '@/components/knowledge/lecture/watch/NavigationButtons';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
@@ -42,6 +43,7 @@ export default function LectureWatchPage() {
   const [showCurriculum, setShowCurriculum] = useState(true);
   const [prevItemId, setPrevItemId] = useState<number | null>(null);
   const [nextItemId, setNextItemId] = useState<number | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   // useLocalStorage 훅 사용
   const [lastWatchedItems, setLastWatchedItems] = useLocalStorage<
@@ -175,6 +177,11 @@ export default function LectureWatchPage() {
     }
   };
 
+  // 텍스트 콘텐츠 완료 처리 함수
+  const handleTextComplete = () => {
+    setShowCompletionModal(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -200,6 +207,8 @@ export default function LectureWatchPage() {
         <VideoPlayer
           contentUrl={currentItem.content_url || ''}
           type={currentItem.type}
+          onComplete={handleNext}
+          isLastItem={nextItemId === null}
         />
       </div>
 
@@ -214,6 +223,9 @@ export default function LectureWatchPage() {
         onNext={handleNext}
         hasPrevious={prevItemId !== null}
         hasNext={nextItemId !== null}
+        isLastItem={nextItemId === null}
+        currentItemType={currentItem.type}
+        onComplete={handleTextComplete} // 완료 처리 함수 전달
       />
 
       {/* 커리큘럼 토글 */}
@@ -232,6 +244,16 @@ export default function LectureWatchPage() {
           currentItemId={currentItem.id}
           onItemSelect={handleItemSelect}
           lectureId={lectureId}
+        />
+      )}
+
+      {/* 완료 모달 */}
+      {showCompletionModal && (
+        <CompletionModal
+          isOpen={showCompletionModal}
+          onClose={() => setShowCompletionModal(false)}
+          isLastVideo={nextItemId === null}
+          onNextVideo={handleNext}
         />
       )}
     </div>
