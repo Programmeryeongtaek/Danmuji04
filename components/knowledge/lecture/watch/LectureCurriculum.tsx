@@ -97,9 +97,23 @@ export default function LectureCurriculum({
 
   useEffect(() => {
     if (currentItemId) {
-      markItemAsCompleted(currentItemId);
+      // 모든 섹션을 순회하여 현재 아이템 찾기
+      let currentItem = null;
+
+      sections.forEach((section) => {
+        section.lecture_items?.forEach((item) => {
+          if (item.id === currentItemId) {
+            currentItem = item;
+          }
+        });
+      });
+
+      // 타입 단언 사용
+      if (currentItem && (currentItem as { type?: string }).type === 'video') {
+        markItemAsCompleted(currentItemId);
+      }
     }
-  }, [currentItemId]);
+  }, [currentItemId, sections]);
 
   const toggleSection = (sectionId: number) => {
     setExpandedSections((prev) => ({

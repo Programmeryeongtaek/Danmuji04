@@ -45,6 +45,11 @@ export default function LectureWatchPage() {
   const [nextItemId, setNextItemId] = useState<number | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
+  // 완료된 항목 관리를 위한 useLocalStorage 사용
+  const [completedItems, setCompletedItems] = useLocalStorage<
+    Record<string, number[]>
+  >('completedLectureItems', {});
+
   // useLocalStorage 훅 사용
   const [lastWatchedItems, setLastWatchedItems] = useLocalStorage<
     Record<string, number>
@@ -177,8 +182,26 @@ export default function LectureWatchPage() {
     }
   };
 
+  const handleModalNextClick = () => {
+    setShowCompletionModal(false);
+    handleNext();
+  };
+
   // 텍스트 콘텐츠 완료 처리 함수
   const handleTextComplete = () => {
+    // 현재 아이템을 완료로 표시
+    if (currentItem) {
+      const lectureCompleted = completedItems[lectureId] || [];
+
+      if (!lectureCompleted.includes(currentItem.id)) {
+        const updatedCompleted = [...lectureCompleted, currentItem.id];
+        const newCompletedItems = { ...completedItems };
+        newCompletedItems[lectureId] = updatedCompleted;
+        setCompletedItems(newCompletedItems);
+      }
+    }
+
+    // 모달 표시
     setShowCompletionModal(true);
   };
 
@@ -220,12 +243,11 @@ export default function LectureWatchPage() {
       {/* 이전/다음 버튼 */}
       <NavigationButtons
         onPrevious={handlePrevious}
-        onNext={handleNext}
+        onNext={currentItem?.type === 'text' ? handleTextComplete : handleNext}
         hasPrevious={prevItemId !== null}
         hasNext={nextItemId !== null}
         isLastItem={nextItemId === null}
         currentItemType={currentItem.type}
-        onComplete={handleTextComplete} // 완료 처리 함수 전달
       />
 
       {/* 커리큘럼 토글 */}
@@ -253,7 +275,7 @@ export default function LectureWatchPage() {
           isOpen={showCompletionModal}
           onClose={() => setShowCompletionModal(false)}
           isLastVideo={nextItemId === null}
-          onNextVideo={handleNext}
+          onNextVideo={handleModalNextClick}
         />
       )}
     </div>
