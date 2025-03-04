@@ -11,6 +11,7 @@ interface NavigationButtonsProps {
   isLastItem?: boolean;
   currentItemType?: 'video' | 'text';
   onComplete?: () => void; // 완료 처리 함수 추가
+  isCourseCompleted?: boolean;
 }
 
 export default function NavigationButtons({
@@ -19,18 +20,8 @@ export default function NavigationButtons({
   hasPrevious,
   hasNext,
   isLastItem = false,
-  currentItemType = 'video',
-  onComplete,
+  isCourseCompleted = false,
 }: NavigationButtonsProps) {
-  // 텍스트 콘텐츠의 경우 완료 처리 후 다음으로 이동
-  const handleNextOrComplete = () => {
-    if (currentItemType === 'text' && onComplete) {
-      onComplete(); // 완료 처리
-    } else {
-      onNext(); // 일반적인 다음 처리
-    }
-  };
-
   return (
     <div className="flex justify-between">
       <Button
@@ -44,16 +35,19 @@ export default function NavigationButtons({
         이전 강의
       </Button>
 
+      {/* 마지막 강의이고 코스가 완료된 경우에는 비활성화된 Button 사용 */}
       <Button
-        onClick={handleNextOrComplete}
-        disabled={!hasNext && currentItemType !== 'text'} // 텍스트면 마지막이어도 완료 가능
-        className="flex items-center"
+        onClick={isLastItem && isCourseCompleted ? undefined : onNext}
+        disabled={isLastItem && isCourseCompleted}
+        className={`flex items-center ${
+          isLastItem && isCourseCompleted
+            ? 'cursor-not-allowed bg-gray-300 opacity-50'
+            : !hasNext
+              ? 'cursor-not-allowed opacity-50'
+              : ''
+        }`}
       >
-        {isLastItem
-          ? '학습 완료'
-          : currentItemType === 'text'
-            ? '완료'
-            : '다음 강의'}
+        {isLastItem && isCourseCompleted ? '수강 완료됨' : '학습 완료'}
         <ChevronRight className="ml-1 h-5 w-5" />
       </Button>
     </div>
