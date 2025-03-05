@@ -9,7 +9,7 @@ import { Lecture } from '@/types/knowledge/lecture';
 import { LectureItem, LectureSection } from '@/types/lectureFrom';
 import { createClient } from '@/utils/supabase/client';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 // DB에서 불러온 섹션 데이터를 위한 타입
@@ -34,7 +34,12 @@ interface DBLectureItem {
 
 export default function LectureWatchPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const lectureId = params.id as string;
+  // URL에서 시작 아이템 ID 확인
+  const initialItemId = searchParams.get('item')
+    ? Number(searchParams.get('item'))
+    : null;
 
   const [isLoading, setIsLoading] = useState(true);
   const [lecture, setLecture] = useState<Lecture | null>(null);
@@ -129,21 +134,38 @@ export default function LectureWatchPage() {
     fetchLectureData();
   }, [lectureId]);
 
-  // 초기 아이템 설정
+  // 초기 아이템 설정 (URL에서 아이템 ID가 있으면 그걸 사용, 없으면 이전에 본 아이템 또는 첫 아이템)
   useEffect(() => {
-    if (allItems.length > 0 && !currentItem) {
-      const lastWatchedItemId = lastWatchedItems[lectureId];
-      const initialItem = lastWatchedItemId
-        ? allItems.find((item) => item.id === lastWatchedItemId)
-        : allItems[0];
+    if (allItems.length > 0) {
+      // 아직 currentItem이 설정되지 않았거나,
+      // URL의 initialItemId가 있는 경우 (페이지 전환 시 URL 쿼리로 들어온 경우)
+      if (!currentItem || initialItemId) {
+        if (initialItemId) {
+          // URL에 지정된 아이템 ID가 있으면 그 아이템으로 설정
+          const urlSpecifiedItem = allItems.find(
+            (item) => item.id === initialItemId
+          );
+          if (urlSpecifiedItem) {
+            setCurrentItem(urlSpecifiedItem);
+            return;
+          }
+        }
 
-      if (initialItem) {
-        setCurrentItem(initialItem);
-      } else if (allItems[0]) {
-        setCurrentItem(allItems[0]);
+        // URL에 지정된 아이템이 없거나 찾을 수 없는 경우,
+        // 마지막으로 본 아이템을 찾음
+        const lastWatchedItemId = lastWatchedItems[lectureId];
+        const initialItem = lastWatchedItemId
+          ? allItems.find((item) => item.id === lastWatchedItemId)
+          : allItems[0];
+
+        if (initialItem) {
+          setCurrentItem(initialItem);
+        } else if (allItems[0]) {
+          setCurrentItem(allItems[0]);
+        }
       }
     }
-  }, [allItems, lectureId, currentItem, lastWatchedItems]);
+  }, [allItems, lectureId, currentItem, lastWatchedItems, initialItemId]);
 
   // 현재 아이템이 변경될 때 이전/다음 아이템 설정 및 로컬 스토리지 업데이트
   useEffect(() => {
@@ -179,7 +201,7 @@ export default function LectureWatchPage() {
         }
       }
     }
-  }, [currentItem, allItems, lectureId]); // lastWatchedItems 제외
+  }, [currentItem, allItems, lectureId, lastWatchedItems, setLastWatchedItems]);
 
   // 나머지 핸들러 함수 및 렌더링 코드는 동일
   const handleItemSelect = (item: LectureItem) => {
@@ -223,6 +245,23 @@ export default function LectureWatchPage() {
     setShowCompletionModal(true);
   };
 
+  // 비디오 완료 시 현재 아이템을 완료로 표시하는 함수
+  const handleVideoComplete = () => {
+    if (currentItem) {
+      const lectureCompleted = completedItems[lectureId] || [];
+
+      if (!lectureCompleted.includes(currentItem.id)) {
+        const updatedCompleted = [...lectureCompleted, currentItem.id];
+        const newCompletedItems = { ...completedItems };
+        newCompletedItems[lectureId] = updatedCompleted;
+        setCompletedItems(newCompletedItems);
+      }
+    }
+
+    // 다음 아이템으로 이동
+    handleNext();
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -248,7 +287,9 @@ export default function LectureWatchPage() {
         <VideoPlayer
           contentUrl={currentItem.content_url || ''}
           type={currentItem.type}
-          onComplete={handleNext}
+          onComplete={
+            currentItem.type === 'video' ? handleVideoComplete : undefined
+          }
           isLastItem={nextItemId === null}
         />
       </div>
