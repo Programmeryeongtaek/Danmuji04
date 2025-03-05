@@ -1,8 +1,8 @@
 'use client';
 
 import ProgressBar from '@/components/common/ProgressBar';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { LectureItem, LectureSection } from '@/types/lectureFrom';
+import { getCompletedItems } from '@/utils/supabase/client';
 import {
   Check,
   ChevronDown,
@@ -27,13 +27,12 @@ export default function LectureCurriculum({
   lectureId,
   onItemSelect,
 }: LectureCurriculumProps) {
-  // 완료된 강의 항목 저장
-  const [completedItems, setCompletedItems] = useLocalStorage<
-    Record<string, number[]>
-  >('completedLectureItems', {});
-
-  // 현재 강의의 완료된 항목들
-  const currentLectureCompleted = completedItems[lectureId] || [];
+  // 완료된 항목 상태 관리 (로컬 스토리지 대신 일반 상태 사용)
+  const [completedItems, setCompletedItems] = useState<number[]>([]);
+  const [progressState, setProgressState] = useState({
+    completed: 0,
+    total: 0,
+  });
 
   const [expandedSections, setExpandedSections] = useState<
     Record<number, boolean>
@@ -48,11 +47,19 @@ export default function LectureCurriculum({
     )
   );
 
-  // 진행률 계산을 위한 상태 추가
-  const [progressState, setProgressState] = useState({
-    completed: 0,
-    total: 0,
-  });
+  // 서버에서 완료된 항목 데이터 가져오기
+  useEffect(() => {
+    async function loadCompletedItems() {
+      try {
+        const items = await getCompletedItems(Number(lectureId));
+        setCompletedItems(items);
+      } catch (error) {
+        console.error('완료된 아이템 로드 실패:', error);
+      }
+    }
+
+    loadCompletedItems();
+  }, [lectureId]);
 
   // 모든 아이템 수와 완료된 아이템 수 계산
   useEffect(() => {
@@ -65,56 +72,12 @@ export default function LectureCurriculum({
     });
 
     setProgressState({
-      completed: currentLectureCompleted.length,
+      completed: completedItems.length,
       total: totalItems,
     });
-  }, [sections, currentLectureCompleted]);
+  }, [sections, completedItems]);
 
-  useEffect(() => {
-    // 초기 데이터 로딩 시 로그
-    console.log('로드된 섹션 데이터:', sections);
-
-    // 모든 강의 아이템의 duration 값 확인
-    sections.forEach((section) => {
-      section.lecture_items?.forEach((item) => {
-        console.log(
-          `아이템 ID ${item.id}, 타입: ${item.type}, 제목: ${item.title}, duration: ${item.duration}`
-        );
-      });
-    });
-  }, [sections]);
-
-  useEffect(() => {
-    // 모든 아이템의 시간 정보 로깅
-    sections.forEach((section) => {
-      section.lecture_items?.forEach((item) => {
-        console.log(
-          `강의 ID: ${item.id}, 제목: ${item.title}, 시간: ${item.duration}`
-        );
-      });
-    });
-  }, [sections]);
-
-  useEffect(() => {
-    if (currentItemId) {
-      // 모든 섹션을 순회하여 현재 아이템 찾기
-      let currentItem = null;
-
-      sections.forEach((section) => {
-        section.lecture_items?.forEach((item) => {
-          if (item.id === currentItemId) {
-            currentItem = item;
-          }
-        });
-      });
-
-      // 타입 단언 사용
-      if (currentItem && (currentItem as { type?: string }).type === 'video') {
-        markItemAsCompleted(currentItemId);
-      }
-    }
-  }, [currentItemId, sections]);
-
+  // 섹션 토글 함수
   const toggleSection = (sectionId: number) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -122,21 +85,9 @@ export default function LectureCurriculum({
     }));
   };
 
-  // 아이템을 완료 상태로 표시
-  const markItemAsCompleted = (itemId: number) => {
-    if (!currentLectureCompleted.includes(itemId)) {
-      const updatedCompleted = [...currentLectureCompleted, itemId];
-
-      // 객체를 직접 업데이트
-      const newCompletedItems = { ...completedItems };
-      newCompletedItems[lectureId] = updatedCompleted;
-      setCompletedItems(newCompletedItems);
-    }
-  };
-
   // 아이템이 완료되었는지 확인
   const isItemCompleted = (itemId: number) => {
-    return currentLectureCompleted.includes(itemId);
+    return completedItems.includes(itemId);
   };
 
   // 시간 형식 변환 (00:00 포맷)
@@ -223,14 +174,6 @@ export default function LectureCurriculum({
                       {item.type === 'video' && (
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                           <Clock className="h-3 w-3" />
-                          {/* 로그 추가 */}
-                          {console.log &&
-                            (() => {
-                              console.log(
-                                `아이템 ID: ${item.id}, duration: '${item.duration}'`
-                              );
-                              return null;
-                            })()}
                           {formatDuration(
                             item.duration && item.duration !== ''
                               ? item.duration

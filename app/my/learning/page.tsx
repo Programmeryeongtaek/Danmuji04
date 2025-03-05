@@ -3,11 +3,14 @@
 import Card from '@/components/common/Card';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Lecture } from '@/types/knowledge/lecture';
-import { createClient } from '@/utils/supabase/client';
+import {
+  createClient,
+  getCompletedItems,
+  getLastWatchedItem,
+} from '@/utils/supabase/client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface EnrolledLecture extends Lecture {
   enrollment_status: 'active' | 'cancelled';
@@ -21,19 +24,15 @@ export default function MyLearningPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
-  // 완료된 아이템 관리를 위한 로컬 스토리지 사용
-  const [completedItems] = useLocalStorage<Record<string, number[]>>(
-    'completedLectureItems',
-    {}
-  );
-
-  // 마지막으로 시청한 아이템 정보
-  const [lastWatchedItems] = useLocalStorage<Record<string, number>>(
-    'lastWatchedItems',
-    {}
-  );
+  // 데이터 로딩 상태를 추적할 ref
+  const isDataLoadedRef = useRef(false);
+  // lastWatchedItems 캐시
+  const lastWatchedItemsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
+    // 이미 데이터를 로드했으면 중복 실행 방지
+    if (isDataLoadedRef.current) return;
+
     const loadEnrolledLectures = async () => {
       try {
         setIsLoading(true);
@@ -75,14 +74,31 @@ export default function MyLearningPage() {
 
         // 4. 모든 강의의 섹션과 아이템 정보 가져오기
         const lectureItemCounts: Record<number, number> = {};
+        const completedItemsMap: Record<string, number[]> = {};
+        const lastWatchedItemsMap: Record<string, number> = {};
 
-        // 각 강의별 섹션 및 아이템 정보 가져오기 (병렬로 처리)
+        // 각 강의별 섹션, 아이템 및 진도 정보 가져오기 (병렬로 처리)
         await Promise.all(
           lectureIds.map(async (lectureId) => {
-            const { data: sections } = await supabase
-              .from('lecture_sections')
-              .select('id, lecture_items(id)')
-              .eq('lecture_id', lectureId);
+            const [
+              sectionsResponse,
+              completedItemsResponse,
+              lastWatchedResponse,
+            ] = await Promise.all([
+              // 섹션 조회
+              supabase
+                .from('lecture_sections')
+                .select('id, lecture_items(id)')
+                .eq('lecture_id', lectureId),
+
+              // 완료된 아이템 조회
+              getCompletedItems(lectureId),
+
+              // 마지막 시청 위치 조회
+              getLastWatchedItem(lectureId),
+            ]);
+
+            const sections = sectionsResponse.data;
 
             if (sections && sections.length > 0) {
               // 모든 섹션의 모든 아이템 수 계산
@@ -92,8 +108,20 @@ export default function MyLearningPage() {
 
               lectureItemCounts[lectureId] = totalItems;
             }
+
+            // 완료된 아이템 저장
+            completedItemsMap[lectureId.toString()] =
+              completedItemsResponse || [];
+
+            // 마지막 시청 위치 저장
+            if (lastWatchedResponse) {
+              lastWatchedItemsMap[lectureId.toString()] = lastWatchedResponse;
+            }
           })
         );
+
+        // lastWatchedItems 업데이트
+        lastWatchedItemsRef.current = lastWatchedItemsMap;
 
         // 5. 진도율 계산하여 강의 정보 병합
         const lecturesWithProgress = lectures.map((lecture) => {
@@ -101,8 +129,9 @@ export default function MyLearningPage() {
             (e) => e.lecture_id === lecture.id
           );
           const totalItems = lectureItemCounts[lecture.id] || 1; // 0으로 나누기 방지
-          const completedCount = (completedItems[lecture.id.toString()] || [])
-            .length;
+          const completedCount = (
+            completedItemsMap[lecture.id.toString()] || []
+          ).length;
           const progress = Math.floor((completedCount / totalItems) * 100);
 
           return {
@@ -113,6 +142,7 @@ export default function MyLearningPage() {
         });
 
         setEnrolledLectures(lecturesWithProgress);
+        isDataLoadedRef.current = true; // 데이터 로드 완료 표시
       } catch (error) {
         console.error('수강 중인 강의 목록을 불러오는데 실패했습니다.', error);
         showToast(
@@ -125,11 +155,11 @@ export default function MyLearningPage() {
     };
 
     loadEnrolledLectures();
-  }, [showToast, completedItems]);
+  }, [showToast]); // 최소한의 의존성만 유지
 
   // 이어서 학습하기 링크 생성 함수
   const getContinueLearningLink = (lectureId: number) => {
-    const lastItemId = lastWatchedItems[lectureId.toString()];
+    const lastItemId = lastWatchedItemsRef.current[lectureId.toString()];
 
     if (lastItemId) {
       // 마지막 시청 아이템이 있으면 해당 아이템으로 이동

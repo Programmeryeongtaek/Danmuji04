@@ -1,13 +1,19 @@
 'use client';
 
+import { useToast } from '@/components/common/Toast/Context';
 import CompletionModal from '@/components/Course/[slug]/[videoId]/CompletionModal';
 import LectureCurriculum from '@/components/knowledge/lecture/watch/LectureCurriculum';
 import NavigationButtons from '@/components/knowledge/lecture/watch/NavigationButtons';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Lecture } from '@/types/knowledge/lecture';
 import { LectureItem, LectureSection } from '@/types/lectureFrom';
-import { createClient } from '@/utils/supabase/client';
+import {
+  createClient,
+  getCompletedItems,
+  getLastWatchedItem,
+  markItemAsCompleted,
+  saveLastWatchedItem,
+} from '@/utils/supabase/client';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -36,6 +42,8 @@ export default function LectureWatchPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const lectureId = params.id as string;
+  const { showToast } = useToast();
+
   // URL에서 시작 아이템 ID 확인
   const initialItemId = searchParams.get('item')
     ? Number(searchParams.get('item'))
@@ -49,40 +57,14 @@ export default function LectureWatchPage() {
   const [prevItemId, setPrevItemId] = useState<number | null>(null);
   const [nextItemId, setNextItemId] = useState<number | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [completedCourses, setCompletedCourses] = useLocalStorage<string[]>(
-    'completedCourses',
-    []
-  );
 
-  // 완료된 항목 관리를 위한 useLocalStorage 사용
-  const [completedItems, setCompletedItems] = useLocalStorage<
-    Record<string, number[]>
-  >('completedLectureItems', {});
+  // 로컬 스토리지 대신 일반 state 사용
+  const [completedItems, setCompletedItems] = useState<number[]>([]);
+  const [isCourseCompleted, setIsCourseCompleted] = useState(false);
 
-  // 현재 코스가 완료되었는지 확인
-  const isCourseCompleted = completedCourses.includes(lectureId);
-
-  // 마지막 강의 완료 처리 함수
-  const handleCourseCompletion = () => {
-    setShowCompletionModal(true);
-
-    // 아직 완료되지 않은 경우에만 완료 처리
-    if (!isCourseCompleted) {
-      // 완료된 코스 목록에 현재 코스 ID 추가
-      setCompletedCourses([...completedCourses, lectureId]);
-    }
-  };
-
-  // useLocalStorage 훅 사용
-  const [lastWatchedItems, setLastWatchedItems] = useLocalStorage<
-    Record<string, number>
-  >('lastWatchedItems', {});
-
-  // 업데이트 중인지 추적하는 ref
+  // 업데이트 상태를 추적하는 ref - 상태 변경으로 리렌더링을 일으키지 않도록
   const isUpdatingRef = useRef(false);
-
-  // 모든 아이템들의 플랫한 리스트 생성
-  const allItems = sections.flatMap((section) => section.lecture_items || []);
+  const lastWatchedItemRef = useRef<number | null>(null);
 
   // 강의 데이터 로드
   useEffect(() => {
@@ -134,132 +116,203 @@ export default function LectureWatchPage() {
     fetchLectureData();
   }, [lectureId]);
 
-  // 초기 아이템 설정 (URL에서 아이템 ID가 있으면 그걸 사용, 없으면 이전에 본 아이템 또는 첫 아이템)
+  // 모든 아이템들의 플랫한 리스트 생성 - 이 값을 메모이제이션하여 의존성 문제 방지
+  const allItems = sections.flatMap((section) => section.lecture_items || []);
+
+  // 진도 데이터 로드 - sections이 로드된 후 한 번만 실행하도록 수정
   useEffect(() => {
-    if (allItems.length > 0) {
-      // 아직 currentItem이 설정되지 않았거나,
-      // URL의 initialItemId가 있는 경우 (페이지 전환 시 URL 쿼리로 들어온 경우)
-      if (!currentItem || initialItemId) {
-        if (initialItemId) {
-          // URL에 지정된 아이템 ID가 있으면 그 아이템으로 설정
-          const urlSpecifiedItem = allItems.find(
-            (item) => item.id === initialItemId
-          );
-          if (urlSpecifiedItem) {
-            setCurrentItem(urlSpecifiedItem);
-            return;
+    const loadProgressData = async () => {
+      if (isLoading || allItems.length === 0) return;
+
+      try {
+        // 완료된 아이템 목록 가져오기
+        const items = await getCompletedItems(Number(lectureId));
+        setCompletedItems(items || []);
+
+        // 모든 아이템이 완료되었는지 확인
+        if (items.length > 0 && items.length === allItems.length) {
+          setIsCourseCompleted(true);
+        }
+      } catch (error) {
+        console.error('진도 데이터 로드 실패:', error);
+      }
+    };
+
+    loadProgressData();
+  }, [lectureId, isLoading, allItems.length]);
+
+  // 초기 아이템 설정 - sections이 로드된 후 한 번만 실행
+  useEffect(() => {
+    const initializeCurrentItem = async () => {
+      if (
+        isLoading ||
+        sections.length === 0 ||
+        allItems.length === 0 ||
+        currentItem
+      ) {
+        return;
+      }
+
+      let itemToUse = null;
+
+      // 1. URL에서 지정된 아이템 체크
+      if (initialItemId) {
+        itemToUse = allItems.find((item) => item.id === initialItemId);
+      }
+
+      // 2. 마지막 시청 아이템 체크
+      if (!itemToUse) {
+        try {
+          const lastItemId = await getLastWatchedItem(Number(lectureId));
+          if (lastItemId) {
+            itemToUse = allItems.find((item) => item.id === lastItemId);
           }
-        }
-
-        // URL에 지정된 아이템이 없거나 찾을 수 없는 경우,
-        // 마지막으로 본 아이템을 찾음
-        const lastWatchedItemId = lastWatchedItems[lectureId];
-        const initialItem = lastWatchedItemId
-          ? allItems.find((item) => item.id === lastWatchedItemId)
-          : allItems[0];
-
-        if (initialItem) {
-          setCurrentItem(initialItem);
-        } else if (allItems[0]) {
-          setCurrentItem(allItems[0]);
+        } catch (error) {
+          console.error('마지막 시청 위치 조회 실패:', error);
         }
       }
-    }
-  }, [allItems, lectureId, currentItem, lastWatchedItems, initialItemId]);
 
-  // 현재 아이템이 변경될 때 이전/다음 아이템 설정 및 로컬 스토리지 업데이트
+      // 3. 첫 번째 아이템 사용
+      if (!itemToUse && allItems.length > 0) {
+        itemToUse = allItems[0];
+      }
+
+      if (itemToUse) {
+        setCurrentItem(itemToUse);
+      }
+    };
+
+    initializeCurrentItem();
+  }, [isLoading, sections, initialItemId, allItems, currentItem, lectureId]);
+
+  // 현재 아이템이 변경될 때 이전/다음 아이템 설정 및 마지막 시청 위치 저장
   useEffect(() => {
-    if (currentItem && allItems.length > 0) {
-      const currentIndex = allItems.findIndex(
-        (item) => item.id === currentItem.id
-      );
+    if (!currentItem || allItems.length === 0) return;
 
-      setPrevItemId(currentIndex > 0 ? allItems[currentIndex - 1].id : null);
-      setNextItemId(
-        currentIndex < allItems.length - 1
-          ? allItems[currentIndex + 1].id
-          : null
-      );
+    const currentIndex = allItems.findIndex(
+      (item) => item.id === currentItem.id
+    );
 
-      // useLocalStorage 업데이트 (무한 루프 방지를 위한 조건)
-      if (!isUpdatingRef.current) {
-        const itemId = currentItem.id;
-        const key = lectureId;
+    // 이전/다음 아이템 ID 설정
+    setPrevItemId(currentIndex > 0 ? allItems[currentIndex - 1].id : null);
+    setNextItemId(
+      currentIndex < allItems.length - 1 ? allItems[currentIndex + 1].id : null
+    );
 
-        // 값이 변경된 경우에만 업데이트
-        if (lastWatchedItems[key] !== itemId) {
-          isUpdatingRef.current = true;
+    // 마지막 시청 위치를 서버에 저장 (중복 API 호출 방지)
+    if (
+      lastWatchedItemRef.current !== currentItem.id &&
+      !isUpdatingRef.current
+    ) {
+      isUpdatingRef.current = true;
+      lastWatchedItemRef.current = currentItem.id;
 
-          const newItems = { ...lastWatchedItems };
-          newItems[key] = itemId;
-          setLastWatchedItems(newItems);
-
-          // 다음 렌더링 사이클에서 플래그 초기화
-          setTimeout(() => {
-            isUpdatingRef.current = false;
-          }, 0);
-        }
-      }
+      saveLastWatchedItem(Number(lectureId), currentItem.id)
+        .then(() => {
+          console.log('마지막 시청 위치 저장 성공:', currentItem.id);
+        })
+        .catch((error) => {
+          console.error('마지막 시청 위치 저장 실패:', error);
+        })
+        .finally(() => {
+          isUpdatingRef.current = false;
+        });
     }
-  }, [currentItem, allItems, lectureId, lastWatchedItems, setLastWatchedItems]);
+  }, [currentItem, allItems, lectureId]);
 
-  // 나머지 핸들러 함수 및 렌더링 코드는 동일
+  // 아이템 선택 핸들러
   const handleItemSelect = (item: LectureItem) => {
-    setCurrentItem(item);
+    if (currentItem?.id !== item.id) {
+      setCurrentItem(item);
+    }
   };
 
+  // 이전 아이템으로 이동
   const handlePrevious = () => {
-    if (prevItemId !== null) {
-      const prevItem = allItems.find((item) => item.id === prevItemId);
-      if (prevItem) setCurrentItem(prevItem);
+    if (!prevItemId) return;
+
+    const prevItem = allItems.find((item) => item.id === prevItemId);
+    if (prevItem) {
+      setCurrentItem(prevItem);
     }
   };
 
+  // 다음 아이템으로 이동
   const handleNext = () => {
-    if (nextItemId !== null) {
-      const nextItem = allItems.find((item) => item.id === nextItemId);
-      if (nextItem) setCurrentItem(nextItem);
+    if (!nextItemId) return;
+
+    const nextItem = allItems.find((item) => item.id === nextItemId);
+    if (nextItem) {
+      setCurrentItem(nextItem);
     }
   };
 
+  // 완료 모달 닫기 및 다음 이동
   const handleModalNextClick = () => {
     setShowCompletionModal(false);
     handleNext();
   };
 
-  // 텍스트 콘텐츠 완료 처리 함수
-  const handleTextComplete = () => {
-    // 현재 아이템을 완료로 표시
-    if (currentItem) {
-      const lectureCompleted = completedItems[lectureId] || [];
+  // 코스 완료 처리
+  const handleCourseCompletion = () => {
+    setShowCompletionModal(true);
+    setIsCourseCompleted(true);
+  };
 
-      if (!lectureCompleted.includes(currentItem.id)) {
-        const updatedCompleted = [...lectureCompleted, currentItem.id];
-        const newCompletedItems = { ...completedItems };
-        newCompletedItems[lectureId] = updatedCompleted;
-        setCompletedItems(newCompletedItems);
-      }
+  // 아이템 완료 처리 (서버 API 호출)
+  const markItemComplete = async (itemId: number) => {
+    if (completedItems.includes(itemId) || isUpdatingRef.current) return;
+
+    try {
+      isUpdatingRef.current = true;
+      await markItemAsCompleted(Number(lectureId), itemId);
+
+      // 상태 업데이트
+      setCompletedItems((prev) => {
+        const newCompletedItems = [...prev, itemId];
+
+        // 모든 아이템이 완료되었는지 확인
+        if (
+          allItems.length > 0 &&
+          newCompletedItems.length === allItems.length
+        ) {
+          setIsCourseCompleted(true);
+        }
+
+        return newCompletedItems;
+      });
+    } catch (error) {
+      console.error('아이템 완료 처리 실패:', error);
+      showToast('진도 저장에 실패했습니다.', 'error');
+    } finally {
+      isUpdatingRef.current = false;
     }
+  };
+
+  // 비디오 완료 처리
+  const handleVideoComplete = () => {
+    if (!currentItem) return;
+
+    // 아이템 완료 처리
+    markItemComplete(currentItem.id);
+
+    // 다음 아이템으로 이동 또는 코스 완료 처리
+    if (nextItemId === null) {
+      handleCourseCompletion();
+    } else {
+      handleNext();
+    }
+  };
+
+  // 텍스트 완료 처리
+  const handleTextComplete = () => {
+    if (!currentItem) return;
+
+    // 아이템 완료 처리
+    markItemComplete(currentItem.id);
 
     // 모달 표시
     setShowCompletionModal(true);
-  };
-
-  // 비디오 완료 시 현재 아이템을 완료로 표시하는 함수
-  const handleVideoComplete = () => {
-    if (currentItem) {
-      const lectureCompleted = completedItems[lectureId] || [];
-
-      if (!lectureCompleted.includes(currentItem.id)) {
-        const updatedCompleted = [...lectureCompleted, currentItem.id];
-        const newCompletedItems = { ...completedItems };
-        newCompletedItems[lectureId] = updatedCompleted;
-        setCompletedItems(newCompletedItems);
-      }
-    }
-
-    // 다음 아이템으로 이동
-    handleNext();
   };
 
   if (isLoading) {
@@ -287,9 +340,7 @@ export default function LectureWatchPage() {
         <VideoPlayer
           contentUrl={currentItem.content_url || ''}
           type={currentItem.type}
-          onComplete={
-            currentItem.type === 'video' ? handleVideoComplete : undefined
-          }
+          onComplete={handleVideoComplete}
           isLastItem={nextItemId === null}
         />
       </div>

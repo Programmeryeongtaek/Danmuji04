@@ -22,6 +22,74 @@ export function createClient() {
     }
   })
 }
+// 강의 아이템 완료 표시
+export async function markItemAsCompleted(lectureId: number, itemId: number) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  return await supabase
+    .from('lecture_progress')
+    .upsert({
+      user_id: user.id,
+      lecture_id: lectureId,
+      item_id: itemId,
+      progress: true,
+      updated_at: new Date().toISOString()
+    })
+}
+
+// 마지막 시청 위치 저장
+export async function saveLastWatchedItem(lectureId: number, itemId: number) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  return await supabase
+    .from('last_watched_items')
+    .upsert({
+      user_id: user.id,
+      lecture_id: lectureId,
+      item_id: itemId,
+      updated_at: new Date().toISOString()
+    });
+}
+
+// 완료된 강의 아이템 조회
+export async function getCompletedItems(lectureId: number) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('lecture_progress')
+    .select('item_id')
+    .eq('user_id', user.id)
+    .eq('lecture_id', lectureId)
+    .eq('completed', true);
+
+    return data?.map(item => item.item_id) || [];
+}
+
+// 마지막 시청 위치 조회
+export async function getLastWatchedItem(letctureId: number) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from('last_watched_items')
+    .select('item_id')
+    .eq('user_id', user.id)
+    .eq('lecture_id', letctureId)
+    .single();
+
+  return data?.item_id || null;
+}
 
 // 강의 관련 함수들
 export async function fetchLectures() {
