@@ -1,5 +1,6 @@
 'use client';
 
+import CompletionModal from '@/components/Course/[slug]/[videoId]/CompletionModal';
 import LectureCurriculum from '@/components/knowledge/lecture/watch/LectureCurriculum';
 import NavigationButtons from '@/components/knowledge/lecture/watch/NavigationButtons';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
@@ -42,6 +43,30 @@ export default function LectureWatchPage() {
   const [showCurriculum, setShowCurriculum] = useState(true);
   const [prevItemId, setPrevItemId] = useState<number | null>(null);
   const [nextItemId, setNextItemId] = useState<number | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completedCourses, setCompletedCourses] = useLocalStorage<string[]>(
+    'completedCourses',
+    []
+  );
+
+  // 완료된 항목 관리를 위한 useLocalStorage 사용
+  const [completedItems, setCompletedItems] = useLocalStorage<
+    Record<string, number[]>
+  >('completedLectureItems', {});
+
+  // 현재 코스가 완료되었는지 확인
+  const isCourseCompleted = completedCourses.includes(lectureId);
+
+  // 마지막 강의 완료 처리 함수
+  const handleCourseCompletion = () => {
+    setShowCompletionModal(true);
+
+    // 아직 완료되지 않은 경우에만 완료 처리
+    if (!isCourseCompleted) {
+      // 완료된 코스 목록에 현재 코스 ID 추가
+      setCompletedCourses([...completedCourses, lectureId]);
+    }
+  };
 
   // useLocalStorage 훅 사용
   const [lastWatchedItems, setLastWatchedItems] = useLocalStorage<
@@ -175,6 +200,29 @@ export default function LectureWatchPage() {
     }
   };
 
+  const handleModalNextClick = () => {
+    setShowCompletionModal(false);
+    handleNext();
+  };
+
+  // 텍스트 콘텐츠 완료 처리 함수
+  const handleTextComplete = () => {
+    // 현재 아이템을 완료로 표시
+    if (currentItem) {
+      const lectureCompleted = completedItems[lectureId] || [];
+
+      if (!lectureCompleted.includes(currentItem.id)) {
+        const updatedCompleted = [...lectureCompleted, currentItem.id];
+        const newCompletedItems = { ...completedItems };
+        newCompletedItems[lectureId] = updatedCompleted;
+        setCompletedItems(newCompletedItems);
+      }
+    }
+
+    // 모달 표시
+    setShowCompletionModal(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -200,6 +248,8 @@ export default function LectureWatchPage() {
         <VideoPlayer
           contentUrl={currentItem.content_url || ''}
           type={currentItem.type}
+          onComplete={handleNext}
+          isLastItem={nextItemId === null}
         />
       </div>
 
@@ -211,9 +261,18 @@ export default function LectureWatchPage() {
       {/* 이전/다음 버튼 */}
       <NavigationButtons
         onPrevious={handlePrevious}
-        onNext={handleNext}
+        onNext={
+          nextItemId === null
+            ? handleCourseCompletion
+            : currentItem?.type === 'text'
+              ? handleTextComplete
+              : handleNext
+        }
         hasPrevious={prevItemId !== null}
         hasNext={nextItemId !== null}
+        isLastItem={nextItemId === null}
+        currentItemType={currentItem.type}
+        isCourseCompleted={isCourseCompleted}
       />
 
       {/* 커리큘럼 토글 */}
@@ -232,6 +291,16 @@ export default function LectureWatchPage() {
           currentItemId={currentItem.id}
           onItemSelect={handleItemSelect}
           lectureId={lectureId}
+        />
+      )}
+
+      {/* 완료 모달 */}
+      {showCompletionModal && (
+        <CompletionModal
+          isOpen={showCompletionModal}
+          onClose={() => setShowCompletionModal(false)}
+          isLastVideo={nextItemId === null}
+          onNextVideo={handleModalNextClick}
         />
       )}
     </div>
