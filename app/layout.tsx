@@ -24,6 +24,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const isSignUpPage = pathname === '/signup';
   const lectureCreate = pathname === '/my/lectureCreate';
   const editLecture = pathname === '/my/lectures/[id]/edit';
+  const learning = pathname === '/my/learning';
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
 
@@ -75,7 +76,8 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             {!isLecturePage &&
               !isSettingsPage &&
               !lectureCreate &&
-              !editLecture && <Navbar />}
+              !editLecture &&
+              !learning && <Navbar />}
           </div>
         </Toast.Provider>
       </body>

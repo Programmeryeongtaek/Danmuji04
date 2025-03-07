@@ -23,6 +23,286 @@ export function createClient() {
   })
 }
 
+// 아이템 완료 표시 함수 - RPC 사용
+export async function markItemAsCompleted(lectureId: number, itemId: number): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  try {
+    const { error } = await supabase.rpc(
+      'mark_item_completed',
+      {
+        p_user_id: user.id,
+        p_lecture_id: lectureId,
+        p_item_id: itemId
+      }
+    );
+
+    if (error) {
+      console.error('아이템 완료 처리 중 오류:', error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('완료 상태 저장 실패:', error);
+    throw error;
+  }
+}
+
+// 대체 함수 (RPC가 동작하지 않을 경우를 대비)
+export async function markItemAsCompletedFallback(lectureId: number, itemId: number): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  try {
+    // 트랜잭션 방식으로 처리
+    // 1. 먼저 항목이 존재하는지 확인
+    const { data: existingItem } = await supabase
+      .from('lecture_progress')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('lecture_id', lectureId)
+      .eq('item_id', itemId)
+      .maybeSingle();
+
+    if (existingItem) {
+      // 2a. 항목이 존재하면 업데이트
+      await supabase
+        .from('lecture_progress')
+        .update({
+          completed: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingItem.id);
+    } else {
+      // 2b. 항목이 없으면 새로 생성
+      await supabase
+        .from('lecture_progress')
+        .insert({
+          user_id: user.id,
+          lecture_id: lectureId,
+          item_id: itemId,
+          completed: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('완료 상태 저장 실패:', error);
+    throw error;
+  }
+}
+
+// 마지막 시청 위치 저장
+export async function saveLastWatchedItem(lectureId: number, itemId: number) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  try {
+    // 먼저 기존 레코드 확인
+    const { data: existing } = await supabase
+      .from('last_watched_items')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('lecture_id', lectureId)
+      .maybeSingle();
+
+    if (existing) {
+      // 기존 레코드 업데이트
+      return await supabase
+        .from('last_watched_items')
+        .update({ 
+          item_id: itemId,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', existing.id);
+    } else {
+      // 새 레코드 삽입
+      return await supabase
+        .from('last_watched_items')
+        .insert({
+          user_id: user.id,
+          lecture_id: lectureId,
+          item_id: itemId,
+          updated_at: new Date().toISOString()
+        });
+    }
+  } catch (error) {
+    console.error('마지막 시청 위치 저장 실패:', error);
+    throw error;
+  }
+}
+
+// 완료된 강의 아이템 조회
+export async function getCompletedItems(lectureId: number) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('lecture_progress')
+    .select('item_id')
+    .eq('user_id', user.id)
+    .eq('lecture_id', lectureId)
+    .eq('completed', true);
+
+    return data?.map(item => item.item_id) || [];
+}
+
+// 마지막 시청 위치 조회
+export async function getLastWatchedItem(lectureId: number) {
+  const supabase = createClient();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    console.log(`마지막 시청 위치 조회 시도 - 강의 ID: ${lectureId}, 사용자 ID: ${user.id}`);
+
+    // single() 대신 maybeSingle() 사용하여 데이터가 없을 때 오류가 아닌 null 반환
+    const { data, error } = await supabase
+      .from('last_watched_items')
+      .select('item_id')
+      .eq('user_id', user.id)
+      .eq('lecture_id', lectureId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('마지막 시청 위치 조회 중 오류:', error);
+      return null;
+    }
+
+    console.log('마지막 시청 위치 조회 결과:', data); // 디버깅용
+    return data?.item_id || null;
+  } catch (error) {
+    console.error('마지막 시청 위치 조회 중 예외 발생:', error);
+    return null;
+  }
+}
+
+// 사용자의 수강 진행률 계산 함수
+export async function calculateEnrollmentProgress(lectureId: number, userId: string): Promise<number> {
+  const supabase = createClient();
+  
+  try {
+    // SQL 프로시저 호출 (RPC)
+    const { data, error } = await supabase.rpc(
+      'calculate_enrollment_progress',
+      { 
+        p_lecture_id: lectureId, 
+        p_user_id: userId 
+      }
+    );
+    
+    if (error) {
+      console.error('RPC 호출 오류:', error);
+      // RPC 오류 시 기존 방식으로 계산 (폴백 메커니즘)
+      return calculateEnrollmentProgressFallback(lectureId, userId);
+    }
+    
+    return data || 0;
+  } catch (error) {
+    console.error('강의 진행률 계산 오류:', error);
+    return calculateEnrollmentProgressFallback(lectureId, userId);
+  }
+}
+
+// 폴백 메커니즘을 위한 기존 계산 방식 보존
+async function calculateEnrollmentProgressFallback(lectureId: number, userId: string): Promise<number> {
+  const supabase = createClient();
+  
+  try {
+    // 1. 해당 강의의 모든 아이템 가져오기
+    const { data: sections, error: sectionsError } = await supabase
+      .from('lecture_sections')
+      .select('id')
+      .eq('lecture_id', lectureId);
+      
+    if (sectionsError) throw sectionsError;
+    if (!sections || sections.length === 0) return 0;
+    
+    const sectionIds = sections.map(s => s.id);
+    
+    const { data: lectureItems, error: itemsError } = await supabase
+      .from('lecture_items')
+      .select('id')
+      .in('section_id', sectionIds);
+    
+    if (itemsError) throw itemsError;
+    if (!lectureItems || lectureItems.length === 0) return 0;
+    
+    const totalItems = lectureItems.length;
+    
+    // 2. 사용자의 완료된 아이템 가져오기
+    const { data: completedItems, error: progressError } = await supabase
+      .from('lecture_progress')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('lecture_id', lectureId)
+      .eq('completed', true);
+    
+    if (progressError) throw progressError;
+    if (!completedItems) return 0;
+    
+    const completedCount = completedItems.length;
+    
+    // 진행률 계산 (퍼센트)
+    return Math.round((completedCount / totalItems) * 100);
+  } catch (error) {
+    console.error('강의 진행률 폴백 계산 오류:', error);
+    return 0;
+  }
+}
+
+// 수강 취소 함수 개선
+export async function cancelEnrollment(lectureId: number): Promise<{ success: boolean; message: string }> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { success: false, message: '로그인이 필요합니다.' };
+  }
+
+  try {
+    // 진행률 확인
+    const progress = await calculateEnrollmentProgress(lectureId, user.id);
+    
+    // 진행률이 20% 이상이면 취소 불가
+    if (progress >= 20) {
+      return { success: false, message: '수강률이 20% 이상인 강의는 취소할 수 없습니다.' };
+    }
+    
+    // 수강 상태 확인
+    const { data: enrollment } = await getActiveEnrollment(lectureId, user.id);
+    if (!enrollment) {
+      return { success: false, message: '수강 중인 강의가 아닙니다.' };
+    }
+
+    // 수강 취소
+    const { error } = await updateEnrollmentStatus(lectureId, user.id, 'cancelled');
+    if (error) throw error;
+
+    // 수강생 수 업데이트
+    const count = await getActiveEnrollmentCount(lectureId);
+    await updateLectureStudentCount(lectureId, count);
+    
+    return { success: true, message: '수강 취소가 완료되었습니다.' };
+  } catch (error) {
+    console.error('수강 취소 중 오류 발생:', error);
+    return { success: false, message: '오류가 발생했습니다. 다시 시도해주세요.' };
+  }
+}
+
 // 강의 관련 함수들
 export async function fetchLectures() {
   const supabase = createClient();
@@ -325,13 +605,44 @@ export async function enrollLecture(lectureId: number) {
   }
 
   try {
-    // 수강 신청
-    const { error: enrollError } = await insertEnrollment(lectureId, user.id);
-    if (enrollError) {
-      throw enrollError;
+    // 먼저 이미 등록된 수강 정보가 있는지 확인
+    const { data: existingEnrollment } = await supabase
+      .from('enrollments')
+      .select('id, status')
+      .eq('lecture_id', lectureId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    if (existingEnrollment) {
+      // 이미 수강 중이면 에러
+      if (existingEnrollment.status === 'active') {
+        throw new Error('이미 수강 중인 강의입니다.');
+      }
+      
+      // 취소된 수강 정보가 있으면 업데이트 (updated_at 필드 제거)
+      const { error: updateError } = await supabase
+        .from('enrollments')
+        .update({ 
+          status: 'active'
+        })
+        .eq('id', existingEnrollment.id);
+        
+      if (updateError) throw updateError;
+    } else {
+      // 등록된 정보가 없으면 새로 삽입
+      const { error: enrollError } = await supabase
+        .from('enrollments')
+        .insert({
+          lecture_id: lectureId,
+          user_id: user.id,
+          status: 'active',
+          payment_status: 'free'
+        });
+        
+      if (enrollError) throw enrollError;
     }
 
-    // 활성 수강생 수 조회
+    // 활성 수강생 수 조회 및 업데이트
     const { count, error: countError } = await supabase
       .from('enrollments')
       .select('*', { count: 'exact' })
@@ -581,28 +892,6 @@ export async function isFreeLecture(lectureId: number): Promise<boolean> {
   return data?.price === 0;
 }
 
-// 수강 취소
-export async function cancelEnrollment(lectureId: number) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('로그인이 필요합니다.');
-
-  // 무료 강의 여부 체크
-  const isFree = await isFreeLecture(lectureId);
-  if (!isFree) throw new Error('무료 강의만 취소할 수 있습니다.');
-
-  // 수강 상태 확인
-  const { data: enrollment } = await getActiveEnrollment(lectureId, user.id);
-  if (!enrollment) throw new Error('수강 중인 강의가 아닙니다.');
-
-  // 수강 취소
-  const { error } = await updateEnrollmentStatus(lectureId, user.id, 'cancelled');
-  if (error) throw error;
-
-  // 수강생 수 업데이트
-  const count = await getActiveEnrollmentCount(lectureId);
-  await updateLectureStudentCount(lectureId, count);
-}
 
 // 평균 별점 가져오기
 export async function fetchAverageRating(lectureId: number) {
