@@ -2,7 +2,6 @@
 
 import ProgressBar from '@/components/common/ProgressBar';
 import { LectureItem, LectureSection } from '@/types/lectureFrom';
-import { getCompletedItems } from '@/utils/supabase/client';
 import {
   Check,
   ChevronDown,
@@ -17,18 +16,17 @@ import { useEffect, useState } from 'react';
 interface LectureCurriculumProps {
   sections: LectureSection[];
   currentItemId: number;
-  lectureId: string;
   onItemSelect: (item: LectureItem) => void;
+  completedItems: number[]; // 부모로부터 완료된 항목 목록 전달받음
 }
 
 export default function LectureCurriculum({
   sections,
   currentItemId,
-  lectureId,
   onItemSelect,
+  completedItems, // 부모로부터 전달받은 props
 }: LectureCurriculumProps) {
   // 완료된 항목 상태 관리 (로컬 스토리지 대신 일반 상태 사용)
-  const [completedItems, setCompletedItems] = useState<number[]>([]);
   const [progressState, setProgressState] = useState({
     completed: 0,
     total: 0,
@@ -46,20 +44,6 @@ export default function LectureCurriculum({
       {} as Record<number, boolean>
     )
   );
-
-  // 서버에서 완료된 항목 데이터 가져오기
-  useEffect(() => {
-    async function loadCompletedItems() {
-      try {
-        const items = await getCompletedItems(Number(lectureId));
-        setCompletedItems(items);
-      } catch (error) {
-        console.error('완료된 아이템 로드 실패:', error);
-      }
-    }
-
-    loadCompletedItems();
-  }, [lectureId]);
 
   // 모든 아이템 수와 완료된 아이템 수 계산
   useEffect(() => {

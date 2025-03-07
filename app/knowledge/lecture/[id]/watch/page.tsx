@@ -59,8 +59,8 @@ export default function LectureWatchPage() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   // 로컬 스토리지 대신 일반 state 사용
-  const [completedItems, setCompletedItems] = useState<number[]>([]);
   const [isCourseCompleted, setIsCourseCompleted] = useState(false);
+  const [completedItems, setCompletedItems] = useState<number[]>([]);
 
   // 업데이트 상태를 추적하는 ref - 상태 변경으로 리렌더링을 일으키지 않도록
   const isUpdatingRef = useRef(false);
@@ -254,9 +254,16 @@ export default function LectureWatchPage() {
   };
 
   // 코스 완료 처리
-  const handleCourseCompletion = () => {
+  const handleCourseCompletion = async () => {
+    if (!currentItem) return;
+
+    // 현재 아이템이 완료되지 않았다면 완료 처리
+    if (!completedItems.includes(currentItem.id)) {
+      await markItemComplete(currentItem.id);
+    }
+
+    // 모달 표시
     setShowCompletionModal(true);
-    setIsCourseCompleted(true);
   };
 
   // 아이템 완료 처리 (서버 API 호출)
@@ -264,26 +271,30 @@ export default function LectureWatchPage() {
     if (completedItems.includes(itemId) || isUpdatingRef.current) return;
 
     try {
+      // 업데이트 중 플래그 설정
       isUpdatingRef.current = true;
-      await markItemAsCompleted(Number(lectureId), itemId);
 
-      // 상태 업데이트
+      // UI를 먼저 업데이트하여 사용자 경험 향상
       setCompletedItems((prev) => {
-        const newCompletedItems = [...prev, itemId];
+        const newItems = [...prev, itemId];
 
         // 모든 아이템이 완료되었는지 확인
-        if (
-          allItems.length > 0 &&
-          newCompletedItems.length === allItems.length
-        ) {
+        if (allItems.length > 0 && newItems.length === allItems.length) {
           setIsCourseCompleted(true);
         }
 
-        return newCompletedItems;
+        return newItems;
       });
+
+      // DB에 완료 상태 저장
+      await markItemAsCompleted(Number(lectureId), itemId);
     } catch (error) {
       console.error('아이템 완료 처리 실패:', error);
-      showToast('진도 저장에 실패했습니다.', 'error');
+
+      // 에러 발생 시 UI 상태 원복
+      setCompletedItems((prev) => prev.filter((id) => id !== itemId));
+
+      showToast('진도 저장에 실패했습니다. 다시 시도해주세요.', 'error');
     } finally {
       isUpdatingRef.current = false;
     }
@@ -361,10 +372,9 @@ export default function LectureWatchPage() {
               : handleNext
         }
         hasPrevious={prevItemId !== null}
-        hasNext={nextItemId !== null}
         isLastItem={nextItemId === null}
-        currentItemType={currentItem.type}
-        isCourseCompleted={isCourseCompleted}
+        isCurrentItemCompleted={completedItems.includes(currentItem.id)}
+        isCourseCompleted={isCourseCompleted} // 추가
       />
 
       {/* 커리큘럼 토글 */}
@@ -377,14 +387,12 @@ export default function LectureWatchPage() {
       </div>
 
       {/* 커리큘럼 */}
-      {showCurriculum && (
-        <LectureCurriculum
-          sections={sections}
-          currentItemId={currentItem.id}
-          onItemSelect={handleItemSelect}
-          lectureId={lectureId}
-        />
-      )}
+      <LectureCurriculum
+        sections={sections}
+        currentItemId={currentItem.id}
+        onItemSelect={handleItemSelect}
+        completedItems={completedItems} // 현재 completedItems 상태 전달
+      />
 
       {/* 완료 모달 */}
       {showCompletionModal && (

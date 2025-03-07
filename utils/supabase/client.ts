@@ -22,22 +22,82 @@ export function createClient() {
     }
   })
 }
-// 강의 아이템 완료 표시
-export async function markItemAsCompleted(lectureId: number, itemId: number) {
+
+// 아이템 완료 표시 함수 - RPC 사용
+export async function markItemAsCompleted(lectureId: number, itemId: number): Promise<boolean> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) throw new Error('로그인이 필요합니다');
 
-  return await supabase
-    .from('lecture_progress')
-    .upsert({
-      user_id: user.id,
-      lecture_id: lectureId,
-      item_id: itemId,
-      progress: true,
-      updated_at: new Date().toISOString()
-    })
+  try {
+    const { error } = await supabase.rpc(
+      'mark_item_completed',
+      {
+        p_user_id: user.id,
+        p_lecture_id: lectureId,
+        p_item_id: itemId
+      }
+    );
+
+    if (error) {
+      console.error('아이템 완료 처리 중 오류:', error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('완료 상태 저장 실패:', error);
+    throw error;
+  }
+}
+
+// 대체 함수 (RPC가 동작하지 않을 경우를 대비)
+export async function markItemAsCompletedFallback(lectureId: number, itemId: number): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  try {
+    // 트랜잭션 방식으로 처리
+    // 1. 먼저 항목이 존재하는지 확인
+    const { data: existingItem } = await supabase
+      .from('lecture_progress')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('lecture_id', lectureId)
+      .eq('item_id', itemId)
+      .maybeSingle();
+
+    if (existingItem) {
+      // 2a. 항목이 존재하면 업데이트
+      await supabase
+        .from('lecture_progress')
+        .update({
+          completed: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingItem.id);
+    } else {
+      // 2b. 항목이 없으면 새로 생성
+      await supabase
+        .from('lecture_progress')
+        .insert({
+          user_id: user.id,
+          lecture_id: lectureId,
+          item_id: itemId,
+          completed: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('완료 상태 저장 실패:', error);
+    throw error;
+  }
 }
 
 // 마지막 시청 위치 저장
@@ -47,14 +107,39 @@ export async function saveLastWatchedItem(lectureId: number, itemId: number) {
 
   if (!user) throw new Error('로그인이 필요합니다');
 
-  return await supabase
-    .from('last_watched_items')
-    .upsert({
-      user_id: user.id,
-      lecture_id: lectureId,
-      item_id: itemId,
-      updated_at: new Date().toISOString()
-    });
+  try {
+    // 먼저 기존 레코드 확인
+    const { data: existing } = await supabase
+      .from('last_watched_items')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('lecture_id', lectureId)
+      .maybeSingle();
+
+    if (existing) {
+      // 기존 레코드 업데이트
+      return await supabase
+        .from('last_watched_items')
+        .update({ 
+          item_id: itemId,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', existing.id);
+    } else {
+      // 새 레코드 삽입
+      return await supabase
+        .from('last_watched_items')
+        .insert({
+          user_id: user.id,
+          lecture_id: lectureId,
+          item_id: itemId,
+          updated_at: new Date().toISOString()
+        });
+    }
+  } catch (error) {
+    console.error('마지막 시청 위치 저장 실패:', error);
+    throw error;
+  }
 }
 
 // 완료된 강의 아이템 조회
