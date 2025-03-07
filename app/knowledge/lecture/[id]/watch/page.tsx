@@ -144,41 +144,74 @@ export default function LectureWatchPage() {
   // 초기 아이템 설정 - sections이 로드된 후 한 번만 실행
   useEffect(() => {
     const initializeCurrentItem = async () => {
-      if (
-        isLoading ||
-        sections.length === 0 ||
-        allItems.length === 0 ||
-        currentItem
-      ) {
+      if (isLoading || sections.length === 0 || allItems.length === 0) {
         return;
       }
+
+      // 이미 currentItem이 설정되어 있다면 다시 설정하지 않음
+      if (currentItem) return;
+
+      console.log('초기 아이템 설정 시작, 총 아이템 수:', allItems.length); // 디버깅용
 
       let itemToUse = null;
 
       // 1. URL에서 지정된 아이템 체크
       if (initialItemId) {
+        console.log('URL에서 지정된 아이템 ID:', initialItemId);
         itemToUse = allItems.find((item) => item.id === initialItemId);
+        if (itemToUse) {
+          console.log('URL에서 지정된 아이템 사용:', itemToUse.title);
+        }
       }
 
       // 2. 마지막 시청 아이템 체크
       if (!itemToUse) {
         try {
-          const lastItemId = await getLastWatchedItem(Number(lectureId));
-          if (lastItemId) {
-            itemToUse = allItems.find((item) => item.id === lastItemId);
+          console.log('마지막 시청 위치 조회 시도, lectureId:', lectureId);
+          // lectureId가 문자열일 수 있으므로 숫자로 변환
+          const numericLectureId = parseInt(lectureId as string, 10);
+
+          // 변환 결과가 유효한지 확인
+          if (isNaN(numericLectureId)) {
+            console.error('강의 ID 변환 실패:', lectureId);
+          } else {
+            const lastItemId = await getLastWatchedItem(numericLectureId);
+            console.log('마지막 시청 아이템 ID:', lastItemId);
+
+            if (lastItemId) {
+              itemToUse = allItems.find((item) => item.id === lastItemId);
+              if (itemToUse) {
+                console.log('마지막 시청 아이템 사용:', itemToUse.title);
+              } else {
+                console.log(
+                  '마지막 시청 아이템을 찾을 수 없음, ID:',
+                  lastItemId
+                );
+                console.log(
+                  '사용 가능한 아이템 ID 목록:',
+                  allItems.map((item) => item.id)
+                );
+              }
+            } else {
+              console.log('저장된 마지막 시청 위치 없음');
+            }
           }
         } catch (error) {
           console.error('마지막 시청 위치 조회 실패:', error);
         }
       }
 
-      // 3. 첫 번째 아이템 사용
+      // 3. 아직 아이템이 선택되지 않았다면 첫 번째 아이템 사용
       if (!itemToUse && allItems.length > 0) {
         itemToUse = allItems[0];
+        console.log('첫 번째 아이템 사용:', itemToUse.title);
       }
 
       if (itemToUse) {
+        console.log('최종 선택된 아이템:', itemToUse.title);
         setCurrentItem(itemToUse);
+      } else {
+        console.error('아이템을 찾을 수 없음');
       }
     };
 

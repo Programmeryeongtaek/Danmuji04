@@ -160,20 +160,34 @@ export async function getCompletedItems(lectureId: number) {
 }
 
 // 마지막 시청 위치 조회
-export async function getLastWatchedItem(letctureId: number) {
+export async function getLastWatchedItem(lectureId: number) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  if (!user) return null;
+    console.log(`마지막 시청 위치 조회 시도 - 강의 ID: ${lectureId}, 사용자 ID: ${user.id}`);
 
-  const { data } = await supabase
-    .from('last_watched_items')
-    .select('item_id')
-    .eq('user_id', user.id)
-    .eq('lecture_id', letctureId)
-    .single();
+    // single() 대신 maybeSingle() 사용하여 데이터가 없을 때 오류가 아닌 null 반환
+    const { data, error } = await supabase
+      .from('last_watched_items')
+      .select('item_id')
+      .eq('user_id', user.id)
+      .eq('lecture_id', lectureId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('마지막 시청 위치 조회 중 오류:', error);
+      return null;
+    }
 
-  return data?.item_id || null;
+    console.log('마지막 시청 위치 조회 결과:', data); // 디버깅용
+    return data?.item_id || null;
+  } catch (error) {
+    console.error('마지막 시청 위치 조회 중 예외 발생:', error);
+    return null;
+  }
 }
 
 // 사용자의 수강 진행률 계산 함수

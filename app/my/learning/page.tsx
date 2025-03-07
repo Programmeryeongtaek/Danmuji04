@@ -141,8 +141,11 @@ export default function MyLearningPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <Link
-                        href={`/my/learning/${lecture.id}`}
+                        href={`/knowledge/lecture/${lecture.id}/watch`}
                         className="mt-2 block rounded-lg bg-gold-start px-4 py-2 text-center text-white"
+                        prefetch={
+                          false
+                        } /* prefetch 비활성화 - 동적 데이터가 있는 페이지에서 유용 */
                       >
                         이어서 학습하기
                       </Link>
@@ -157,7 +160,7 @@ export default function MyLearningPage() {
                           onClick={() =>
                             showToast(
                               '수강률이 20% 이상이므로 수강 취소가 불가능합니다.',
-                              'error'
+                              'error' as ToastType
                             )
                           }
                           className="cursor-not-allowed text-sm text-red-500 opacity-50"
