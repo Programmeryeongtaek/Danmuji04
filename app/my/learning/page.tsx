@@ -146,11 +146,27 @@ export default function MyLearningPage() {
                       >
                         이어서 학습하기
                       </Link>
-                      <CancelEnrollmentButton
-                        lectureId={lecture.id}
-                        progress={lecture.progress}
-                        onCancelSuccess={handleCancelSuccess}
-                      />
+                      {lecture.progress < 20 ? (
+                        <CancelEnrollmentButton
+                          lectureId={lecture.id}
+                          progress={lecture.progress}
+                          onCancelSuccess={handleCancelSuccess}
+                        />
+                      ) : (
+                        <button
+                          onClick={() =>
+                            showToast(
+                              '수강률이 20% 이상이므로 수강 취소가 불가능합니다.',
+                              'error'
+                            )
+                          }
+                          className="cursor-not-allowed text-sm text-red-500 opacity-50"
+                          title="수강률이 20% 이상인 강의는 취소할 수 없습니다"
+                          style={{ cursor: 'not-allowed' }}
+                        >
+                          수강 취소
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

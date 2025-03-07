@@ -21,11 +21,17 @@ export default function CancelEnrollmentButton({
   const [showConfirm, setShowConfirm] = useState(false);
   const { showToast } = useToast();
 
-  // 진행율이 20%이상인 경우 취소 불가능
+  // 진행률이 20% 이상인 경우 취소 불가능
   const isDisabled = progress >= 20;
 
   const handleCancel = async () => {
-    if (isDisabled || isLoading) return;
+    // 진행률이 20% 이상인 경우 토스트 메시지 표시 후 종료
+    if (isDisabled) {
+      showToast('수강률이 20% 이상인 강의는 취소할 수 없습니다.');
+      return;
+    }
+
+    if (isLoading) return;
 
     if (!showConfirm) {
       setShowConfirm(true);
@@ -47,7 +53,7 @@ export default function CancelEnrollmentButton({
         showToast(message, 'error');
       }
     } catch (error) {
-      showToast('수강 취소 중 오류가 발생했습니다', error as ToastType);
+      showToast('수강 취소 중 오류가 발생했습니다.', error as ToastType);
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +67,11 @@ export default function CancelEnrollmentButton({
         className={`text-sm text-red-500 hover:underline ${
           isDisabled ? 'cursor-not-allowed opacity-50' : ''
         }`}
+        aria-label={
+          isDisabled
+            ? '수강률이 20% 이상인 강의는 취소할 수 없습니다'
+            : '수강 취소'
+        }
       >
         수강 취소
       </button>
