@@ -176,6 +176,119 @@ export async function getLastWatchedItem(letctureId: number) {
   return data?.item_id || null;
 }
 
+// 사용자의 수강 진행률 계산 함수
+export async function calculateEnrollmentProgress(lectureId: number, userId: string): Promise<number> {
+  const supabase = createClient();
+  
+  try {
+    // SQL 프로시저 호출 (RPC)
+    const { data, error } = await supabase.rpc(
+      'calculate_enrollment_progress',
+      { 
+        p_lecture_id: lectureId, 
+        p_user_id: userId 
+      }
+    );
+    
+    if (error) {
+      console.error('RPC 호출 오류:', error);
+      // RPC 오류 시 기존 방식으로 계산 (폴백 메커니즘)
+      return calculateEnrollmentProgressFallback(lectureId, userId);
+    }
+    
+    return data || 0;
+  } catch (error) {
+    console.error('강의 진행률 계산 오류:', error);
+    return calculateEnrollmentProgressFallback(lectureId, userId);
+  }
+}
+
+// 폴백 메커니즘을 위한 기존 계산 방식 보존
+async function calculateEnrollmentProgressFallback(lectureId: number, userId: string): Promise<number> {
+  const supabase = createClient();
+  
+  try {
+    // 1. 해당 강의의 모든 아이템 가져오기
+    const { data: sections, error: sectionsError } = await supabase
+      .from('lecture_sections')
+      .select('id')
+      .eq('lecture_id', lectureId);
+      
+    if (sectionsError) throw sectionsError;
+    if (!sections || sections.length === 0) return 0;
+    
+    const sectionIds = sections.map(s => s.id);
+    
+    const { data: lectureItems, error: itemsError } = await supabase
+      .from('lecture_items')
+      .select('id')
+      .in('section_id', sectionIds);
+    
+    if (itemsError) throw itemsError;
+    if (!lectureItems || lectureItems.length === 0) return 0;
+    
+    const totalItems = lectureItems.length;
+    
+    // 2. 사용자의 완료된 아이템 가져오기
+    const { data: completedItems, error: progressError } = await supabase
+      .from('lecture_progress')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('lecture_id', lectureId)
+      .eq('completed', true);
+    
+    if (progressError) throw progressError;
+    if (!completedItems) return 0;
+    
+    const completedCount = completedItems.length;
+    
+    // 진행률 계산 (퍼센트)
+    return Math.round((completedCount / totalItems) * 100);
+  } catch (error) {
+    console.error('강의 진행률 폴백 계산 오류:', error);
+    return 0;
+  }
+}
+
+// 수강 취소 함수 개선
+export async function cancelEnrollment(lectureId: number): Promise<{ success: boolean; message: string }> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { success: false, message: '로그인이 필요합니다.' };
+  }
+
+  try {
+    // 진행률 확인
+    const progress = await calculateEnrollmentProgress(lectureId, user.id);
+    
+    // 진행률이 20% 이상이면 취소 불가
+    if (progress >= 20) {
+      return { success: false, message: '수강률이 20% 이상인 강의는 취소할 수 없습니다.' };
+    }
+    
+    // 수강 상태 확인
+    const { data: enrollment } = await getActiveEnrollment(lectureId, user.id);
+    if (!enrollment) {
+      return { success: false, message: '수강 중인 강의가 아닙니다.' };
+    }
+
+    // 수강 취소
+    const { error } = await updateEnrollmentStatus(lectureId, user.id, 'cancelled');
+    if (error) throw error;
+
+    // 수강생 수 업데이트
+    const count = await getActiveEnrollmentCount(lectureId);
+    await updateLectureStudentCount(lectureId, count);
+    
+    return { success: true, message: '수강 취소가 완료되었습니다.' };
+  } catch (error) {
+    console.error('수강 취소 중 오류 발생:', error);
+    return { success: false, message: '오류가 발생했습니다. 다시 시도해주세요.' };
+  }
+}
+
 // 강의 관련 함수들
 export async function fetchLectures() {
   const supabase = createClient();
@@ -734,28 +847,6 @@ export async function isFreeLecture(lectureId: number): Promise<boolean> {
   return data?.price === 0;
 }
 
-// 수강 취소
-export async function cancelEnrollment(lectureId: number) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('로그인이 필요합니다.');
-
-  // 무료 강의 여부 체크
-  const isFree = await isFreeLecture(lectureId);
-  if (!isFree) throw new Error('무료 강의만 취소할 수 있습니다.');
-
-  // 수강 상태 확인
-  const { data: enrollment } = await getActiveEnrollment(lectureId, user.id);
-  if (!enrollment) throw new Error('수강 중인 강의가 아닙니다.');
-
-  // 수강 취소
-  const { error } = await updateEnrollmentStatus(lectureId, user.id, 'cancelled');
-  if (error) throw error;
-
-  // 수강생 수 업데이트
-  const count = await getActiveEnrollmentCount(lectureId);
-  await updateLectureStudentCount(lectureId, count);
-}
 
 // 평균 별점 가져오기
 export async function fetchAverageRating(lectureId: number) {

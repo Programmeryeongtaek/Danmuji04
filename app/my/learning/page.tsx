@@ -1,16 +1,16 @@
 'use client';
 
 import Card from '@/components/common/Card';
+import CancelEnrollmentButton from '@/components/common/My/CancelEnrollmentButton';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
 import { Lecture } from '@/types/knowledge/lecture';
 import {
+  calculateEnrollmentProgress,
   createClient,
-  getCompletedItems,
-  getLastWatchedItem,
 } from '@/utils/supabase/client';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface EnrolledLecture extends Lecture {
   enrollment_status: 'active' | 'cancelled';
@@ -24,150 +24,80 @@ export default function MyLearningPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
-  // 데이터 로딩 상태를 추적할 ref
-  const isDataLoadedRef = useRef(false);
-  // lastWatchedItems 캐시
-  const lastWatchedItemsRef = useRef<Record<string, number>>({});
+  const loadEnrolledLectures = async () => {
+    try {
+      setIsLoading(true);
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    // 이미 데이터를 로드했으면 중복 실행 방지
-    if (isDataLoadedRef.current) return;
+      if (!user) {
+        showToast('로그인이 필요합니다.', 'warning' as ToastType);
+        return;
+      }
 
-    const loadEnrolledLectures = async () => {
-      try {
-        setIsLoading(true);
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+      // 1. 사용자의 수강신청 정보 가져오기
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from('enrollments')
+        .select('lecture_id, status')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
 
-        if (!user) {
-          showToast('로그인이 필요합니다.', 'warning' as ToastType);
-          return;
-        }
+      if (enrollmentsError) throw enrollmentsError;
+      if (!enrollments || enrollments.length === 0) {
+        setIsLoading(false);
+        return;
+      }
 
-        // 1. 사용자의 수강신청 정보 가져오기
-        const { data: enrollments, error: enrollmentsError } = await supabase
-          .from('enrollments')
-          .select('lecture_id, status')
-          .eq('user_id', user.id)
-          .eq('status', 'active');
+      // 2. 강의 ID 리스트 만들기
+      const lectureIds = enrollments.map((enrollment) => enrollment.lecture_id);
 
-        if (enrollmentsError) throw enrollmentsError;
-        if (!enrollments || enrollments.length === 0) {
-          setIsLoading(false);
-          return;
-        }
+      // 3. 강의 상세 정보 가져오기
+      const { data: lectures, error: lecturesError } = await supabase
+        .from('lectures')
+        .select('*')
+        .in('id', lectureIds);
 
-        // 2. 강의 ID 리스트 만들기
-        const lectureIds = enrollments.map(
-          (enrollment) => enrollment.lecture_id
-        );
+      if (lecturesError) throw lecturesError;
 
-        // 3. 강의 상세 정보 가져오기
-        const { data: lectures, error: lecturesError } = await supabase
-          .from('lectures')
-          .select('*')
-          .in('id', lectureIds);
-
-        if (lecturesError) throw lecturesError;
-
-        // 4. 모든 강의의 섹션과 아이템 정보 가져오기
-        const lectureItemCounts: Record<number, number> = {};
-        const completedItemsMap: Record<string, number[]> = {};
-        const lastWatchedItemsMap: Record<string, number> = {};
-
-        // 각 강의별 섹션, 아이템 및 진도 정보 가져오기 (병렬로 처리)
-        await Promise.all(
-          lectureIds.map(async (lectureId) => {
-            const [
-              sectionsResponse,
-              completedItemsResponse,
-              lastWatchedResponse,
-            ] = await Promise.all([
-              // 섹션 조회
-              supabase
-                .from('lecture_sections')
-                .select('id, lecture_items(id)')
-                .eq('lecture_id', lectureId),
-
-              // 완료된 아이템 조회
-              getCompletedItems(lectureId),
-
-              // 마지막 시청 위치 조회
-              getLastWatchedItem(lectureId),
-            ]);
-
-            const sections = sectionsResponse.data;
-
-            if (sections && sections.length > 0) {
-              // 모든 섹션의 모든 아이템 수 계산
-              const totalItems = sections.reduce((sum, section) => {
-                return sum + (section.lecture_items?.length || 0);
-              }, 0);
-
-              lectureItemCounts[lectureId] = totalItems;
-            }
-
-            // 완료된 아이템 저장
-            completedItemsMap[lectureId.toString()] =
-              completedItemsResponse || [];
-
-            // 마지막 시청 위치 저장
-            if (lastWatchedResponse) {
-              lastWatchedItemsMap[lectureId.toString()] = lastWatchedResponse;
-            }
-          })
-        );
-
-        // lastWatchedItems 업데이트
-        lastWatchedItemsRef.current = lastWatchedItemsMap;
-
-        // 5. 진도율 계산하여 강의 정보 병합
-        const lecturesWithProgress = lectures.map((lecture) => {
+      // 4. 각 강의의 진행률 계산
+      const lecturesWithProgress = await Promise.all(
+        lectures.map(async (lecture) => {
+          const progress = await calculateEnrollmentProgress(
+            lecture.id,
+            user.id
+          );
           const enrollment = enrollments.find(
             (e) => e.lecture_id === lecture.id
           );
-          const totalItems = lectureItemCounts[lecture.id] || 1; // 0으로 나누기 방지
-          const completedCount = (
-            completedItemsMap[lecture.id.toString()] || []
-          ).length;
-          const progress = Math.floor((completedCount / totalItems) * 100);
 
           return {
             ...lecture,
             enrollment_status: enrollment?.status || 'cancelled',
-            progress: progress,
+            progress: Math.round(progress), // 진행률 반올림
           };
-        });
+        })
+      );
 
-        setEnrolledLectures(lecturesWithProgress);
-        isDataLoadedRef.current = true; // 데이터 로드 완료 표시
-      } catch (error) {
-        console.error('수강 중인 강의 목록을 불러오는데 실패했습니다.', error);
-        showToast(
-          '수강 중인 강의 목록을 불러오는데 실패했습니다.',
-          'error' as ToastType
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadEnrolledLectures();
-  }, [showToast]); // 최소한의 의존성만 유지
-
-  // 이어서 학습하기 링크 생성 함수
-  const getContinueLearningLink = (lectureId: number) => {
-    const lastItemId = lastWatchedItemsRef.current[lectureId.toString()];
-
-    if (lastItemId) {
-      // 마지막 시청 아이템이 있으면 해당 아이템으로 이동
-      return `/knowledge/lecture/${lectureId}/watch?item=${lastItemId}`;
-    } else {
-      // 없으면 그냥 강의 시청 페이지로 이동
-      return `/knowledge/lecture/${lectureId}/watch`;
+      setEnrolledLectures(lecturesWithProgress);
+    } catch (error) {
+      console.error('수강 중인 강의 목록을 불러오는데 실패했습니다.', error);
+      showToast(
+        '수강 중인 강의 목록을 불러오는데 실패했습니다.',
+        'error' as ToastType
+      );
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadEnrolledLectures();
+  }, []);
+
+  const handleCancelSuccess = () => {
+    loadEnrolledLectures(); // 취소 성공 시 목록 새로고침
   };
 
   if (isLoading) {
@@ -187,22 +117,41 @@ export default function MyLearningPage() {
                 <div key={lecture.id} className="flex flex-col">
                   <Card {...lecture} showBookmark={false} />
                   <div className="mt-2 space-y-2">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex items-center justify-between text-sm">
                       <span>진도율</span>
-                      <span>{lecture.progress}%</span>
+                      <span
+                        className={
+                          lecture.progress >= 20
+                            ? 'font-medium text-green-600'
+                            : ''
+                        }
+                      >
+                        {lecture.progress}%
+                      </span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-gray-200">
                       <div
-                        className="h-full rounded-full bg-gold-start transition-all duration-300"
+                        className={`h-full rounded-full ${
+                          lecture.progress >= 20
+                            ? 'bg-green-500'
+                            : 'bg-gold-start'
+                        }`}
                         style={{ width: `${lecture.progress}%` }}
                       />
                     </div>
-                    <Link
-                      href={getContinueLearningLink(lecture.id)}
-                      className="mt-2 block w-full rounded-lg bg-gold-start py-2 text-center text-white hover:opacity-90"
-                    >
-                      이어서 학습하기
-                    </Link>
+                    <div className="flex items-center justify-between">
+                      <Link
+                        href={`/my/learning/${lecture.id}`}
+                        className="mt-2 block rounded-lg bg-gold-start px-4 py-2 text-center text-white"
+                      >
+                        이어서 학습하기
+                      </Link>
+                      <CancelEnrollmentButton
+                        lectureId={lecture.id}
+                        progress={lecture.progress}
+                        onCancelSuccess={handleCancelSuccess}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
