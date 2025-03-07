@@ -605,13 +605,44 @@ export async function enrollLecture(lectureId: number) {
   }
 
   try {
-    // 수강 신청
-    const { error: enrollError } = await insertEnrollment(lectureId, user.id);
-    if (enrollError) {
-      throw enrollError;
+    // 먼저 이미 등록된 수강 정보가 있는지 확인
+    const { data: existingEnrollment } = await supabase
+      .from('enrollments')
+      .select('id, status')
+      .eq('lecture_id', lectureId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    if (existingEnrollment) {
+      // 이미 수강 중이면 에러
+      if (existingEnrollment.status === 'active') {
+        throw new Error('이미 수강 중인 강의입니다.');
+      }
+      
+      // 취소된 수강 정보가 있으면 업데이트 (updated_at 필드 제거)
+      const { error: updateError } = await supabase
+        .from('enrollments')
+        .update({ 
+          status: 'active'
+        })
+        .eq('id', existingEnrollment.id);
+        
+      if (updateError) throw updateError;
+    } else {
+      // 등록된 정보가 없으면 새로 삽입
+      const { error: enrollError } = await supabase
+        .from('enrollments')
+        .insert({
+          lecture_id: lectureId,
+          user_id: user.id,
+          status: 'active',
+          payment_status: 'free'
+        });
+        
+      if (enrollError) throw enrollError;
     }
 
-    // 활성 수강생 수 조회
+    // 활성 수강생 수 조회 및 업데이트
     const { count, error: countError } = await supabase
       .from('enrollments')
       .select('*', { count: 'exact' })
