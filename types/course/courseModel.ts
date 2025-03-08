@@ -51,9 +51,11 @@ export interface CourseProgress {
 }
 
 export interface CourseWithSections extends Course {
-  sections: (CourseSection & {
+  sections: {
+    id: string;
+    title: string;
     items: CourseItem[];
-  })[];
+  }[];
 }
 
 export interface CourseFormData {
@@ -73,8 +75,10 @@ export interface CourseSectionFormData {
 export interface CourseItemFormData {
   title: string;
   description?: string;
+  keywords?: string;
   youtube_id: string;
 }
+
 // 글쓰기 폼 데이터 타입
 export interface WritingFormData {
   content: string;

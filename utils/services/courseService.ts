@@ -279,6 +279,7 @@ export async function createCourseItem(courseId: string, formData: CourseItemFor
       course_id: courseId,
       title: formData.title,
       description: formData.description,
+      keywords: formData.keywords,
       youtube_id: formData.youtube_id,
       order_num: itemOrderNum
     })
@@ -417,4 +418,17 @@ export async function fetchAllUserWritings() {
   
   if (error) throw error;
   return data;
+}
+
+// YouTube URL에서 ID 추출
+export function extractYoutubeId(url: string): string {
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+  const match = url.match(regex);
+  
+  if (match && match[1]) {
+    return match[1];
+  }
+  
+  // URL이 아니면 ID로 간주
+  return url;
 }
