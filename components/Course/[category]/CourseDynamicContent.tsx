@@ -1,0 +1,57 @@
+'use client';
+
+import { useCoursePermission } from '@/hooks/useCourse';
+import QuoteSection from '../QuotesSection';
+import { isValidCategory } from '@/types/course/categories';
+import Link from 'next/link';
+import { Lock, PlusCircle } from 'lucide-react';
+
+interface CourseDynamicContentProps {
+  category: string;
+  title: string;
+}
+
+export function COurseDynamicContent({
+  category,
+  title,
+}: CourseDynamicContentProps) {
+  const { isAdmin, isLoading: permissionLoading } = useCoursePermission();
+
+  return (
+    <div className="mx-auto max-w-7xl p-4 md:p-6">
+      {/* 명언 섹션 유지 - 유효한 카테고리만 전달 */}
+      <QuoteSection
+        category={isValidCategory(category) ? category : undefined}
+      />
+
+      <div className="my-8">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">{title} 코스</h1>
+
+          {!permissionLoading &&
+            (isAdmin ? (
+              <Link
+                href={`/course/create?category=${category}`}
+                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
+              >
+                <PlusCircle className="h-5 w-5" />
+                코스 만들기
+              </Link>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-gray-500">
+                <Lock className="h-5 w-5" />
+                <span>관리자 전용</span>
+              </div>
+            ))}
+        </div>
+
+        <p className="mb-8 text-gray-600">
+          다양한 {title} 관련 코스를 둘러보고 학습하세요.
+        </p>
+
+        {/* 카테고리에 해당하는 코스 목록 */}
+        <CourseList category={category} />
+      </div>
+    </div>
+  );
+}
