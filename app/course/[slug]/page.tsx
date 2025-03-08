@@ -1,28 +1,29 @@
-import { CourseDynamicContent } from '@/components/Course/[slug]/CourseDynamicContent';
+import { CategoryDynamicContent } from '@/components/Course/category/CategoryDynamicContent';
+import {
+  CATEGORY_IDS,
+  COURSE_CATEGORIES,
+  isValidCategory,
+} from '@/types/course/categories';
 
-interface CourseDynamicPageProps {
+interface CategoryPageProps {
   params: {
-    slug: 'reading' | 'writing' | 'question';
+    slug: string; // category 대신 slug로 변경
   };
 }
 
-const courseTitles = {
-  reading: '독서',
-  writing: '글쓰기',
-  question: '질문',
-} as const;
-
+// 정적 경로 생성
 export function generateStaticParams() {
-  return Object.keys(courseTitles).map((slug) => ({
-    slug,
+  return CATEGORY_IDS.map((category) => ({
+    slug: category, // category 대신 slug로 변경
   }));
 }
 
-const CourseDynamicPage = async ({ params }: CourseDynamicPageProps) => {
-  const { slug } = await params;
-  const title = courseTitles[slug as keyof typeof courseTitles];
+export default function CategoryPage({ params }: CategoryPageProps) {
+  const { slug } = params; // category 대신 slug로 변경
 
-  return <CourseDynamicContent slug={slug} title={title} />;
-};
+  // 유효하지 않은 카테고리면 기본 카테고리로 폴백
+  const validCategory = isValidCategory(slug) ? slug : 'reading';
+  const title = COURSE_CATEGORIES[validCategory].title;
 
-export default CourseDynamicPage;
+  return <CategoryDynamicContent category={validCategory} title={title} />;
+}

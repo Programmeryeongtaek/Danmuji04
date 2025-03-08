@@ -2,7 +2,7 @@
 
 import { useToast } from '@/components/common/Toast/Context';
 import { Course, CourseWithSections } from '@/types/course/courseModel';
-import { fetchCourse, fetchCourseByCategory, fetchCourseDetail, getLastAccessedItem, getUserCourseProgress, isAdminUser, markItemAsCompleted } from '@/utils/service/courseService';
+import { fetchCourseDetail, fetchCourses, fetchCoursesByCategory, getLastAccessedItem, getUserCourseProgress, isAdminUser, markItemAsCompleted, } from '@/utils/services/courseService';
 import { useCallback, useEffect, useState } from 'react';
 
 // 코스 목록 조회를 위한 훅
@@ -18,9 +18,9 @@ export function useCourseList(category?: string) {
         let data: Course[];
 
         if (category) {
-          data = await fetchCourseByCategory(category);
+          data = await fetchCoursesByCategory(category);
         } else {
-          data = await fetchCourse();
+          data = await fetchCourses();
         }
 
         setCourses(data);

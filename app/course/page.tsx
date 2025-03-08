@@ -3,7 +3,7 @@
 import QuoteSection from '@/components/Course/QuotesSection';
 import { useCoursePermission } from '@/hooks/useCourse';
 import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
-import { BookOpen, Edit, HelpCircle, Lock, PlusCircle } from 'lucide-react';
+import { BookOpen, Edit, HelpCircle, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 
 // 주요 카테고리 목록
@@ -25,21 +25,15 @@ export default function CoursePage() {
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold">코스</h1>
 
-          {!isLoading &&
-            (isAdmin ? (
-              <Link
-                href="/course/create"
-                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
-              >
-                <PlusCircle className="h-5 w-5" />
-                코스 만들기
-              </Link>
-            ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-gray-500">
-                <Lock className="h-5 w-5" />
-                <span>관리자 전용</span>
-              </div>
-            ))}
+          {!isLoading && isAdmin && (
+            <Link
+              href="/course/create"
+              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
+            >
+              <PlusCircle className="h-5 w-5" />
+              코스 만들기
+            </Link>
+          )}
         </div>
 
         <p className="mb-8 text-gray-600">
