@@ -12,7 +12,13 @@ import {
 import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
-import { lectures } from '@/dummy/lectureData';
+import { useSearchParams } from 'next/navigation';
+import {
+  fetchLectures,
+  fetchLecturesByCategory,
+  searchLectures,
+} from '@/utils/supabase/client';
+import { useBookmarks } from '@/hooks/useBookmarks';
 
 const categoryLabelMap = new Map([
   ['all', '전체'],
@@ -26,58 +32,91 @@ const categoryLabelMap = new Map([
 ]);
 
 const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
-  const [lectureList, setLectureList] = useState<Lecture[]>(lectures);
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('q')?.toLowerCase() || '';
+  const {
+    bookmarkedLectures,
+    handleToggleBookmark,
+    isLoading: bookmarksLoading,
+  } = useBookmarks();
+
+  const [lectureList, setLectureList] = useState<Lecture[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
     fields: [],
     hasGroup: false,
   });
 
+  // 강의 데이터 가져오기
+  useEffect(() => {
+    const loadLectures = async () => {
+      try {
+        setIsLoading(true);
+        let data;
+
+        if (selectedCategory === 'search' && searchQuery) {
+          data = await searchLectures(searchQuery);
+        } else if (selectedCategory !== 'all') {
+          const categoryLabel = categoryLabelMap.get(selectedCategory);
+          data = await fetchLecturesByCategory(categoryLabel || '');
+        } else {
+          data = await fetchLectures();
+        }
+
+        setLectureList(data || []);
+      } catch (error) {
+        console.error('Failed to fetch lectures:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLectures();
+  }, [selectedCategory, searchQuery]);
+
   const onApply = (newFilters: FilterState) => {
     setActiveFilters(newFilters);
   };
 
-  // 카테고리 선택시, 필터 초기화
   useEffect(() => {
-    setActiveFilters({
-      depth: [],
-      fields: [],
-      hasGroup: false,
-    });
+    if (selectedCategory !== 'search') {
+      setActiveFilters({
+        depth: [],
+        fields: [],
+        hasGroup: false,
+      });
+    }
   }, [selectedCategory]);
 
   const filteredLectures = lectureList.filter((lecture) => {
-    if (selectedCategory === 'search') return false;
-    if (selectedCategory !== 'all') {
-      const categoryLabel = categoryLabelMap.get(selectedCategory);
-      if (lecture.category !== categoryLabel) return false;
+    // 필터 적용
+    if (
+      activeFilters.depth.length > 0 &&
+      !activeFilters.depth.includes(lecture.depth)
+    ) {
+      return false;
+    }
+    if (
+      activeFilters.fields.length > 0 &&
+      !activeFilters.fields.includes(lecture.category)
+    ) {
+      return false;
+    }
+    if (activeFilters.hasGroup && lecture.group_type !== '오프라인') {
+      return false;
     }
 
-    if (selectedCategory === 'all') {
-      if (
-        activeFilters.depth.length > 0 &&
-        !activeFilters.depth.includes(lecture.depth)
-      ) {
-        return false;
-      }
-      if (
-        activeFilters.fields.length > 0 &&
-        !activeFilters.fields.includes(lecture.category)
-      ) {
-        return false;
-      }
-      if (activeFilters.hasGroup && lecture.group !== '오프라인') {
-        return false;
-      }
-    }
     return true;
   });
 
-  const handleSort = (option: SortOption) => {
+  const handleSort = async (option: SortOption) => {
     const sorted = [...lectureList].sort((a, b) => {
       switch (option) {
         case 'latest':
-          return b.id - a.id;
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         case 'students':
           return b.students - a.students;
         case 'likes':
@@ -87,8 +126,19 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     setLectureList(sorted);
   };
 
+  if (isLoading || bookmarksLoading) {
+    return <div>로딩 중...</div>;
+  }
+
   return (
     <div className="flex flex-col">
+      {searchQuery && (
+        <div>
+          <h2>
+            {searchQuery} 검색 결과 ({filteredLectures.length}개)
+          </h2>
+        </div>
+      )}
       <div className="flex justify-between">
         <div className="flex">
           <KeywordSelector />
@@ -99,11 +149,22 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
           <Dropdown.Context />
         </Dropdown.Root>
       </div>
-      <div className="flex flex-wrap justify-center gap-4">
-        {filteredLectures.map((lecture) => (
-          <Card key={lecture.id} {...lecture} />
-        ))}
-      </div>
+
+      {filteredLectures.length > 0 ? (
+        <div className="flex flex-wrap justify-center gap-4">
+          {filteredLectures.map((lecture) => (
+            <Card
+              key={lecture.id}
+              {...lecture}
+              isBookmarked={bookmarkedLectures.includes(lecture.id)}
+              onToggleBookmark={handleToggleBookmark}
+            />
+          ))}
+        </div>
+      ) : (
+        <div>검색 결과가 없습니다.</div>
+      )}
+
       <Pagination />
     </div>
   );

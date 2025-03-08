@@ -1,5 +1,9 @@
+import Link from 'next/link';
 import Button from '../common/Button/Button';
 import Modal from '../common/Modal';
+import LoginForm from '../auth/LoginForm';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -7,6 +11,23 @@ interface LoginModalProps {
 }
 
 const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleLogin = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error('error.message');
+    }
+
+    onClose();
+    router.refresh();
+  };
+
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
       <Modal.CloseButton className="absolute right-8 top-32" />
@@ -16,25 +37,14 @@ const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
         </h1>
         <div className="flex justify-end">
           <div className="w-20">
-            <Button>회원가입</Button>
+            <Link href="/signup">
+              <Button>회원가입</Button>
+            </Link>
           </div>
         </div>
 
-        <form className="flex-col">
-          <input
-            type="text"
-            placeholder="아이디"
-            className="my-1 h-9 w-full rounded-lg border pl-3"
-          />
-          <input
-            type="password"
-            placeholder="비밀번호"
-            className="my-1 h-9 w-full rounded-lg border pl-3"
-          />
-          <div className="my-2 flex h-9">
-            <Button>로그인</Button>
-          </div>
-        </form>
+        <LoginForm onSubmit={handleLogin} />
+
         <div className="flex justify-center gap-3">
           <button className="border-b border-gray-500 text-gray-700">
             아이디 찾기
