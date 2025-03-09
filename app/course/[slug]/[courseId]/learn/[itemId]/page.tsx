@@ -9,14 +9,17 @@ interface CourseLearnPageProps {
   };
 }
 
-export default function CourseLearnPage({ params }: CourseLearnPageProps) {
-  const { slug, courseId, itemId } = params;
+export default async function CourseLearnPage({
+  params,
+}: CourseLearnPageProps) {
+  // async 함수에서 params를 await 해서 사용
+  const { slug, courseId, itemId } = await params;
 
   return (
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center">
-          로딩 중...
+          <div className="animate-pulse text-lg">로딩 중...</div>
         </div>
       }
     >

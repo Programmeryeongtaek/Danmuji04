@@ -27,7 +27,7 @@ export function CategoryDynamicContent({
 
       <div className="my-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{title} 코스</h1>
+          <h1 className="text-2xl font-bold">{title} 강의 목록</h1>
 
           {!permissionLoading && isAdmin && (
             <Link
@@ -35,13 +35,13 @@ export function CategoryDynamicContent({
               className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
             >
               <PlusCircle className="h-5 w-5" />
-              코스 만들기
+              강의 추가하기
             </Link>
           )}
         </div>
 
         <p className="mb-8 text-gray-600">
-          다양한 {title} 관련 코스를 둘러보고 학습하세요.
+          다양한 {title} 관련 강의를 둘러보고 학습하세요.
         </p>
 
         {/* 카테고리에 해당하는 코스 목록 */}

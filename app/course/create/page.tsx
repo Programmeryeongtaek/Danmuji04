@@ -20,9 +20,7 @@ export default function CourseCreatePage() {
   const { isAdmin, isLoading: permissionLoading } = useCoursePermission();
   const { showToast } = useToast();
 
-  // 폼 상태 관리
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  // 카테고리 관리
   const [category, setCategory] = useState<string>(
     isValidCategory(initialCategory) ? initialCategory : ''
   );
@@ -102,11 +100,6 @@ export default function CourseCreatePage() {
     if (isSubmitting) return;
 
     // 폼 유효성 검사
-    if (!title.trim()) {
-      showToast('코스 제목을 입력해주세요.', 'error');
-      return;
-    }
-
     if (!category) {
       showToast('카테고리를 선택해주세요.', 'error');
       return;
@@ -136,25 +129,38 @@ export default function CourseCreatePage() {
     try {
       setIsSubmitting(true);
 
-      // 코스 생성
-      const courseData: CourseFormData = {
-        title,
-        description,
-        category: category as CourseCategory,
-      };
-
-      const course = await createCourse(courseData);
-
-      // 강의 아이템 생성
       for (let i = 0; i < courseItems.length; i++) {
-        await createCourseItem(course.id, courseItems[i], i + 1);
+        const item = courseItems[i];
+
+        // 각 강의를 별도의 코스로 생성
+        const courseData: CourseFormData = {
+          title: item.title,
+          description: item.description || `${category} 카테고리의 강의`,
+          category: category as CourseCategory,
+        };
+
+        // 코스 생성
+        const course = await createCourse(courseData);
+
+        // 강의 아이템 생성 - 하나의 코스에 하나의 아이템만 추가
+        await createCourseItem(
+          course.id,
+          {
+            ...item,
+            title: item.title, // 코스 제목과 동일하게 유지
+          },
+          1
+        );
       }
 
-      showToast('코스가 성공적으로 생성되었습니다.', 'success');
-      window.location.href = `/course/${category}/${course.id}`;
+      showToast(
+        `${courseItems.length}개의 강의가 성공적으로 생성되었습니다.`,
+        'success'
+      );
+      window.location.href = `/course/${category}`;
     } catch (error) {
-      console.error('코스 생성 실패:', error);
-      showToast('코스 생성에 실패했습니다.', 'error');
+      console.error('강의 생성 실패:', error);
+      showToast('강의 생성에 실패했습니다.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -180,34 +186,12 @@ export default function CourseCreatePage() {
         </Link>
       </div>
 
-      <h1 className="mb-6 text-2xl font-bold">새 코스 만들기</h1>
+      <h1 className="mb-6 text-2xl font-bold">새 강의 추가하기</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 코스 기본 정보 */}
+        {/* 카테고리 선택 */}
         <div className="rounded-lg border p-4">
-          <h2 className="mb-4 text-xl font-semibold">코스 기본 정보</h2>
-
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium">제목</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border p-2"
-              placeholder="코스 제목을 입력하세요"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium">설명</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border p-2"
-              rows={4}
-              placeholder="코스에 대한 설명을 입력하세요"
-            />
-          </div>
+          <h2 className="mb-4 text-xl font-semibold">강의 카테고리</h2>
 
           <div>
             <label className="mb-1 block text-sm font-medium">카테고리</label>
@@ -393,7 +377,7 @@ export default function CourseCreatePage() {
             disabled={isSubmitting}
             className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-3 text-white hover:opacity-90 disabled:opacity-50"
           >
-            {isSubmitting ? '생성 중...' : '코스 생성하기'}
+            {isSubmitting ? '추가 중...' : '강의 추가하기'}
           </button>
         </div>
       </form>

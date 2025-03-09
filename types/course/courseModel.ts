@@ -8,6 +8,11 @@ export interface Course {
   instructor_id: string;
   instructor_name: string;
   created_at: string;
+  sections?: {
+    id: string;
+    title: string;
+    items: CourseItem[];
+  }[];
 }
 
 export interface CourseSection {
