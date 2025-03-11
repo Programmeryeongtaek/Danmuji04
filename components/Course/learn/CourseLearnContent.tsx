@@ -7,6 +7,7 @@ import {
   ChevronRight,
   LayoutList,
   MessageSquare,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -34,6 +35,10 @@ export default function CourseLearnContent({
     '강의영상'
   );
   const [showCurriculum, setShowCurriculum] = useState(false);
+  const [isEditingMyWriting, setIsEditingMyWriting] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -96,6 +101,12 @@ export default function CourseLearnContent({
         setCurrentItem(currentItemData);
         setUserWriting(userWritingData);
         setOtherWritings(otherWritingsData);
+
+        // 사용자 글이 있으면 수정을 위한 상태 초기화
+        if (userWritingData) {
+          setEditContent(userWritingData.content);
+          setIsPublic(userWritingData.is_public);
+        }
       } catch (error) {
         console.error('데이터 불러오기 실패:', error);
       } finally {
@@ -125,6 +136,59 @@ export default function CourseLearnContent({
     total: allItems.length,
     percentage:
       allItems.length > 0 ? ((currentIndex + 1) / allItems.length) * 100 : 0,
+  };
+
+  // 내 글 수정하기
+  const handleUpdateMyWriting = async () => {
+    if (!userWriting || !editContent.trim()) return;
+
+    try {
+      setIsSaving(true);
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from('course_writings')
+        .update({
+          content: editContent,
+          is_public: isPublic,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userWriting.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // 업데이트 성공
+      setUserWriting(data);
+      setIsEditingMyWriting(false);
+    } catch (error) {
+      console.error('글 수정 중 오류:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 내 글 삭제하기
+  const handleDeleteMyWriting = async () => {
+    if (!userWriting || !confirm('정말로 글을 삭제하시겠습니까?')) return;
+
+    try {
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from('course_writings')
+        .delete()
+        .eq('id', userWriting.id);
+
+      if (error) throw error;
+
+      // 삭제 성공
+      setUserWriting(null);
+      setEditContent('');
+    } catch (error) {
+      console.error('글 삭제 중 오류:', error);
+    }
   };
 
   if (isLoading) {
@@ -282,13 +346,67 @@ export default function CourseLearnContent({
         <div className="space-y-6">
           {userWriting && (
             <div className="rounded-lg border bg-blue-50 p-4">
-              <h2 className="mb-2 text-lg font-semibold">내 글</h2>
-              <p className="whitespace-pre-wrap">{userWriting.content}</p>
-              <div className="mt-2 text-sm text-gray-600">
-                {userWriting.is_public
-                  ? '다른 사람들과 공유 중입니다'
-                  : '나만 볼 수 있습니다'}
-              </div>
+              {isEditingMyWriting ? (
+                // 수정 모드
+                <div className="space-y-4">
+                  <h2 className="mb-2 text-lg font-semibold">내 글 수정</h2>
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="h-48 w-full rounded-lg border p-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="강의를 보고 느낀 점이나 배운 내용을 정리해보세요."
+                  />
+
+                  <div className="flex items-center">
+                    <label className="flex cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        checked={isPublic}
+                        onChange={(e) => setIsPublic(e.target.checked)}
+                        className="mr-2"
+                      />
+                      <span>다른 사람들에게 공개하기</span>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      onClick={() => {
+                        setIsEditingMyWriting(false);
+                        setEditContent(userWriting.content);
+                        setIsPublic(userWriting.is_public);
+                      }}
+                      className="rounded-lg border px-4 py-2"
+                      disabled={isSaving}
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleUpdateMyWriting}
+                      className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+                      disabled={isSaving || !editContent.trim()}
+                    >
+                      {isSaving ? '저장 중...' : '수정 완료'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // 보기 모드
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">내 글</h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleDeleteMyWriting}
+                        className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 size={16} /> 삭제
+                      </button>
+                    </div>
+                  </div>
+                  <p className="whitespace-pre-wrap">{userWriting.content}</p>
+                </div>
+              )}
             </div>
           )}
 
