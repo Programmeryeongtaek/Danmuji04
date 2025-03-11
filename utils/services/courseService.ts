@@ -482,3 +482,33 @@ export async function deleteCourseMutation(courseId: string) {
 
   return true;
 }
+
+// 코스 업데이트 함수
+export async function updateCourse(courseIs: string, formData: CourseFormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다.');
+
+  // 관리자 권한 확인
+  const isAdmin = await isAdminUser();
+  if (!isAdmin) {
+    throw new Error('관리자만 코스를 수정할 수 있습니다.');
+  }
+
+  // 코스 정보 업데이트
+  const { data, error } = await supabase
+    .from('courses')
+    .update({
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', courseIs)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}

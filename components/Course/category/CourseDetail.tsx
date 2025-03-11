@@ -1,5 +1,6 @@
 'use client';
 
+import { useCoursePermission } from '@/hooks/useCourse';
 import { Course, CourseItem } from '@/types/course/courseModel';
 import { createClient } from '@/utils/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -7,6 +8,7 @@ import { ko } from 'date-fns/locale';
 import { Calendar, ChevronRight, Play, User, Youtube } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import CourseActions from './CourseActions';
 
 interface CourseDetailProps {
   courseId: string;
@@ -20,6 +22,7 @@ export default function CourseDetail({
   const [course, setCourse] = useState<Course | null>(null);
   const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAdmin } = useCoursePermission();
 
   useEffect(() => {
     async function fetchCourseData() {
@@ -123,7 +126,21 @@ export default function CourseDetail({
 
         {/* 강의 정보 */}
         <div className="p-6">
-          <h1 className="mb-2 text-2xl font-bold">{course.title}</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="mb-2 text-2xl font-bold">{course.title}</h1>
+
+            {/* 관리자 기능 추가 */}
+            {isAdmin && (
+              <CourseActions
+                courseId={course.id}
+                category={course.category}
+                onSuccess={() => {
+                  // 강의가 삭제되면 목록으로 이동
+                  window.location.href = `/course/${category}`;
+                }}
+              />
+            )}
+          </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
