@@ -18,8 +18,8 @@ export function generateStaticParams() {
   }));
 }
 
-export default function CategoryPage({ params }: CategoryPageProps) {
-  const { slug } = params; // category 대신 slug로 변경
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { slug } = await params; // category 대신 slug로 변경
 
   // 유효하지 않은 카테고리면 기본 카테고리로 폴백
   const validCategory = isValidCategory(slug) ? slug : 'reading';
