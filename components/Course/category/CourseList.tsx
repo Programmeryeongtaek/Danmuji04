@@ -27,15 +27,13 @@ export default function CourseList({ category }: CourseListProps) {
   // initialCourses가 변경될 때 로컬 상태 업데이트
   useEffect(() => {
     if (!coursesLoading) {
-      // 생성일 기준 내림차순 정렬 (최신순)
       const sortedCourses = [...initialCourses].sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       setCourses(sortedCourses);
     }
   }, [initialCourses, coursesLoading]);
-
   // 삭제 성공 후 UI 업데이트를 위한 콜백
   const handleDeleteSuccess = (deletedCourseId: string) => {
     // 삭제된 코스를 목록에서 제거
