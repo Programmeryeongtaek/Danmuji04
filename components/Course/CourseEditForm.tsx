@@ -65,8 +65,8 @@ export default function CourseEditForm({
       await updateCourse(courseId, formData);
       showToast('강의 정보가 수정되었습니다.', 'success');
 
-      // 성공 후 해당 카데고리 목록 페이지로 이동
-      window.location.href = `course/${formData.category}`;
+      // 성공 후 해당 카테고리 목록 페이지로 이동
+      window.location.href = `/course/${formData.category}`;
     } catch (error) {
       console.error('강의 수정 실패:', error);
       showToast('강의 수정에 실패했습니다.', 'error');
