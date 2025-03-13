@@ -37,7 +37,14 @@ export async function fetchCourseDetail(courseId: string) {
 }
 
 // 사용자의 코스 진행 상황 조회
-export async function getUserCourseProgress(courseId: string) {
+export async function getUserCourseProgress(courseId: string): Promise<Array<{
+  id: string;
+  user_id: string;
+  course_id: string;
+  item_id: string;
+  completed: boolean;
+  last_accessed: string;
+}>> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -279,7 +286,7 @@ export async function createCourseItem(courseId: string, formData: CourseItemFor
       course_id: courseId,
       title: formData.title,
       description: formData.description,
-      keywords: formData.keywords,
+      keywords: formData.keywords || [],
       youtube_id: formData.youtube_id,
       order_num: itemOrderNum
     })
@@ -484,7 +491,7 @@ export async function deleteCourseMutation(courseId: string) {
 }
 
 // 코스 업데이트 함수
-export async function updateCourse(courseIs: string, formData: CourseFormData) {
+export async function updateCourse(courseId: string, formData: CourseFormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -505,10 +512,237 @@ export async function updateCourse(courseIs: string, formData: CourseFormData) {
       category: formData.category,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', courseIs)
+    .eq('id', courseId)
     .select()
     .single();
 
   if (error) throw error;
   return data;
+}
+
+// 사용자의 코스별 글쓰기 완료 여부 확인
+export async function getUserWritingStatus(courseId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: {user} } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  // 해당 코스에 사용자가 작성한 글이 있는지 확인
+  const { data, error } = await supabase
+    .from('course_writings')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('course_id', courseId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('글쓰기 상태 확인 실패:', error);
+    return false;
+  }
+
+  return !!data; // 데이터가 있으면 true, 없으면 false
+}
+
+// 모든 코스의 진행 상황을 한번에 가져오는 함수
+export async function fetchUserCoursesProgress(): Promise<Record<string, {
+  completed: boolean,
+  writingCompleted: boolean
+}>> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return {};
+
+  try {
+    // 1. 모든 코스 목록 먼저 가져오기
+    const { data: courses } = await supabase
+      .from('courses')
+      .select('id');
+
+    const result: Record<string, { completed: boolean, writingCompleted: boolean }> = {};
+
+    // 기본 상태 초기화
+    if (courses) {
+      courses.forEach(course => {
+        result[course.id] = { completed: false, writingCompleted: false };
+      });
+    }
+
+    // 2. 사용자의 코스 진행 상황 가져오기
+    const { data: progressItems } = await supabase
+      .from('course_progress')
+      .select('course_id, item_id, completed')
+      .eq('user_id', user.id);
+
+    // 코스별로 그룹화
+    if (progressItems && progressItems.length > 0) {
+      const courseProgress = progressItems.reduce<Record<string, Array<{course_id: string, item_id: string, completed: boolean}>>>((acc, item) => {
+        if (!acc[item.course_id]) {
+          acc[item.course_id] = [];
+        }
+        acc[item.course_id].push(item);
+        return acc;
+      }, {});
+
+      // 각 코스의 완료 상태 설정
+      Object.entries(courseProgress).forEach(([courseId, items]) => {
+        // 하나라도 완료된 항목이 있으면 완료된 것으로 간주
+        const isCompleted = items.some(item => item.completed);
+        if (result[courseId]) {
+          result[courseId].completed = isCompleted;
+        } else {
+          result[courseId] = { completed: isCompleted, writingCompleted: false };
+        }
+      });
+    }
+
+    // 3. 사용자의 글쓰기 상태 가져오기
+    const { data: writings } = await supabase
+      .from('course_writings')
+      .select('course_id')
+      .eq('user_id', user.id);
+
+    if (writings && writings.length > 0) {
+      writings.forEach(writing => {
+        if (result[writing.course_id]) {
+          result[writing.course_id].writingCompleted = true;
+        } else {
+          result[writing.course_id] = { completed: false, writingCompleted: true };
+        }
+      });
+    }  
+
+    return result;
+  } catch (error) {
+    console.error('코스 진행 상황 조회 실패:', error);
+    return {};
+  }
+}
+
+// 코스의 모든 아이템을 완료 처리하는 함수
+export async function markCourseCompleted(courseId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  try {
+    // 1. 코스의 모든 아이템 정보 가져오기
+    const { data: items } = await supabase
+      .from('course_items')
+      .select('id')
+      .eq('course_id', courseId);
+
+    if (!items || items.length === 0) return false;
+
+    // 2. 각 아이템에 대한 진행 정보 생성 또는 업데이트
+    const now = new Date().toISOString();
+
+    // 이미 존재하는 진행 정보 확인
+    const { data: existingProgress } = await supabase
+      .from('course_progress')
+      .select('id, item_id')
+      .eq('user_id', user.id)
+      .eq('course_id', courseId);
+
+    const existingItems = new Set((existingProgress || []).map(p => p.item_id));
+
+    // 새로 추가할 아이템과 업데이트할 아이템 분리
+    const itemsToAdd = items
+      .filter(item => !existingItems.has(item.id))
+      .map(item => ({
+        user_id: user.id,
+        course_id: courseId,
+        item_id: item.id,
+        completed: true,
+        last_accessed: now
+      }));
+
+    // 새 항목 추가
+    if (itemsToAdd.length > 0) {
+      const { error: insertError } = await supabase
+        .from('course_progress')
+        .insert(itemsToAdd);
+
+      if (insertError) throw insertError;
+    }
+
+    // 기존 항목 업데이트
+    if (existingProgress && existingProgress.length > 0) {
+      const { error: updateError } = await supabase
+        .from('course_progress')
+        .update({ completed: true, last_accessed: now })
+        .eq('user_id', user.id)
+        .eq('course_id', courseId);
+
+      if (updateError) throw updateError;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('코스 완료 처리 실패:', error);
+    return false;
+  }
+}
+
+// 글쓰기 완료 표시 함수
+export async function markWritingCompleted(courseId: string, content: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  try {
+    // 사용자 프로필 정보 가져오기
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name, nickname')
+      .eq('id', user.id)
+      .single();
+    
+    const userName = profile?.nickname || profile?.name || '익명';
+
+    // 기존 글쓰기가 있는지 확인
+    const { data: existingWriting } = await supabase
+      .from('course_writings')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', courseId)
+      .maybeSingle();
+
+    const now = new Date().toISOString();
+
+    if (existingWriting) {
+      // 기존 글쓰기 업데이트
+      const { error: updateError } = await supabase
+        .from('course_writings')
+        .update({
+          content,
+          updated_at: now
+        })
+        .eq('id', existingWriting.id);
+
+      if (updateError) throw updateError;
+    } else {
+      // 새 글쓰기 작성
+      const { error: insertError } = await supabase
+        .from('course_writings')
+        .insert({
+          user_id: user.id,
+          user_name: userName,
+          course_id: courseId,
+          content,
+          is_public: true,
+          created_at: now,
+          updated_at: now
+        });
+
+      if (insertError) throw insertError;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('글쓰기 완료 처리 실패:', error);
+    return false;
+  }
 }

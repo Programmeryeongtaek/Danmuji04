@@ -1,10 +1,14 @@
 'use client';
 
-import { useCourseList, useCoursePermission } from '@/hooks/useCourse';
+import {
+  useAllCourseProgress,
+  useCourseList,
+  useCoursePermission,
+} from '@/hooks/useCourse';
 import { getCategoryTitle } from '@/types/course/categories';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Calendar, Play, User, Youtube } from 'lucide-react';
+import { Calendar, Check, Edit, Play, Youtube } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import CourseActions from './CourseActions';
@@ -14,16 +18,23 @@ interface CourseListProps {
 }
 
 export default function CourseList({ category }: CourseListProps) {
-  const { courses: initialCourse, isLoading } = useCourseList(category);
+  const { courses: initialCourses, isLoading: coursesLoading } =
+    useCourseList(category);
+  const { progressData, isLoading: progressLoading } = useAllCourseProgress();
   const { isAdmin } = useCoursePermission();
-  const [courses, setCourses] = useState(initialCourse);
+  const [courses, setCourses] = useState(initialCourses);
 
-  // initialCourse가 변경될 때 로컬 상태 업데이트
+  // initialCourses가 변경될 때 로컬 상태 업데이트
   useEffect(() => {
-    if (!isLoading) {
-      setCourses(initialCourse);
+    if (!coursesLoading) {
+      // 생성일 기준 내림차순 정렬 (최신순)
+      const sortedCourses = [...initialCourses].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setCourses(sortedCourses);
     }
-  }, [initialCourse, isLoading]);
+  }, [initialCourses, coursesLoading]);
 
   // 삭제 성공 후 UI 업데이트를 위한 콜백
   const handleDeleteSuccess = (deletedCourseId: string) => {
@@ -32,6 +43,8 @@ export default function CourseList({ category }: CourseListProps) {
       prevCourses.filter((course) => course.id !== deletedCourseId)
     );
   };
+
+  const isLoading = coursesLoading || progressLoading;
 
   if (isLoading) {
     return <div className="py-8 text-center">강의를 불러오는 중...</div>;
@@ -52,6 +65,10 @@ export default function CourseList({ category }: CourseListProps) {
       {courses.map((course) => {
         // 각 코스의 첫 번째 아이템 정보를 가져옵니다
         const firstItem = course.sections?.[0]?.items?.[0];
+        const progress = progressData[course.id] || {
+          completed: false,
+          writingCompleted: false,
+        };
 
         // 이제 기본 페이지로 이동 - 첫 번째 강의 아이템은 서버에서 자동으로 가져옴
         const targetUrl = `/course/${course.category}/${course.id}`;
@@ -102,9 +119,37 @@ export default function CourseList({ category }: CourseListProps) {
                 )}
 
                 <div className="mt-auto flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <User size={14} />
-                    <span>{course.instructor_name}</span>
+                  {/* 학습 상태 표시 (강의 등록자 대신) */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
+                        progress.completed
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <Check
+                        className={`h-3 w-3 ${progress.completed ? 'text-green-600' : 'text-gray-400'}`}
+                      />
+                      <span>{progress.completed ? '학습 완료' : '미수강'}</span>
+                    </div>
+
+                    <div
+                      className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
+                        progress.writingCompleted
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <Edit
+                        className={`h-3 w-3 ${progress.writingCompleted ? 'text-blue-600' : 'text-gray-400'}`}
+                      />
+                      <span>
+                        {progress.writingCompleted
+                          ? '글작성 완료'
+                          : '글작성 미완료'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1">

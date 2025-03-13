@@ -2,7 +2,7 @@
 
 import { useToast } from '@/components/common/Toast/Context';
 import { Course, CourseWithSections } from '@/types/course/courseModel';
-import { fetchCourseDetail, fetchCourses, fetchCoursesByCategory, getLastAccessedItem, getUserCourseProgress, isAdminUser, markItemAsCompleted, } from '@/utils/services/courseService';
+import { fetchCourseDetail, fetchCourses, fetchCoursesByCategory, fetchUserCoursesProgress, getUserCourseProgress, getUserWritingStatus, isAdminUser, markCourseCompleted, markItemAsCompleted, markWritingCompleted } from '@/utils/services/courseService';
 import { useCallback, useEffect, useState } from 'react';
 
 // 코스 목록 조회를 위한 훅
@@ -66,8 +66,9 @@ export function useCourseDetail(courseId: string) {
 
 // 코스 진행 상황 관리를 위한 훅
 export function useCourseProgress(courseId: string) {
-  const [ completedItems, setCompletedItems ] = useState<string[]>([]);
-  const [lastAccessedItem, setLastAccessedItem] = useState<string | null>(null);
+  const [completedItems, setCompletedItems] = useState<string[]>([]);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [hasWriting, setHasWriting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
@@ -77,17 +78,20 @@ export function useCourseProgress(courseId: string) {
       try {
         setIsLoading(true);
 
-        // 완료된 아이템 목록 조회
+        // 1. 완료된 아이템 목록 조회
         const progressData = await getUserCourseProgress(courseId);
-        setCompletedItems(
-          progressData
-            .filter(item => item.completed)
-            .map(item => item.item_id)
-        );
+        const completedItemIds = progressData
+          .filter(item => item.completed)
+          .map(item => item.item_id);
+        
+        setCompletedItems(completedItemIds);
 
-        // 마지막 접근 아이템 조회
-        const lastItem = await getLastAccessedItem(courseId);
-        setLastAccessedItem(lastItem);
+        // 2. 코스가 완료되었는지 확인 (하나 이상의 아이템이 완료됨)
+        setIsCompleted(completedItemIds.length > 0);
+        
+        // 3. 글쓰기 완료 여부 확인
+        const writingStatus = await getUserWritingStatus(courseId);
+        setHasWriting(writingStatus);
       } catch (error) {
         console.error('코스 진행 상황 로드 실패:', error);
       } finally {
@@ -95,7 +99,9 @@ export function useCourseProgress(courseId: string) {
       }
     };
 
-    loadProgress();
+    if (courseId) {
+      loadProgress();
+    }
   }, [courseId]);
 
   // 아이템 완료 처리
@@ -107,10 +113,14 @@ export function useCourseProgress(courseId: string) {
       }
 
       // DB에 완료 상태 저장
-      await markItemAsCompleted(courseId, itemId);
+      const success = await markItemAsCompleted(courseId, itemId);
 
-      // 상태 업데이트
-      setCompletedItems(prev => [...prev, itemId]);
+      if (success) {
+        // 상태 업데이트
+        setCompletedItems(prev => [...prev, itemId]);
+        setIsCompleted(true);
+        return true;
+      }
 
       return true;
     } catch (error) {
@@ -120,12 +130,88 @@ export function useCourseProgress(courseId: string) {
     }
   }, [courseId, completedItems, showToast]);
 
+  // 전체 코스 완료 처리
+  const completeAllItems = useCallback(async () => {
+    try {
+      const success = await markCourseCompleted(courseId);
+      
+      if (success) {
+        showToast('코스 학습이 완료되었습니다!', 'success');
+        setIsCompleted(true);
+        
+        // 코스 상세 정보를 다시 불러와서 모든 아이템 ID 가져오기
+        const courseData = await fetchCourseDetail(courseId);
+        const allItemIds = courseData.sections.flatMap((section: { items: Array<{ id: string }> }) => 
+          section.items.map((item: { id: string }) => item.id)
+        );
+
+        setCompletedItems(allItemIds);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('코스 완료 처리 실패:', error);
+      showToast('코스 완료 처리에 실패했습니다:', 'error');
+      return false;
+    }
+  }, [courseId, showToast]);
+
+  // 글쓰기 완료 처리
+  const completeWriting = useCallback(async (content: string) => {
+    try {
+      const success = await markWritingCompleted(courseId, content);
+
+      if (success) {
+        setHasWriting(true);
+        showToast('글쓰기가 저장되었습니다!', 'success');
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('글쓰기 완료 처리 실패:', error);
+      showToast('글쓰기 저장에 실패했습니다.', 'error');
+      return false;
+    }
+  }, [courseId, showToast]);
+
   return {
     completedItems,
-    lastAccessedItem,
+    isCompleted,
+    hasWriting,
     isLoading,
-    markComplete
+    markComplete,
+    completeAllItems,
+    completeWriting
   };
+}
+
+// 모든 코스의 진행 상황을 한번에 가져오는 훅
+export function useAllCourseProgress() {
+  const [progressData, setProgressData] = useState<Record<string, { 
+    completed: boolean, 
+    writingCompleted: boolean 
+  }>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAllProgress = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchUserCoursesProgress();
+        setProgressData(data);
+      } catch (error) {
+        console.error('진행 상황 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAllProgress();
+  }, []);
+
+  return { progressData, isLoading };
 }
 
 // 사용자 권한 확인을 위한 훅
