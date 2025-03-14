@@ -1,8 +1,11 @@
 'use client';
 
-import { Award, Book, Edit } from 'lucide-react';
+import { Award, Book, Edit, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import CertificateModal from './CertificateModal';
+import { CertificateModal } from './CertificateModal';
+import { CourseCategory } from '@/types/course/categories';
+import { useCertificate } from '@/hooks/useCertificate';
+import { useToast } from '../common/Toast/Context';
 
 interface CourseProgressSummaryProps {
   categoryName: string;
@@ -10,6 +13,7 @@ interface CourseProgressSummaryProps {
   completedCourses: number;
   completedWritings: number;
   userName: string;
+  category: CourseCategory;
 }
 
 export default function CourseProgressSummary({
@@ -18,8 +22,12 @@ export default function CourseProgressSummary({
   completedCourses,
   completedWritings,
   userName,
+  category,
 }: CourseProgressSummaryProps) {
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { certificate, refreshCertificate } = useCertificate(category);
+  const { showToast } = useToast();
 
   const isAllCompleted =
     totalCourses > 0 &&
@@ -31,6 +39,30 @@ export default function CourseProgressSummary({
 
   const writingPercentage =
     totalCourses > 0 ? Math.round((completedWritings / totalCourses) * 100) : 0;
+
+  // 수료증 클릭 핸들러
+  const handleCertificateClick = async () => {
+    if (!isAllCompleted) return;
+
+    if (certificate && certificate.is_outdated) {
+      // 수료증이 있지만 업데이트가 필요한 경우
+      setIsRefreshing(true);
+      try {
+        const success = await refreshCertificate();
+        if (success) {
+          showToast('수료증이 성공적으로 갱신되었습니다.', 'success');
+        }
+      } catch (error) {
+        console.error('수료증 갱신 중 오류:', error);
+        showToast('수료증 갱신에 실패했습니다.', 'error');
+      } finally {
+        setIsRefreshing(false);
+      }
+    } else {
+      // 수료증이 없거나 업데이트가 필요 없는 경우 모달 표시
+      setShowCertificateModal(true);
+    }
+  };
 
   return (
     <div className="mb-8 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -90,23 +122,46 @@ export default function CourseProgressSummary({
               ? 'border-gold-start bg-gold-end/10 text-gold-start'
               : 'border-gray-200 bg-gray-50 text-gray-400'
           }`}
-          onClick={() => isAllCompleted && setShowCertificateModal(true)}
+          onClick={handleCertificateClick}
         >
-          <Award className="mb-2 h-10 w-10" />
-          <span className="text-center text-sm font-medium">
-            {isAllCompleted
-              ? '수료증 발급 가능!'
-              : '모든 강의를 완료하면 수료증을 발급받을 수 있습니다'}
-          </span>
+          {certificate && certificate.is_outdated ? (
+            // 갱신 필요한 수료증
+            <>
+              <RefreshCw
+                className={`mb-2 h-10 w-10 ${isRefreshing ? 'animate-spin' : ''}`}
+              />
+              <span className="text-center text-sm font-medium">
+                {isRefreshing ? '갱신 중...' : '수료증 갱신 필요!'}
+              </span>
+            </>
+          ) : (
+            // 일반 수료증 또는 발급 안됨
+            <>
+              <Award className="mb-2 h-10 w-10" />
+              <span className="text-center text-sm font-medium">
+                {isAllCompleted
+                  ? certificate
+                    ? '수료증 보기'
+                    : '수료증 발급 가능!'
+                  : '모든 강의를 완료하면 수료증을 발급받을 수 있습니다'}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
       {isAllCompleted && (
         <div className="rounded-lg bg-gold-end/10 p-3 text-center text-sm text-gold-start">
-          <p>
-            모든 강의를 완료하셨습니다! 위의 수료증 발급 버튼을 클릭하여
-            수료증을 받으세요.
-          </p>
+          {certificate && certificate.is_outdated ? (
+            <p>새로운 강의가 추가되었습니다! 수료증 갱신이 필요합니다.</p>
+          ) : (
+            <p>
+              모든 강의를 완료하셨습니다!
+              {certificate
+                ? ' 위의 수료증 아이콘을 클릭하여 수료증을 확인하세요.'
+                : ' 위의 수료증 발급 버튼을 클릭하여 수료증을 받으세요.'}
+            </p>
+          )}
         </div>
       )}
 

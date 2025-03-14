@@ -5,6 +5,7 @@ import Modal from '../common/Modal';
 import { Award, Download, X } from 'lucide-react';
 import Button from '../common/Button/Button';
 import { formatDate } from '@/utils/formatDate';
+import { useToast } from '../common/Toast/Context';
 
 interface CertificateModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface CertificateModalProps {
   totalCount: number;
 }
 
-export default function CertificateModal({
+export function CertificateModal({
   isOpen,
   onClose,
   userName,
@@ -24,22 +25,23 @@ export default function CertificateModal({
   totalCount,
 }: CertificateModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const { showToast } = useToast();
   const completionDate = formatDate(new Date());
 
   const handleDownload = async () => {
     try {
       setIsDownloading(true);
       // 여기에 수료증 다운로드 로직을 구현할 수 있다.
-      // ex. PDF 생성 및 다운 로드
+      // ex. PDF 생성 및 다운로드
 
       // 임시로 타이머 사용
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      alert('수료증이 다운로드되었습니다.');
+      showToast('수료증이 다운로드되었습니다.', 'success');
       onClose();
     } catch (error) {
       console.error('수료증 다운로드 중 오류 발생:', error);
-      alert('수료증 다운로드에 실패했습니다');
+      showToast('수료증 다운로드에 실패했습니다', 'error');
     } finally {
       setIsDownloading(false);
     }

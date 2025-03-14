@@ -6,7 +6,7 @@ import {
   useCoursePermission,
 } from '@/hooks/useCourse';
 import QuoteSection from '../QuotesSection';
-import { isValidCategory } from '@/types/course/categories';
+import { CourseCategory, isValidCategory } from '@/types/course/categories';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 import CourseList from './CourseList';
@@ -84,6 +84,11 @@ export function CategoryDynamicContent({
   const { totalCourses, completedCourses, completedWritings } =
     calculateProgress();
 
+  // 유효한 카테고리인지 확인하고 CourseCategory 타입으로 변환
+  const validCategory = isValidCategory(category)
+    ? (category as CourseCategory)
+    : 'reading';
+
   return (
     <div className="mx-auto max-w-7xl p-4 md:p-6">
       {/* 명언 섹션 유지 - 유효한 카테고리만 전달 */}
@@ -110,7 +115,7 @@ export function CategoryDynamicContent({
           다양한 {title} 관련 코스를 둘러보고 학습하세요.
         </p>
 
-        {/* 진행 상황 요약 컴포넌트 추가 */}
+        {/* 진행 상황 요약 컴포넌트 - 카테고리 prop 추가 */}
         {totalCourses > 0 && (
           <CourseProgressSummary
             categoryName={title}
@@ -118,6 +123,7 @@ export function CategoryDynamicContent({
             completedCourses={completedCourses}
             completedWritings={completedWritings}
             userName={userName}
+            category={validCategory}
           />
         )}
 
