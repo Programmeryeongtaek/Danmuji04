@@ -64,10 +64,21 @@ export default function CourseCreatePage() {
     value: string
   ) => {
     const updatedItems = [...courseItems];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      [field]: value,
-    };
+
+    // 키워드 필드인 경우 특별 처리
+    if (field === 'keywords') {
+      // 키워드는 문자열 그대로 저장 (서버에서 배열로 변환)
+      updatedItems[index] = {
+        ...updatedItems[index],
+        [field]: value,
+      };
+    } else {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        [field]: value,
+      };
+    }
+
     setCourseItems(updatedItems);
   };
 
@@ -333,6 +344,9 @@ export default function CourseCreatePage() {
                       className="w-full rounded-lg border p-2"
                       placeholder="쉼표(,)로 구분하여 키워드 입력 (예: 독서법, 인문학, 철학)"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      여러 키워드는 쉼표(,)로 구분해 입력해 주세요.
+                    </p>
                   </div>
 
                   <div>

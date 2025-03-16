@@ -126,6 +126,85 @@ export async function markItemAsCompleted(courseId: string, itemId: string) {
   return true;
 }
 
+// 코스 아이템 완료 여부 업데이트
+export async function markCourseItemCompleted(
+  courseId: string, 
+  itemId: string
+): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('로그인 필요');
+      return false;
+    }
+
+    // 디버깅용 로그: 입력 데이터 상세 정보
+    console.log('Input Data:', {
+      userId: user.id,
+      courseId: courseId,
+      itemId: itemId,
+      userIdType: typeof user.id,
+      courseIdType: typeof courseId,
+      itemIdType: typeof itemId
+    });
+
+    const now = new Date().toISOString();
+    
+    // 명시적 데이터 객체 생성
+    const progressData = {
+      user_id: user.id,
+      course_id: courseId,
+      item_id: itemId,
+      completed: true,
+      last_accessed: now
+    };
+
+    // 상세 로깅
+    console.log('Progress Data:', progressData);
+
+    try {
+      // 간단한 insert 시도
+      const { error: insertError } = await supabase
+        .from('course_progress')
+        .insert(progressData);
+      
+      // 이미 존재하는 경우 (unique 제약조건 위반)
+      if (insertError && insertError.code === '23505') {
+        console.log('이미 존재하는 레코드, 업데이트 시도');
+        
+        // 업데이트 쿼리
+        const { error: updateError } = await supabase
+          .from('course_progress')
+          .update({
+            completed: true,
+            last_accessed: now
+          })
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .eq('item_id', itemId);
+        
+        if (updateError) {
+          console.error('업데이트 오류:', updateError);
+          return false;
+        }
+      } else if (insertError) {
+        console.error('삽입 오류:', insertError);
+        return false;
+      }
+      
+      return true;
+    } catch (dbError) {
+      console.error('데이터베이스 작업 중 오류:', dbError);
+      return false;
+    }
+  } catch (error) {
+    console.error('완료 처리 중 예외:', error);
+    return false;
+  }
+}
+
 // 관리자 권한 확인
 export async function isAdminUser() {
   const supabase = createClient();
@@ -148,6 +227,8 @@ export async function fetchCourses() {
   const { data, error } = await supabase
     .from('courses')
     .select('*')
+    // 만약 소프트 삭제를 사용한다면:
+    // .eq('is_deleted', false) 
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -286,7 +367,9 @@ export async function createCourseItem(courseId: string, formData: CourseItemFor
       course_id: courseId,
       title: formData.title,
       description: formData.description,
-      keywords: formData.keywords || [],
+      keywords: typeof formData.keywords === 'string' 
+        ? formData.keywords.split(',').map(k => k.trim()).filter(k => k) 
+        : formData.keywords || [],
       youtube_id: formData.youtube_id,
       order_num: itemOrderNum
     })

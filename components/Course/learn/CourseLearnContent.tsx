@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import YouTubePlayer from './YouTubePlayer';
 import WritingSection from './WritingSection';
+import { useToast } from '@/components/common/Toast/Context';
+import { markCourseItemCompleted } from '@/utils/services/courseService';
+import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 
 interface CourseLearnContentProps {
   courseId: string;
@@ -39,6 +41,8 @@ export default function CourseLearnContent({
   const [editContent, setEditContent] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [completedItems, setCompletedItems] = useState<string[]>([]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     async function fetchData() {
@@ -69,7 +73,21 @@ export default function CourseLearnContent({
           data: { user },
         } = await supabase.auth.getUser();
 
-        // 5. 현재 유저의 글 가져오기
+        // 5. 완료된 아이템 목록 가져오기
+        if (user) {
+          const { data: progressData } = await supabase
+            .from('course_progress')
+            .select('item_id')
+            .eq('user_id', user.id)
+            .eq('course_id', courseId)
+            .eq('completed', true);
+
+          if (progressData) {
+            setCompletedItems(progressData.map((item) => item.item_id));
+          }
+        }
+
+        // 6. 현재 유저의 글 가져오기
         let userWritingData = null;
         let otherWritingsData: CourseWriting[] = [];
 
@@ -84,7 +102,7 @@ export default function CourseLearnContent({
 
           userWritingData = userWritings;
 
-          // 6. 다른 사용자의 공개된 글 가져오기
+          // 7. 다른 사용자의 공개된 글 가져오기
           const { data: publicWritings } = await supabase
             .from('course_writings')
             .select('*')
@@ -101,12 +119,6 @@ export default function CourseLearnContent({
         setCurrentItem(currentItemData);
         setUserWriting(userWritingData);
         setOtherWritings(otherWritingsData);
-
-        // 사용자 글이 있으면 수정을 위한 상태 초기화
-        if (userWritingData) {
-          setEditContent(userWritingData.content);
-          setIsPublic(userWritingData.is_public);
-        }
       } catch (error) {
         console.error('데이터 불러오기 실패:', error);
       } finally {
@@ -136,6 +148,34 @@ export default function CourseLearnContent({
     total: allItems.length,
     percentage:
       allItems.length > 0 ? ((currentIndex + 1) / allItems.length) * 100 : 0,
+  };
+
+  // 아이템 완료 처리 함수
+  const handleItemComplete = async (): Promise<void> => {
+    try {
+      // 이미 완료된 아이템인지 확인
+      if (completedItems.includes(itemId)) {
+        return;
+      }
+
+      // 아이템 완료 처리
+      const success = await markCourseItemCompleted(courseId, itemId);
+
+      if (success) {
+        showToast('학습이 완료되었습니다.', 'success');
+
+        // 완료된 아이템 목록 업데이트
+        setCompletedItems((prev) => {
+          const updatedItems = new Set([...prev, itemId]);
+          return Array.from(updatedItems);
+        });
+      } else {
+        showToast('완료 처리에 실패했습니다.', 'error');
+      }
+    } catch (error) {
+      console.error('아이템 완료 처리 중 오류:', error);
+      showToast('오류가 발생했습니다.', 'error');
+    }
   };
 
   // 내 글 수정하기
@@ -273,7 +313,7 @@ export default function CourseLearnContent({
             {allItems.map((item, index) => (
               <li key={item.id}>
                 <Link
-                  href={`/course/${category}/${courseId}?itemId=${item.id}`}
+                  href={`/course/${category}/${courseId}/learn/${item.id}`}
                   className={`flex items-center rounded-md p-2 ${
                     item.id === currentItem.id
                       ? 'bg-blue-50 text-blue-600'
@@ -284,6 +324,11 @@ export default function CourseLearnContent({
                     {index + 1}
                   </span>
                   <span className="line-clamp-1">{item.title}</span>
+                  {completedItems.includes(item.id) && (
+                    <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">
+                      완료
+                    </span>
+                  )}
                 </Link>
               </li>
             ))}
@@ -293,7 +338,17 @@ export default function CourseLearnContent({
 
       {/* 강의 영상 - 항상 표시 */}
       <div className="mb-6 overflow-hidden rounded-lg shadow-md">
-        <YouTubePlayer youtubeId={currentItem.youtube_id} />
+        <VideoPlayer
+          contentUrl={
+            currentItem.youtube_id
+              ? `https://www.youtube.com/watch?v=${currentItem.youtube_id}`
+              : ''
+          }
+          type="video"
+          youtubeId={currentItem.youtube_id}
+          onComplete={handleItemComplete}
+          isLastItem={nextItemId === null}
+        />
       </div>
 
       {currentItem.description && (
@@ -435,7 +490,7 @@ export default function CourseLearnContent({
         <div className="mt-8 flex justify-between">
           {prevItemId ? (
             <Link
-              href={`/course/${category}/${courseId}?itemId=${prevItemId}`}
+              href={`/course/${category}/${courseId}/learn/${prevItemId}`}
               className="flex items-center gap-1 rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
             >
               <ChevronLeft size={16} />
@@ -447,7 +502,7 @@ export default function CourseLearnContent({
 
           {nextItemId ? (
             <Link
-              href={`/course/${category}/${courseId}?itemId=${nextItemId}`}
+              href={`/course/${category}/${courseId}/learn/${nextItemId}`}
               className="flex items-center gap-1 rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
             >
               <span>다음 강의</span>
@@ -458,7 +513,7 @@ export default function CourseLearnContent({
               href={`/course/${category}`}
               className="flex items-center gap-1 rounded-lg bg-green-500 px-4 py-2 text-white hover:bg-green-600"
             >
-              <span>강의 완료!</span>
+              <span>코스 완료!</span>
             </Link>
           )}
         </div>

@@ -34,6 +34,7 @@ export default function CourseList({ category }: CourseListProps) {
       setCourses(sortedCourses);
     }
   }, [initialCourses, coursesLoading]);
+
   // 삭제 성공 후 UI 업데이트를 위한 콜백
   const handleDeleteSuccess = (deletedCourseId: string) => {
     // 삭제된 코스를 목록에서 제거

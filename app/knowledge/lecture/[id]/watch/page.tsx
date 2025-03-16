@@ -1,7 +1,8 @@
 'use client';
 
+import CompletionModal from '@/components/common/CompletionModal';
 import { useToast } from '@/components/common/Toast/Context';
-import CompletionModal from '@/components/Course/[slug]/[videoId]/CompletionModal';
+
 import LectureCurriculum from '@/components/knowledge/lecture/watch/LectureCurriculum';
 import NavigationButtons from '@/components/knowledge/lecture/watch/NavigationButtons';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';

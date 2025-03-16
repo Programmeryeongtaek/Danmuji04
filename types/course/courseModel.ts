@@ -80,7 +80,7 @@ export interface CourseSectionFormData {
 export interface CourseItemFormData {
   title: string;
   description?: string;
-  keywords?: string;
+  keywords?: string | string[];
   youtube_id: string;
 }
 
