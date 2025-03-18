@@ -17,10 +17,10 @@ export const COURSE_CATEGORIES = {
   // 새 카테고리는 여기에 추가
 } as const;
 
-// 타입 추론을 통해 카테고리 ID 타입 정의
-export type CourseCategory = string;
+// 타입 정의를 더 명확하게 합니다
+export type CourseCategory = keyof typeof COURSE_CATEGORIES;
 
-// 카테고리 ID 배열 (Object.keys로 자동 생성)
+// 카테고리 ID 배열
 export const CATEGORY_IDS = Object.keys(COURSE_CATEGORIES) as CourseCategory[];
 
 // 카테고리 이름 조회 함수
@@ -29,6 +29,6 @@ export function getCategoryTitle(category: string): string {
 }
 
 // 런타임에 유효한 카테고리인지 확인
-export function isValidCategory(category: string): boolean {
+export function isValidCategory(category: string): category is CourseCategory {
   return category in COURSE_CATEGORIES;
 }
