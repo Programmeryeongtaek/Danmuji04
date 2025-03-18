@@ -1,11 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Modal from '../common/Modal';
-import { Award, Download, X } from 'lucide-react';
+import { Award, X } from 'lucide-react';
 import Button from '../common/Button/Button';
 import { formatDate } from '@/utils/formatDate';
 import { useToast } from '../common/Toast/Context';
+import { generateCertificate } from '@/utils/services/certificateService';
+import {
+  convertCategoryToKey,
+  updateCategoryMap,
+} from '@/utils/services/categoryService';
 
 interface CertificateModalProps {
   isOpen: boolean;
@@ -24,28 +29,49 @@ export function CertificateModal({
   completedCount,
   totalCount,
 }: CertificateModalProps) {
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { showToast } = useToast();
   const completionDate = formatDate(new Date());
 
-  const handleDownload = async () => {
+  // 컴포넌트 마운트 시 카테고리 매핑 업데이트
+  useEffect(() => {
+    // 카테고리 매핑 최신화
+    updateCategoryMap()
+      .then(() => console.log('카테고리 매핑 업데이트 완료'))
+      .catch((error) => console.error('카테고리 매핑 업데이트 실패:', error));
+  }, []);
+
+  // 수료증 발급 처리 함수
+  const handleGenerateCertificate = async () => {
     try {
-      setIsDownloading(true);
-      // 여기에 수료증 다운로드 로직을 구현할 수 있다.
-      // ex. PDF 생성 및 다운로드
+      setIsProcessing(true);
 
-      // 임시로 타이머 사용
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 카테고리 매핑 최신화 (새로운 카테고리가 추가되었을 수 있음)
+      await updateCategoryMap();
 
-      showToast('수료증이 다운로드되었습니다.', 'success');
-      onClose();
+      // 카테고리를 영어 key로 변환
+      const categoryKey = convertCategoryToKey(categoryName);
+
+      console.log(`카테고리 변환: "${categoryName}" → "${categoryKey}"`); // 디버깅 로그
+
+      // 수료증 발급 서비스 호출
+      const success = await generateCertificate(categoryKey);
+
+      if (success) {
+        showToast('수료증이 발급되었습니다!', 'success');
+        onClose();
+      } else {
+        showToast('수료증 발급에 실패했습니다.', 'error');
+      }
     } catch (error) {
-      console.error('수료증 다운로드 중 오류 발생:', error);
-      showToast('수료증 다운로드에 실패했습니다', 'error');
+      console.error('수료증 발급 중 오류:', error);
+      showToast('수료증 발급 중 오류가 발생했습니다.', 'error');
     } finally {
-      setIsDownloading(false);
+      setIsProcessing(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
@@ -82,12 +108,11 @@ export function CertificateModal({
 
         <div className="flex justify-center">
           <Button
-            onClick={handleDownload}
-            className="flex items-center gap-2 px-6 py-2"
-            disabled={isDownloading}
+            onClick={handleGenerateCertificate}
+            className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
           >
-            <Download size={18} />
-            {isDownloading ? '다운로드 중...' : '수료증 다운로드'}
+            <Award size={18} />
+            {isProcessing ? '발급 중...' : '수료증 발급받기'}
           </Button>
         </div>
       </div>

@@ -1,4 +1,3 @@
-import { CourseCategory } from '@/types/course/categories';
 import { createClient } from '../supabase/client';
 
 export interface Certificate {
@@ -38,7 +37,7 @@ export interface Notification {
 }
 
 // 특정 카테고리의 수료증 조회
-export async function getCertificate(category: CourseCategory): Promise<Certificate | null> {
+export async function getCertificate(category: string): Promise<Certificate | null> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -80,30 +79,105 @@ export async function getAllCertificates(): Promise<Certificate[]> {
   return data || [];
 }
 
-// 수료증 다운로드 URL 생성
-export async function generateCertificateDownloadUrl(certificateId: number): Promise<string | null> {
-  const supabase = createClient();
-  
+// 수료증 발급 함수
+export async function generateCertificate(category: string): Promise<boolean> {
   try {
-    // 수료증 정보 확인 (유효한 수료증인지 체크)
-    const { data: certificate } = await supabase
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return false;
+    
+    console.log(`수료증 발급 시도 - 카테고리: ${category}`);
+    
+    // 해당 카테고리의 모든 강의 ID 가져오기
+    const { data: courses } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('category', category);
+    
+    if (!courses || courses.length === 0) {
+      console.error('카테고리에 해당하는 강의가 없습니다:', category);
+      return false;
+    }
+    
+    const courseIds = courses.map(course => course.id);
+    
+    // 완료된 강의 확인
+    const { data: progress } = await supabase
+      .from('course_progress')
+      .select('course_id')
+      .eq('user_id', user.id)
+      .eq('completed', true)
+      .in('course_id', courseIds);
+    
+    const completedCourseIds = progress?.map(p => p.course_id) || [];
+    
+    // 모든 강의를 완료했는지 확인
+    const allCompleted = courseIds.every(id => completedCourseIds.includes(id));
+    
+    if (!allCompleted) {
+      console.error('모든 강의를 완료하지 않았습니다.');
+      return false;
+    }
+    
+    // 이미 발급된 수료증이 있는지 확인
+    const { data: existingCert } = await supabase
       .from('certificates')
-      .select('*')
-      .eq('id', certificateId)
-      .single();
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('category', category)
+      .maybeSingle();
     
-    if (!certificate) return null;
+    if (existingCert) {
+      // 수료증 업데이트
+      const { error: updateError } = await supabase
+        .from('certificates')
+        .update({
+          is_outdated: false,
+          updated_at: new Date().toISOString(),
+          completed_courses: courseIds
+        })
+        .eq('id', existingCert.id);
+      
+      if (updateError) throw updateError;
+    } else {
+      // 새 수료증 발급
+      const { error: insertError } = await supabase
+        .from('certificates')
+        .insert({
+          user_id: user.id,
+          category: category,
+          is_outdated: false,
+          completed_courses: courseIds
+        });
+      
+      if (insertError) throw insertError;
+      
+      // 알림 생성
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          title: '수료증 발급',
+          message: `${category} 카테고리의 수료증이 발급되었습니다.`,
+          type: 'certificate_issued',
+          related_data: { category: category },
+          read: false
+        });
+      
+      if (notificationError) {
+        console.error('알림 생성 오류:', notificationError);
+      }
+    }
     
-    // 여기서는 단순히 API 경로만 반환
-    // 실제 환경에서는 해당 API가 PDF 생성 등의 작업을 수행하게 됨
-    return `/api/certificates/download/${certificateId}`;
+    return true;
   } catch (error) {
-    console.error('수료증 다운로드 URL 생성 중 오류:', error);
-    return null;
+    console.error('수료증 발급 중 오류:', error);
+    return false;
   }
 }
 
-// 수료증 다운로드 URL 생성
+// 수료증 갱신
 export async function updateCertificate(certificateId: number): Promise<boolean> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -4,15 +4,14 @@ import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import { CertificateModal } from '@/components/Course/CertificateModal';
 import { useAllCertificates } from '@/hooks/useCertificate';
-import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
+import { COURSE_CATEGORIES } from '@/types/course/categories';
 import { formatDate } from '@/utils/formatDate';
 import {
   Certificate,
-  generateCertificateDownloadUrl,
   updateCertificate,
 } from '@/utils/services/certificateService';
 import { createClient } from '@/utils/supabase/client';
-import { Award, Download, RefreshCw } from 'lucide-react';
+import { Award, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function CertificatesPage() {
@@ -72,21 +71,6 @@ export default function CertificatesPage() {
     }
   };
 
-  const handleDownload = async (certificateId: number) => {
-    try {
-      const downloadUrl = await generateCertificateDownloadUrl(certificateId);
-      if (downloadUrl) {
-        window.open(downloadUrl, '_blank');
-        showToast('수료증 다운로드를 시작합니다.', 'success');
-      } else {
-        showToast('수료증 다운로드 URL을 생성할 수 없습니다.', 'error');
-      }
-    } catch (error) {
-      console.error('Error downloading certificate:', error);
-      showToast('수료증 다운로드에 실패했습니다.', 'error');
-    }
-  };
-
   if (isLoading) {
     return <div className="py-8 text-center">수료증 정보를 불러오는 중...</div>;
   }
@@ -127,8 +111,9 @@ export default function CertificatesPage() {
                   </div>
 
                   <h3 className="mb-2 text-center text-lg font-bold">
-                    {COURSE_CATEGORIES[certificate.category as CourseCategory]
-                      ?.title || certificate.category}{' '}
+                    {COURSE_CATEGORIES[
+                      certificate.category as keyof typeof COURSE_CATEGORIES
+                    ]?.title || certificate.category}
                     수료증
                   </h3>
 
@@ -142,7 +127,7 @@ export default function CertificatesPage() {
                   </div>
 
                   <div className="flex justify-between gap-2">
-                    {certificate.is_outdated ? (
+                    {certificate.is_outdated && (
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -152,17 +137,6 @@ export default function CertificatesPage() {
                       >
                         <RefreshCw className="h-4 w-4" />
                         갱신
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(certificate.id);
-                        }}
-                        className="flex flex-1 items-center justify-center gap-1 py-1 text-sm"
-                      >
-                        <Download className="h-4 w-4" />
-                        다운로드
                       </Button>
                     )}
                   </div>
@@ -182,8 +156,9 @@ export default function CertificatesPage() {
           }}
           userName={userName}
           categoryName={
-            COURSE_CATEGORIES[selectedCertificate.category as CourseCategory]
-              ?.title || selectedCertificate.category
+            COURSE_CATEGORIES[
+              selectedCertificate.category as keyof typeof COURSE_CATEGORIES
+            ]?.title || selectedCertificate.category
           }
           completedCount={selectedCertificate.completed_courses?.length || 0}
           totalCount={selectedCertificate.completed_courses?.length || 0}

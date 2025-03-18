@@ -16,6 +16,20 @@ export interface Certificate {
   completed_courses: string[];
 }
 
+// 알림 관련 데이터 타입 정의
+export interface CourseAddedData {
+  category: string;
+  course_id: string;
+  course_title: string;
+}
+
+export interface CertificateData {
+  category: string;
+}
+
+// 알림 타입에 따른 데이터 타입 정의
+export type NotificationRelatedData = CourseAddedData | CertificateData | Record<string, unknown>;
+
 // 알림 타입 정의
 export interface Notification {
   id: number;
@@ -23,7 +37,7 @@ export interface Notification {
   title: string;
   message: string;
   type: string;
-  related_data: any;
+  related_data: NotificationRelatedData;
   read: boolean;
   created_at: string;
 }
