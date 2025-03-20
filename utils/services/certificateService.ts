@@ -221,7 +221,7 @@ export async function updateCertificate(certificateId: number): Promise<boolean>
     const { error } = await supabase
       .from('certificates')
       .update({
-        is_outdated: false,
+        is_outdated: false, // 명시적으로 설정
         updated_at: new Date().toISOString(),
         completed_courses: courseIds
       })
@@ -235,7 +235,7 @@ export async function updateCertificate(certificateId: number): Promise<boolean>
     return true;
   }
 
-  return false;
+  return false; // 모든 강의를 완료하지 않았으면 갱신 불가
 }
 
 // 읽지 않은 알림 개수 조회
@@ -266,12 +266,27 @@ export async function getNotifications(limit: number = 10, offset: number = 0): 
   
   if (!user) return [];
 
+  const now = new Date().toISOString();
+
+  // 1. 삭제 예정 시간이 지난 알림 자동 삭제
+  const { error: deleteError } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('pending_delete', true)
+    .lt('delete_at', now);
+
+  if (deleteError) {
+    console.error('자동 삭제 처리 중 오류:', deleteError);
+  }
+
+  // 2. 남은 알림 조회
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + limit - 1)
 
   if (error) {
     console.error('Error fetching notifications:', error);
@@ -313,6 +328,91 @@ export async function markAllNotificationsAsRead(): Promise<boolean> {
 
   if (error) {
     console.error('Error marking all notifications as read:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// 알림 삭제
+export async function deleteNotification(notificationId: number): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('id', notificationId);
+
+  if (error) {
+    console.error('Error deleting notification:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// 기간이 지난 알림 삭제 (자동화를 위한 함수)
+export async function deleteOldNotifications(daysOld: number = 30): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('user_id', user.id)
+    .lt('created_at', cutoffDate.toISOString());
+
+  if (error) {
+    console.error('Error deleting old notifications:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// 알림 삭제 예약
+export async function markNotificationForDeletion(notificationId: number): Promise<boolean> {
+  const supabase = createClient();
+
+  // 삭제 예정 시간 계산(현재로부터 1시간 후)
+  const deleteAt = new Date();
+  deleteAt.setHours(deleteAt.getHours() + 1);
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({
+      pending_delete: true,
+      delete_at: deleteAt.toISOString()
+    })
+    .eq('id', notificationId);
+
+  if (error) {
+    console.error('Error marking notification for deletion:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// 삭제 예약 취소
+export async function cancelNotificationDeletion(notificationId: number): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({
+      pending_delete: false,
+      delete_at: null
+    })
+    .eq('id', notificationId);
+
+  if (error) {
+    console.error('Error canceling notification deletion:', error);
     return false;
   }
 

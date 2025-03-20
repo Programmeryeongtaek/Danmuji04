@@ -323,7 +323,56 @@ export async function createCourse(formData: CourseFormData) {
     .single();
   
   if (error) throw error;
-  return data as Course;
+  
+  // 코스 생성 성공 후
+  if (data) {
+    // 수료증이 있는 사용자들에게 알림 생성
+    try {
+      // 해당 카테고리의 수료증을 가진 사용자 조회
+      const { data: certificateUsers } = await supabase
+        .from('certificates')
+        .select('user_id')
+        .eq('category', formData.category)
+        .eq('is_outdated', false); // 유효한 수료증을 가진 사용자만
+
+      if (certificateUsers && certificateUsers.length > 0) {
+        // 각 사용자에게 알림 생성
+        const notifications = certificateUsers.map(cert => ({
+          user_id: cert.user_id,
+          title: '새 강의 추가됨',
+          message: `${formData.title} 강의가 ${formData.category} 카테고리에 추가되었습니다.`,
+          type: 'course_added',
+          related_data: {
+            category: formData.category,
+            course_id: data.id,
+            course_title: formData.title
+          },
+          read: false
+        }));
+
+        // 알림 일괄 생성
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert(notifications);
+
+        if (notificationError) console.error('알림 생성 실패:', notificationError);
+
+        // 수료증 상태 업데이트 (is_outdated = true)
+        const { error: certUpdateError } = await supabase
+          .from('certificates')
+          .update({ is_outdated: true})
+          .eq('category', formData.category)
+          .eq('is_outdated', false);
+
+        if (certUpdateError) console.error('수료증 상태 업데이트 실패:', certUpdateError);
+      }
+    } catch (error) {
+      console.error('알림 처리 중 오류:', error);
+      // 주요 기능은 성공했으므로 알림 어류는 throw하지 않음
+    }
+  }
+
+    return data as Course;
 }
 
 // 코스 아이템 생성

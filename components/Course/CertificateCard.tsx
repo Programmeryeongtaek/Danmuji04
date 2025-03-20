@@ -72,13 +72,6 @@ export function CertificateCard({
           </div>
         </div>
 
-        {/* 갱신 필요 표시 */}
-        {certificate.is_outdated && (
-          <div className="absolute right-0 top-0 z-10 rounded-bl-lg bg-red-500 px-3 py-1 text-sm font-medium text-white">
-            갱신 필요
-          </div>
-        )}
-
         <div className="flex justify-between gap-2">
           {/* 수료증이 갱신 필요한 경우에만 갱신 버튼 표시 */}
           {certificate.is_outdated ? (
