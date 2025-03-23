@@ -4,7 +4,7 @@ import { useToast } from '@/components/common/Toast/Context';
 import { CourseCategory } from '@/types/course/categories';
 import { createClient } from '@/utils/supabase/client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface Certificate {
   id: number;
@@ -48,7 +48,7 @@ export interface Notification {
   read: boolean;
   created_at: string;
   pending_delete?: boolean;
-  delete_at?: string;
+  delete_at?: string | null;
 }
 
 // 특정 카테고리의 수료증 정보를 가져오는 훅
@@ -210,8 +210,20 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { showToast } = useToast();
+  // 자동 삭제 처리 진행 중인지 확인하는 플래그 추가
+  const [isProcessingAutoDelete, setIsProcessingAutoDelete] = useState(false);
+  // 마지막 알림 데이터 업데이트 시간 추적
+  const lastUpdateRef = useRef<number>(Date.now());
 
+  // 알림 목록 가져오기
   const fetchNotifications = useCallback(async () => {
+    // 이전 업데이트로부터 1초도 지나지 않았으면 무시 (무한 루프 방지)
+    const now = Date.now();
+    if (now - lastUpdateRef.current < 1000) {
+      return;
+    }
+    lastUpdateRef.current = now;
+
     try {
       setIsLoading(true);
       const supabase = createClient();
@@ -222,8 +234,38 @@ export function useNotifications() {
         return;
       }
 
-      console.log('알림 데이터 조회 중:', user.id); // 디버깅 로그
-      
+      // 자동 삭제 처리 - 삭제 예정 시간이 지난 알림 처리
+      // 처리 중일 때는 중복 실행 방지
+      if (!isProcessingAutoDelete) {
+        setIsProcessingAutoDelete(true);
+        const now = new Date().toISOString();
+        
+        // 먼저 서버에서 삭제할 알림이 있는지 확인
+        const { data: pendingDeleteData } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('pending_delete', true)
+          .lt('delete_at', now);
+        
+        // 삭제할 알림이 있는 경우에만 삭제 작업 수행
+        if (pendingDeleteData && pendingDeleteData.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('pending_delete', true)
+            .lt('delete_at', now);
+
+          if (deleteError) {
+            console.error('자동 삭제 처리 중 오류:', deleteError);
+          }
+        }
+        
+        setIsProcessingAutoDelete(false);
+      }
+
+      // 알림 목록 조회
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
@@ -235,15 +277,15 @@ export function useNotifications() {
         throw error;
       }
         
-      console.log('알림 데이터 조회 결과:', data?.length, data); // 결과 확인인
       setNotifications(data || []);
     } catch (error) {
       console.error('알림 불러오기 실패:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isProcessingAutoDelete]);
 
+  // 읽지 않은 알림 개수 조회
   const fetchUnreadCount = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -267,21 +309,18 @@ export function useNotifications() {
     }
   }, []);
 
+  // 초기 데이터 로드 및 실시간 업데이트 구독
   useEffect(() => {
     fetchNotifications();
     fetchUnreadCount();
-  }, [fetchNotifications, fetchUnreadCount]);
 
-  // 실시간 알림 구독 설정
-  useEffect(() => {
     const supabase = createClient();
-    
+
     async function setupSubscription() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('알림 구동 설정 중:', user.id); // 디버깅 로그
-      
+      // 알림 테이블 변경 구독
       const channel = supabase
         .channel('notifications_changes')
         .on(
@@ -293,26 +332,36 @@ export function useNotifications() {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            console.log('알림 변경 감지:', payload); // 디버깅 로그
+            console.log('알림 변경 감지:', payload); 
             fetchNotifications();
             fetchUnreadCount();
           }
         )
         .subscribe();
 
-      console.log('구독 상태:', channel.state); // 디버깅 로그
-        
       return () => {
         supabase.removeChannel(channel);
       };
     }
-    
+
     const cleanup = setupSubscription();
+
+    // 주기적으로 확인하는 대신, 5초마다 한 번씩만 확인
+    const intervalId = setInterval(() => {
+      // 현재 시간과 마지막 업데이트 시간 비교
+      const now = Date.now();
+      if (now - lastUpdateRef.current >= 5000) {  // 5초마다 한 번만 실행
+        fetchNotifications();
+      }
+    }, 5000);
+
     return () => {
+      clearInterval(intervalId);
       if (cleanup) cleanup.then(unsub => unsub && unsub());
     };
   }, [fetchNotifications, fetchUnreadCount]);
 
+  // 알림 읽음 처리
   const markAsRead = useCallback(async (notificationId: number) => {
     try {
       const supabase = createClient();
@@ -334,6 +383,7 @@ export function useNotifications() {
     }
   }, []);
 
+  // 모든 알림 읽음 처리
   const markAllAsRead = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -358,7 +408,7 @@ export function useNotifications() {
     }
   }, [showToast]);
 
-  // 알림 삭제 기능 추가
+  // 알림 삭제 기능
   const deleteNotification = useCallback(async (notificationId: number) => {
     try {
       const supabase = createClient();
@@ -379,12 +429,102 @@ export function useNotifications() {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
 
-      showToast('알림이 삭제되었습니다.', 'success');
+      return true;
     } catch (error) {
       console.error('알림 삭제 실패:', error);
-      showToast('알림 삭제에 실패했습니다.', 'error');
+      return false;
     }
-  }, [notifications, showToast]);
+  }, [notifications]);
+
+  // 모든 알림 삭제
+  const deleteAllNotifications = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return false;
+
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setNotifications([]);
+      setUnreadCount(0);
+      return true;
+    } catch (error) {
+      console.error('모든 알림 삭제 실패:', error);
+      return false;
+    }
+  }, []);
+
+  // 삭제 예약 (지연 삭제)
+  const markForDeletion = useCallback(async (notificationId: number, delayMinutes: number = 60) => {
+    try {
+      const supabase = createClient();
+
+      // 삭제 예정 시간 계산(기본: 현재로부터 60분 후)
+      const deleteAt = new Date();
+      deleteAt.setMinutes(deleteAt.getMinutes() + delayMinutes);
+
+      const { error } = await supabase
+        .from('notifications')
+        .update({
+          pending_delete: true,
+          delete_at: deleteAt.toISOString()
+        })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
+      // 로컬 상태 업데이트
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId 
+            ? { ...notif, pending_delete: true, delete_at: deleteAt.toISOString() } 
+            : notif
+        )
+      );
+
+      return true;
+    } catch (error) {
+      console.error('삭제 예약 실패:', error);
+      return false;
+    }
+  }, []);
+
+  // 삭제 예약 취소
+  const cancelDeletion = useCallback(async (notificationId: number) => {
+    try {
+      const supabase = createClient();
+      
+      const { error } = await supabase
+        .from('notifications')
+        .update({
+          pending_delete: false,
+          delete_at: null
+        })
+        .eq('id', notificationId);
+        
+      if (error) throw error;
+
+      // 로컬 상태 업데이트 - 타입 문제 해결
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId 
+            ? { ...notif, pending_delete: false, delete_at: null } as Notification 
+            : notif
+        )
+      );
+
+      return true;
+    } catch (error) {
+      console.error('삭제 예약 취소 실패:', error);
+      return false;
+    }
+  }, []);
 
   return {
     notifications,
@@ -393,6 +533,9 @@ export function useNotifications() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    deleteAllNotifications,
+    markForDeletion,
+    cancelDeletion,
     refresh: fetchNotifications
   };
 }

@@ -2,12 +2,8 @@
 
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
-import { useNotifications } from '@/hooks/useCertificate';
+import { useNotificationsRealtime } from '@/hooks/useNotificationsRealtime';
 import { COURSE_CATEGORIES } from '@/types/course/categories';
-import {
-  cancelNotificationDeletion,
-  markNotificationForDeletion,
-} from '@/utils/services/certificateService';
 import {
   Award,
   Bell,
@@ -19,80 +15,201 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
 export default function NotificationPage() {
-  const { notifications, isLoading, markAsRead, markAllAsRead, refresh } =
-    useNotifications();
+  const {
+    notifications,
+    isLoading,
+    markAsRead,
+    markAllAsRead,
+    markForDeletion,
+    cancelDeletion,
+    deleteAllNotifications,
+  } = useNotificationsRealtime();
+
+  const [timers, setTimers] = useState<Record<number, NodeJS.Timeout>>({});
+  const mountedRef = useRef(true);
   const { showToast } = useToast();
 
-  // 알림 삭제 요청
-  const markForDeletion = async (notificationId: number) => {
-    try {
-      const success = await markNotificationForDeletion(notificationId);
-      if (success) {
-        showToast('1시간 후에 알림이 삭제됩니다.', 'info');
-        refresh(); // 데이터 다시 불러오기
-      } else {
-        showToast('알림 삭제 예약에 실패했습니다.', 'error');
+  // 컴포넌트 마운트/언마운트 관리
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      // 모든 타이머 정리
+      Object.values(timers).forEach((timer) => clearTimeout(timer));
+    };
+  }, [timers]);
+
+  // 삭제 예정 알림에 대한 타이머 설정
+  useEffect(() => {
+    const newTimers: Record<number, NodeJS.Timeout> = {};
+
+    notifications.forEach((notification) => {
+      if (
+        timers[notification.id] ||
+        !notification.pending_delete ||
+        !notification.delete_at
+      ) {
+        return;
       }
-    } catch (error) {
-      console.error('알림 삭제 예약 중 오류:', error);
-      showToast('오류가 발생했습니다', 'error');
+
+      const deleteTime = new Date(notification.delete_at).getTime();
+      const now = new Date().getTime();
+      const timeUntilDelete = deleteTime - now;
+
+      if (timeUntilDelete > 0) {
+        newTimers[notification.id] = setTimeout(() => {
+          if (mountedRef.current) {
+            // 타이머 정리 - 실제 삭제는 서버에서 처리되며 realtime으로 알림 받음
+            setTimers((prev) => {
+              const updated = { ...prev };
+              delete updated[notification.id];
+              return updated;
+            });
+          }
+        }, timeUntilDelete);
+      }
+    });
+
+    if (Object.keys(newTimers).length > 0) {
+      setTimers((prev) => ({ ...prev, ...newTimers }));
+    }
+  }, [notifications]);
+
+  // 알림 읽음 처리
+  const handleMarkAsRead = async (notificationId: number) => {
+    const success = await markAsRead(notificationId);
+    if (success) {
+      showToast('알림을 읽음 처리했습니다.', 'success');
+    }
+  };
+
+  // 모든 알림 읽음 처리
+  const handleMarkAllAsRead = async () => {
+    const success = await markAllAsRead();
+    if (success) {
+      showToast('모든 알림을 읽음 처리했습니다.', 'success');
+    }
+  };
+
+  // 알림 삭제 (30분 지연 삭제)
+  const handleDelete = async (notificationId: number) => {
+    // 타이머가 이미 있으면 제거
+    if (timers[notificationId]) {
+      clearTimeout(timers[notificationId]);
+      setTimers((prev) => {
+        const updated = { ...prev };
+        delete updated[notificationId];
+        return updated;
+      });
+    }
+
+    const success = await markForDeletion(notificationId, 30);
+    if (success) {
+      showToast('30분 후에 알림이 자동으로 삭제됩니다.', 'info');
     }
   };
 
   // 삭제 취소
-  const cancelDeletion = async (notificationId: number) => {
-    try {
-      const success = await cancelNotificationDeletion(notificationId);
-      if (success) {
-        showToast('알림 삭제가 취소되었습니다.', 'success');
-        refresh(); // 데이터 다시 불러오기
-      } else {
-        showToast('삭제 취소에 실패했습니다.', 'error');
-      }
-    } catch (error) {
-      console.error('삭제 취소 중 오류:', error);
-      showToast('오류가 발생했습니다.', 'error');
+  const handleCancelDeletion = async (notificationId: number) => {
+    // 타이머가 있으면 제거
+    if (timers[notificationId]) {
+      clearTimeout(timers[notificationId]);
+      setTimers((prev) => {
+        const updated = { ...prev };
+        delete updated[notificationId];
+        return updated;
+      });
+    }
+
+    const success = await cancelDeletion(notificationId);
+    if (success) {
+      showToast('알림 삭제가 취소되었습니다.', 'success');
     }
   };
 
-  // 남은 시간 계산
-  const getTimeRemaining = (deleteTime: string): string => {
+  // 모든 알림 삭제
+  const handleDeleteAll = async () => {
+    if (!confirm('모든 알림을 삭제하시겠습니까?')) return;
+
+    // 모든 타이머 정리
+    Object.values(timers).forEach((timer) => clearTimeout(timer));
+    setTimers({});
+
+    const success = await deleteAllNotifications();
+    if (success) {
+      showToast('모든 알림이 삭제되었습니다.', 'success');
+    }
+  };
+
+  // 삭제까지 남은 시간 계산
+  const getTimeRemaining = (deleteTimeStr: string): string => {
     const now = new Date();
-    const deleteAt = new Date(deleteTime);
-    const diffMs = deleteAt.getTime() - now.getTime();
+    const deleteTime = new Date(deleteTimeStr);
+    const diffMs = deleteTime.getTime() - now.getTime();
 
     if (diffMs <= 0) return '잠시 후 삭제됩니다';
 
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
     if (diffMinutes < 1) return '1분 이내 삭제';
-    if (diffMinutes < 60) return `${diffMinutes}분 후 삭제`;
-
-    const diffHours = Math.floor(diffMinutes / 60);
-    const remainingMinutes = diffMinutes % 60;
-
-    return `${diffHours}시간 ${remainingMinutes}분 후 삭제`;
+    return `${diffMinutes}분 후 삭제`;
   };
 
+  // 알림 아이콘 렌더링
+  const renderNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'course_added':
+        return <Book className="h-6 w-6 text-blue-500" />;
+      case 'certificate_issued':
+        return <Award className="h-6 w-6 text-gold-start" />;
+      case 'certificate_updated':
+        return <RefreshCw className="h-6 w-6 text-green-500" />;
+      default:
+        return <Bell className="h-6 w-6 text-gray-500" />;
+    }
+  };
+
+  // 로딩 상태
   if (isLoading) {
-    return <div className="py-8 text-center">알림을 불러오는 중...</div>;
+    return (
+      <div className="mx-auto max-w-3xl p-4">
+        <h1 className="mb-6 text-2xl font-bold">알림</h1>
+        <div className="py-8 text-center">알림을 불러오는 중...</div>
+      </div>
+    );
   }
+
+  // 읽지 않은 알림 수 계산
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <div className="mx-auto max-w-3xl p-4">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold">알림</h1>
-        {notifications.some((n) => !n.read) && (
-          <Button
-            onClick={markAllAsRead}
-            className="flex items-center gap-1 px-4 py-1 text-sm"
-          >
-            <Check className="h-4 w-4" />
-            모두 읽음
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {unreadCount > 0 && (
+            <Button
+              onClick={handleMarkAllAsRead}
+              className="flex items-center gap-1 px-4 py-1 text-sm"
+            >
+              <Check className="h-4 w-4" />
+              모두 읽음
+            </Button>
+          )}
+          {notifications.length > 0 && (
+            <Button
+              onClick={handleDeleteAll}
+              className="flex items-center gap-1 bg-red-500 px-4 py-1 text-sm hover:bg-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
+              모두 삭제
+            </Button>
+          )}
+        </div>
       </div>
 
       {notifications.length === 0 ? (
@@ -110,24 +227,16 @@ export default function NotificationPage() {
               } ${notification.pending_delete ? 'border-red-200 bg-red-50' : ''}`}
             >
               <div className="flex items-start">
-                {/* 알림 타입에 따른 아이콘 */}
+                {/* 알림 아이콘 */}
                 <div className="mr-4 rounded-full bg-gray-100 p-2">
-                  {notification.type === 'course_added' ? (
-                    <Book className="h-6 w-6 text-blue-500" />
-                  ) : notification.type === 'certificate_issued' ? (
-                    <Award className="h-6 w-6 text-gold-start" />
-                  ) : notification.type === 'certificate_updated' ? (
-                    <RefreshCw className="h-6 w-6 text-green-500" />
-                  ) : (
-                    <Bell className="h-6 w-6 text-gray-500" />
-                  )}
+                  {renderNotificationIcon(notification.type)}
                 </div>
 
                 <div className="flex-1">
                   <h3 className="font-medium">{notification.title}</h3>
                   <p className="text-gray-600">{notification.message}</p>
 
-                  {/* 알림 타입별 추가 정보 및 액션 버튼 */}
+                  {/* 코스 추가 알림 관련 추가 정보 */}
                   {notification.type === 'course_added' &&
                     notification.related_data &&
                     'category' in notification.related_data && (
@@ -156,7 +265,7 @@ export default function NotificationPage() {
                     <div className="flex gap-2">
                       {!notification.read && (
                         <button
-                          onClick={() => markAsRead(notification.id)}
+                          onClick={() => handleMarkAsRead(notification.id)}
                           className="flex items-center gap-1 rounded px-3 py-1 text-sm text-blue-600 hover:bg-blue-50"
                         >
                           <Check className="h-4 w-4" />
@@ -166,7 +275,7 @@ export default function NotificationPage() {
 
                       {notification.pending_delete ? (
                         <button
-                          onClick={() => cancelDeletion(notification.id)}
+                          onClick={() => handleCancelDeletion(notification.id)}
                           className="flex items-center gap-1 rounded px-3 py-1 text-sm text-green-600 hover:bg-green-50"
                         >
                           <X className="h-4 w-4" />
@@ -174,7 +283,7 @@ export default function NotificationPage() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => markForDeletion(notification.id)}
+                          onClick={() => handleDelete(notification.id)}
                           className="flex items-center gap-1 rounded px-3 py-1 text-sm text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -186,7 +295,7 @@ export default function NotificationPage() {
                 </div>
               </div>
 
-              {/* 삭제 예정 표시 */}
+              {/* 삭제 예정 시간 표시 */}
               {notification.pending_delete && notification.delete_at && (
                 <div className="mt-2 rounded bg-red-100 p-2 text-xs text-red-600">
                   {getTimeRemaining(notification.delete_at)}

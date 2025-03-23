@@ -34,6 +34,8 @@ export interface Notification {
   related_data: NotificationRelatedData;
   read: boolean;
   created_at: string;
+  pending_delete?: boolean;
+  delete_at?: string | null;
 }
 
 // 특정 카테고리의 수료증 조회
@@ -260,7 +262,7 @@ export async function getUnreadNotificationCount(): Promise<number> {
 }
 
 // 알림 목록 조회
-export async function getNotifications(limit: number = 10, offset: number = 0): Promise<Notification[]> {
+export async function getNotifications(limit: number = 100, offset: number = 0): Promise<Notification[]> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -286,7 +288,7 @@ export async function getNotifications(limit: number = 10, offset: number = 0): 
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error('Error fetching notifications:', error);
@@ -334,7 +336,7 @@ export async function markAllNotificationsAsRead(): Promise<boolean> {
   return true;
 }
 
-// 알림 삭제
+// 알림 즉시 삭제 (기존 함수 유지)
 export async function deleteNotification(notificationId: number): Promise<boolean> {
   const supabase = createClient();
 
@@ -351,31 +353,7 @@ export async function deleteNotification(notificationId: number): Promise<boolea
   return true;
 }
 
-// 기간이 지난 알림 삭제 (자동화를 위한 함수)
-export async function deleteOldNotifications(daysOld: number = 30): Promise<boolean> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) return false;
-
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-
-  const { error } = await supabase
-    .from('notifications')
-    .delete()
-    .eq('user_id', user.id)
-    .lt('created_at', cutoffDate.toISOString());
-
-  if (error) {
-    console.error('Error deleting old notifications:', error);
-    return false;
-  }
-
-  return true;
-}
-
-// 알림 삭제 예약
+// 알림 삭제 예약 (지연된 삭제)
 export async function markNotificationForDeletion(notificationId: number): Promise<boolean> {
   const supabase = createClient();
 
