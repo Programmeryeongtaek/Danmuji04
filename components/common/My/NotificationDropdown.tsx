@@ -1,24 +1,33 @@
 'use client';
 
-import {
-  NotificationRelatedData,
-  useNotifications,
-} from '@/hooks/useCertificate';
+import { useNotifications } from '@/hooks/useCertificate';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Award, Bell, Book, Check, RefreshCw, X } from 'lucide-react';
+import { Award, Bell, Book, RefreshCw, X } from 'lucide-react';
 import Link from 'next/link';
 import { MouseEvent, useEffect, useRef, useState } from 'react';
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { notifications, markAsRead, markAllAsRead } = useNotifications();
-  const [hiddenNotifications, setHiddenNotifications] = useState<number[]>([]);
+  const { notifications, markAsRead } = useNotifications();
+  // 드롭다운에서만 숨길 알림 ID 목록
+  const [hiddenInDropdown, setHiddenInDropdown] = useState<number[]>([]);
+
+  // 로컬 스토리지에서 숨겨진 알림 ID 불러오기
+  useEffect(() => {
+    const savedHidden = localStorage.getItem('hiddenNotificationsInDropdown');
+    if (savedHidden) {
+      try {
+        setHiddenInDropdown(JSON.parse(savedHidden));
+      } catch (e) {
+        console.error('Failed to parse hidden notifications:', e);
+      }
+    }
+  }, []);
 
   // 바깥쪽 클릭시 드롭다운 닫기
   useEffect(() => {
-    // MouseEvent 타입을 정확히 지정
     const handleClickOutside = (event: Event) => {
       if (
         dropdownRef.current &&
@@ -34,27 +43,16 @@ export default function NotificationDropdown() {
     };
   }, []);
 
-  // 로컬 스토리지에서 숨김 처리된 알림 ID 불러오기
-  useEffect(() => {
-    const savedHidden = localStorage.getItem('hiddenNotifications');
-    if (savedHidden) {
-      try {
-        setHiddenNotifications(JSON.parse(savedHidden));
-      } catch (e) {
-        console.error('Failed to parse hidden notifications:', e);
-      }
-    }
-  }, []);
-
-  // 알림 숨기기 처리
-  const hideNotification = (id: number, e: MouseEvent) => {
+  // 드롭다운에서만 알림 숨기기
+  const hideFromDropdown = (id: number, e: MouseEvent) => {
     e.stopPropagation(); // 상위 클릭 이벤트 전파 방지
 
-    const updatedHidden = [...hiddenNotifications, id];
-    setHiddenNotifications(updatedHidden);
-
-    // 로컬 스토리지에 저장
-    localStorage.setItem('hiddenNotifications', JSON.stringify(updatedHidden));
+    const updatedHidden = [...hiddenInDropdown, id];
+    setHiddenInDropdown(updatedHidden);
+    localStorage.setItem(
+      'hiddenNotificationsInDropdown',
+      JSON.stringify(updatedHidden)
+    );
   };
 
   // 알림 타입에 따른 아이콘
@@ -71,33 +69,17 @@ export default function NotificationDropdown() {
     }
   };
 
-  const handleNotificationClick = (
-    notificationId: number,
-    relatedData: NotificationRelatedData,
-    type: string = ''
-  ) => {
+  const handleNotificationClick = (notificationId: number) => {
     markAsRead(notificationId);
     setIsOpen(false);
-
-    // relatedData를 실제로 사용
-    if (type === 'course_added' && relatedData && 'category' in relatedData) {
-      // 새 강의가 추가된 경우 해당 카테고리 페이지로 이동
-      window.location.href = `/course/${relatedData.category}`;
-    } else if (
-      type === 'certificate_issued' ||
-      type === 'certificate_updated'
-    ) {
-      // 수료증 관련 알림은 수료증 페이지로 이동
-      window.location.href = '/my/certificates';
-    }
   };
 
-  // 숨김 처리되지 않은 알림만 필터링
+  // 드롭다운에 표시될 알림 필터링 (숨겨진 알림 제외)
   const visibleNotifications = notifications.filter(
-    (notification) => !hiddenNotifications.includes(notification.id)
+    (notification) => !hiddenInDropdown.includes(notification.id)
   );
 
-  // 읽지 않은 알림 개수 계산 [숨김 처리된 알림 제외]
+  // 읽지 않은 알림 개수 계산 (숨겨진 알림 제외)
   const visibleUnreadCount = visibleNotifications.filter((n) => !n.read).length;
 
   return (
@@ -116,19 +98,6 @@ export default function NotificationDropdown() {
 
       {isOpen && (
         <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
-          <div className="flex items-center justify-between border-b p-3">
-            <h3 className="font-medium">알림</h3>
-            {visibleUnreadCount > 0 && (
-              <button
-                onClick={() => markAllAsRead()}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-              >
-                <Check className="h-4 w-4" />
-                <span>모두 읽음</span>
-              </button>
-            )}
-          </div>
-
           <div className="max-h-80 overflow-y-auto">
             {visibleNotifications.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
@@ -143,46 +112,40 @@ export default function NotificationDropdown() {
                       notification.read ? 'bg-white' : 'bg-blue-50'
                     }`}
                   >
-                    <div className="group relative">
-                      <button
-                        className="w-full text-left"
-                        onClick={() =>
-                          handleNotificationClick(
-                            notification.id,
-                            notification.related_data,
-                            notification.type
-                          )
-                        }
+                    <div className="relative flex items-start p-3">
+                      {/* 알림 내용 부분 */}
+                      <div className="mr-3 mt-1">
+                        {renderNotificationIcon(notification.type)}
+                      </div>
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => handleNotificationClick(notification.id)}
                       >
-                        <div className="flex items-start p-3">
-                          <div className="mr-3 mt-1">
-                            {renderNotificationIcon(notification.type)}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium">{notification.title}</p>
-                            <p className="text-sm text-gray-600">
-                              {notification.message}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-500">
-                              {formatDistanceToNow(
-                                new Date(notification.created_at),
-                                {
-                                  addSuffix: true,
-                                  locale: ko,
-                                }
-                              )}
-                            </p>
-                          </div>
-                          {!notification.read && (
-                            <div className="ml-2 h-2 w-2 rounded-full bg-blue-500"></div>
+                        <p className="font-medium">{notification.title}</p>
+                        <p className="text-sm text-gray-600">
+                          {notification.message}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {formatDistanceToNow(
+                            new Date(notification.created_at),
+                            {
+                              addSuffix: true,
+                              locale: ko,
+                            }
                           )}
-                        </div>
-                      </button>
-                      {/* 숨기기 버튼 */}
+                        </p>
+                      </div>
+
+                      {/* 읽지 않은 알림 표시 */}
+                      {!notification.read && (
+                        <div className="ml-2 h-2 w-2 rounded-full bg-blue-500"></div>
+                      )}
+
+                      {/* X 버튼 - 항상 표시되도록 수정 */}
                       <button
-                        onClick={(e) => hideNotification(notification.id, e)}
-                        className="absolute right-2 top-2 rounded-full p-1 opacity-0 transition-opacity hover:bg-gray-100 group-hover:opacity-100"
-                        title="알림 숨기기"
+                        onClick={(e) => hideFromDropdown(notification.id, e)}
+                        className="ml-2 flex-shrink-0 rounded-full p-1 hover:bg-gray-100"
+                        title="드롭다운에서 숨기기"
                       >
                         <X className="h-4 w-4 text-gray-500" />
                       </button>
@@ -193,7 +156,7 @@ export default function NotificationDropdown() {
             )}
           </div>
 
-          {visibleNotifications.length > 0 && (
+          {notifications.length > 0 && (
             <div className="border-t p-2">
               <Link
                 href="/my/notifications"
