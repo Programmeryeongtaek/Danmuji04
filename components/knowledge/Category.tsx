@@ -51,6 +51,18 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
     scrollContainerRef.current!.scrollLeft = scrollLeft - walk;
   };
 
+  const handleCategoryClick = (categoryId: string) => {
+    // 카테고리 클릭 시 검색 쿼리 파라미터 제거
+    const url = new URL(window.location.href);
+    if (categoryId !== 'search') {
+      url.searchParams.delete('q');
+    }
+    url.searchParams.set('category', categoryId);
+    window.history.pushState({}, '', url);
+
+    onCategoryClick(categoryId);
+  };
+
   return (
     <div
       ref={scrollContainerRef}
@@ -63,7 +75,7 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
       {categories.map(({ id, icon: Icon, label }) => (
         <button
           key={id}
-          onClick={() => onCategoryClick(id)}
+          onClick={() => handleCategoryClick(id)}
           className={`flex min-w-[80px] select-none flex-col items-center justify-center py-4 ${
             selectedCategory === id
               ? 'border-b-2 border-blue-500 text-blue-500'

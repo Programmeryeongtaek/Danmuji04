@@ -27,7 +27,7 @@ const Search = () => {
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      window.location.href = `/knowledge?q=${encodeURIComponent(searchTerm.trim())}`;
+      window.location.href = `/knowledge?category=search&q=${encodeURIComponent(searchTerm.trim())}`;
     }
   };
 
