@@ -36,12 +36,59 @@ const SignUpPage = () => {
     onSubmit: async (formData: SignUpFormData) => {
       try {
         const supabase = createClient();
+        let fileName = '';
 
-        // interests 배열을 문자열로 변환
+        // 1. 이미지 업로드 단계
+        if (formData.profileImage) {
+          console.log('1. Starting image upload process');
+          try {
+            const fileExt = formData.profileImage.name.split('.').pop();
+            fileName = `user_${Date.now()}.${fileExt}`; // 파일명 형식 변경
+
+            console.log('1.1. Attempting to upload with filename:', fileName);
+
+            // 이미지 업로드
+            const { error: uploadError } = await supabase.storage
+              .from('avatars')
+              .upload(fileName, formData.profileImage, {
+                cacheControl: '3600',
+                upsert: true,
+              });
+
+            if (uploadError) {
+              console.error('Upload error:', uploadError);
+              throw uploadError;
+            }
+
+            // 업로드 성공 시 Public URL 확인
+            const { data: urlData } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(fileName);
+
+            console.log(
+              '1.2. Image uploaded successfully. Public URL:',
+              urlData.publicUrl
+            );
+          } catch (error) {
+            console.error('Image upload error:', error);
+            throw error;
+          }
+        }
+
+        // 2. 회원가입 단계
+        console.log('2. Starting signup process with fileName:', fileName);
+
         const allInterests = [
           ...formData.interests,
           ...formData.customInterests,
         ].join(' ');
+
+        console.log('2.1. Prepared metadata:', {
+          name: formData.name,
+          nickname: formData.nickname,
+          interests: allInterests,
+          avatar_url: fileName,
+        });
 
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
@@ -53,6 +100,7 @@ const SignUpPage = () => {
               nickname: formData.nickname || '',
               interests: allInterests,
               marketing_agree: !!formData.marketingAgree,
+              avatar_url: fileName, // 업로드된 파일명
             },
           },
         });
@@ -67,47 +115,34 @@ const SignUpPage = () => {
           throw new Error('회원가입에 실패했습니다');
         }
 
-        // 2. 이미지 업로드 (회원가입 후)
-        if (formData.profileImage && data.user) {
-          console.log('Uploading image:', formData.profileImage); // 디버깅
+        console.log('2.2. Signup successful. User ID:', data.user.id);
 
-          // 파일 확장자 추출 후 안전한 파일명 생성
-          const fileExt = formData.profileImage.name.split('.').pop();
-          // 파일명에서 한글과 특수문자 제거, userId와 타임스탬프로 고유한 파일명 생성
-          const fileName = `${data.user.id}_${Date.now()}.${fileExt}`;
+        // 3. 최종 확인
+        if (fileName) {
+          try {
+            // 약간의 딜레이를 주어 프로필 생성이 완료되길 기다림
+            await new Promise((resolve) => setTimeout(resolve, 1000));
 
-          // 이미지 업로드
-          const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(fileName, formData.profileImage, {
-              cacheControl: '3600',
-              upsert: true,
-            });
+            const { data: profileCheck, error: checkError } = await supabase
+              .from('profiles')
+              .select('avatar_url')
+              .eq('id', data.user.id)
+              .single();
 
-          if (uploadError) {
-            console.error('Image upload error:', uploadError);
-            throw uploadError;
+            console.log('3. Final profile check:', profileCheck);
+            if (checkError) {
+              // 에러 발생해도 회원가입 프로세스는 계속 진행
+              console.log('Profile check error (expected):', checkError);
+            }
+          } catch (error) {
+            // 에러를 throw하지 않고 로그만 남김
+            console.log('Profile check failed (expected):', error);
           }
-
-          // profiles 테이블 업데이트
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              avatar_url: fileName,
-            })
-            .eq('id', data.user.id);
-
-          if (updateError) {
-            console.error('Profile update error:', updateError);
-            throw updateError;
-          }
-
-          console.log('Profile updated with avatar:', fileName);
         }
 
         setShowVerifyModal(true);
       } catch (error) {
-        console.error('SignUp error:', error);
+        console.error('Final error:', error);
         throw error;
       }
     },
@@ -291,8 +326,8 @@ const SignUpPage = () => {
                       <Image
                         src={imagePreview}
                         alt="Profile preview"
-                        width={20}
-                        height={20}
+                        width={200}
+                        height={200}
                         className="object-cover"
                       />
                       <button

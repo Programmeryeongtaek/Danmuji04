@@ -8,7 +8,25 @@ const nextConfig: NextConfig = {
     }
   },
   images: {
-    domains: ['hcqusfewtyxmpdvzpeor.supabase.co']
+    remotePatterns: [{
+      protocol: 'https',
+      hostname: 'hcqusfewtyxmpdvzpeor.supabase.co',
+      port: '',
+      pathname: '/storage/v1/object/public/avatars/**',
+    },
+    {
+      protocol: 'https',
+      hostname: 'hcqusfewtyxmpdvzpeor.supabase.co',
+      port: '',
+      pathname: '/storage/v1/object/public/videos/**',
+    },
+    {
+      protocol: 'https',
+      hostname: 'picsum.photos',
+      port: '',
+      pathname: '/**',
+    },
+  ]
   }
 };
 

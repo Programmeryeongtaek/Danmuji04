@@ -47,7 +47,8 @@ const BookmarkButton = ({
         const { error } = await supabase
           .from('bookmarks')
           .delete()
-          .eq('id', existingBookmark.id);
+          .eq('lecture_id', lectureId)
+          .eq('user_id', user.id);
 
         if (!error) {
           setIsBookmarked(false);
@@ -55,18 +56,12 @@ const BookmarkButton = ({
         }
       } else {
         // 찜하기 추가
-        const { error } = await supabase.from('bookmarks').upsert(
-          [
-            {
-              lecture_id: lectureId,
-              user_id: user.id,
-            },
-          ],
+        const { error } = await supabase.from('bookmarks').insert([
           {
-            onConflict: 'lecture_id,user_id',
-            ignoreDuplicates: true,
-          }
-        );
+            lecture_id: lectureId,
+            user_id: user.id,
+          },
+        ]); // upsert 대신 단순 insert 사용
 
         if (!error) {
           setIsBookmarked(true);
