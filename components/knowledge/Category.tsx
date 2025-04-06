@@ -9,7 +9,8 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { MouseEvent, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { MouseEvent, useEffect, useRef, useState } from 'react';
 
 const categories = [
   { id: 'search', icon: Search, label: '검색' },
@@ -27,6 +28,14 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const searchParams = useSearchParams();
+
+  // URL에 검색 파라미터가 있으면 검색 카테고리 활성화
+  useEffect(() => {
+    if (searchParams.get('q')) {
+      onCategoryClick('search');
+    }
+  }, [searchParams, onCategoryClick]);
 
   const handleMouseDown = (e: MouseEvent) => {
     setIsDragging(true);

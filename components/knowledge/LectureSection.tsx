@@ -20,6 +20,10 @@ import {
 } from '@/utils/supabase/client';
 import { useBookmarks } from '@/hooks/useBookmarks';
 
+interface ExtendedLectureSectionProps extends LectureSectionProps {
+  searchQuery?: string;
+}
+
 const categoryLabelMap = new Map([
   ['all', '전체'],
   ['search', '검색'],
@@ -31,9 +35,14 @@ const categoryLabelMap = new Map([
   ['leadership', '리더십'],
 ]);
 
-const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
+const LectureSection = ({
+  selectedCategory,
+  searchQuery = '',
+}: ExtendedLectureSectionProps) => {
   const searchParams = useSearchParams();
-  const searchQuery = searchParams.get('q')?.toLowerCase() || '';
+  const querySearchTerm = searchParams.get('q')?.toLowerCase() || '';
+  const effectiveSearchQuery = searchQuery || querySearchTerm;
+
   const {
     bookmarkedLectures,
     handleToggleBookmark,
@@ -55,8 +64,8 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
         setIsLoading(true);
         let data;
 
-        if (selectedCategory === 'search' && searchQuery) {
-          data = await searchLectures(searchQuery);
+        if (selectedCategory === 'search' && effectiveSearchQuery) {
+          data = await searchLectures(effectiveSearchQuery);
         } else if (selectedCategory !== 'all') {
           const categoryLabel = categoryLabelMap.get(selectedCategory);
           data = await fetchLecturesByCategory(categoryLabel || '');
@@ -73,7 +82,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     };
 
     loadLectures();
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, effectiveSearchQuery]);
 
   const onApply = (newFilters: FilterState) => {
     setActiveFilters(newFilters);
@@ -132,10 +141,10 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
 
   return (
     <div className="flex flex-col">
-      {searchQuery && (
+      {effectiveSearchQuery && (
         <div>
           <h2>
-            {searchQuery} 검색 결과 ({filteredLectures.length}개)
+            {effectiveSearchQuery} 검색 결과 ({filteredLectures.length}개)
           </h2>
         </div>
       )}
