@@ -1,6 +1,6 @@
 'use client';
 
-import { GraduationCap, Menu, User } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
@@ -107,15 +107,6 @@ const Header = () => {
           <div className="flex">
             {/* 알림 드롭다운 추가 */}
             <NotificationDropdown />
-
-            {/* 수료증 페이지 링크 추가 */}
-            <Link
-              href="/my/certificates"
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
-            >
-              <GraduationCap className="h-5 w-5" />
-              <span className="hidden md:inline">수료증</span>
-            </Link>
 
             {isLoading ? (
               <span>로딩중...</span>
