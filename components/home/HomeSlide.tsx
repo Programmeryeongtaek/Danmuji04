@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // 슬라이드 데이터 정의
 const slideData = [
@@ -42,22 +42,50 @@ const slideData = [
 const HomeSlide = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [autoplay, setAutoplay] = useState(true);
+  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 자동 슬라이드 기능
   useEffect(() => {
+    // 자동 재생이 비활성화되어 있으면 실행하지 않음
     if (!autoplay) return;
 
-    const interval = setInterval(() => {
+    // 이전 타이머 정리
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+    }
+
+    // 새 타이머 설정
+    autoplayTimerRef.current = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slideData.length);
     }, 5000);
 
-    return () => clearInterval(interval);
-  }, [autoplay]);
+    // 컴포넌트 언마운트 시 타이머 정리
+    return () => {
+      if (autoplayTimerRef.current) {
+        clearInterval(autoplayTimerRef.current);
+      }
+    };
+  }, [autoplay, currentSlide]);
 
-  // 특정 슬라이드로 직접 이동
+  // 특정 슬라이드로 직접 이동 및 자동 재생 일시 중단 후 재개
   const goToSlide = (index: number) => {
-    setAutoplay(false); // 수동 조작 시 자동 재생 중지
+    if (currentSlide === index) return; // 같은 슬라이드면 무시
+
+    // 자동 재생 일시 중단
+    setAutoplay(false);
+
+    // 슬라이드 변경
     setCurrentSlide(index);
+
+    // 기존 재개 타이머 취소
+    if (autoplayTimerRef.current) {
+      clearTimeout(autoplayTimerRef.current);
+    }
+
+    // 5초 후에 자동 재생 재개
+    autoplayTimerRef.current = setTimeout(() => {
+      setAutoplay(true);
+    }, 5000);
   };
 
   const slide = slideData[currentSlide];
