@@ -185,14 +185,14 @@ export default function IntroducePage() {
           </div>
           <div className="flex gap-4">
             <Link
-              href="/knowledge"
-              className="rounded-lg bg-white px-6 py-3 font-medium text-gold-start"
+              href="/"
+              className="rounded-lg bg-white px-4 py-2 font-medium text-gold-start"
             >
-              강의 둘러보기
+              홈페이지 둘러보기
             </Link>
             <Link
               href="/signup"
-              className="rounded-lg border border-white px-6 py-3 font-medium text-white hover:bg-white/10"
+              className="rounded-lg border border-white px-4 py-2 font-medium text-white hover:bg-white/10"
             >
               회원가입
             </Link>
