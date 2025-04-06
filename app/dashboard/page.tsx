@@ -69,10 +69,10 @@ const DashboardPage = () => {
         // 최근 수강한 강의 가져오기
         const { data: recentEnrollments } = await supabase
           .from('enrollments')
-          .select('lecture_id, created_at')
+          .select('lecture_id, enrolled_at')
           .eq('user_id', user.id)
           .eq('status', 'active')
-          .order('created_at', { ascending: false })
+          .order('enrolled_at', { ascending: false })
           .limit(3);
 
         if (recentEnrollments && recentEnrollments.length > 0) {
