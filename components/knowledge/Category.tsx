@@ -9,7 +9,8 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { MouseEvent, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { MouseEvent, useEffect, useRef, useState } from 'react';
 
 const categories = [
   { id: 'search', icon: Search, label: '검색' },
@@ -27,6 +28,29 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // URL에서 카테고리 파라미터 확인
+  useEffect(() => {
+    const categoryParams = searchParams.get('category');
+    if (categoryParams && categoryParams !== selectedCategory) {
+      onCategoryClick(categoryParams);
+    }
+  }, [searchParams, selectedCategory, onCategoryClick]);
+
+  const handleCategoryClick = (categoryId: string) => {
+    // 카테고리 클릭 시 검색 쿼리 파라미터 제거
+    const url = new URL(window.location.href);
+    if (categoryId !== 'search') {
+      url.searchParams.delete('q');
+    }
+    url.searchParams.set('category', categoryId);
+    router.push(url.pathname + url.search);
+
+    onCategoryClick(categoryId);
+  };
 
   const handleMouseDown = (e: MouseEvent) => {
     setIsDragging(true);
@@ -49,18 +73,6 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
     const x = e.pageX - scrollContainerRef.current!.offsetLeft;
     const walk = (x - startX) * 2;
     scrollContainerRef.current!.scrollLeft = scrollLeft - walk;
-  };
-
-  const handleCategoryClick = (categoryId: string) => {
-    // 카테고리 클릭 시 검색 쿼리 파라미터 제거
-    const url = new URL(window.location.href);
-    if (categoryId !== 'search') {
-      url.searchParams.delete('q');
-    }
-    url.searchParams.set('category', categoryId);
-    window.history.pushState({}, '', url);
-
-    onCategoryClick(categoryId);
   };
 
   return (

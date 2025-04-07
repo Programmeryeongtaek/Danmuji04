@@ -12,14 +12,96 @@ import { createClient } from '@/utils/supabase/client';
 import { Profile } from '@/app/settings/profile/page';
 import RightSideBar from './RightSideBar';
 import NotificationDropdown from './My/NotificationDropdown';
+import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
+import NavDropdown from '../NavDropdown';
+
+interface DropdownItem {
+  id: string;
+  label: string;
+  href: string;
+}
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isRightSideBarOpen, setIsRightSideBarOpen] = useState(false);
 
+  // 카테고리 상태
+  const [knowledgeItems, setKnowledgeItems] = useState<DropdownItem[]>([]);
+  const [courseItems, setCourseItems] = useState<DropdownItem[]>([]);
+  const [studyItems, setStudyItems] = useState<DropdownItem[]>([]);
+  const [communityItems, setCommunityItems] = useState<DropdownItem[]>([]);
+
   const user = useAtomValue(userAtom);
   const isLoading = useAtomValue(isLoadingAtom);
+
+  // 코스 카테고리 로드
+  useEffect(() => {
+    // 코스 카테고리 변환 (정적으로 import된 데이터 사용)
+    const courseDropdownItems = Object.keys(COURSE_CATEGORIES).map((key) => {
+      const category = COURSE_CATEGORIES[key as CourseCategory];
+      return {
+        id: category.id,
+        label: category.title,
+        href: `/course/${category.id}`,
+      };
+    });
+
+    setCourseItems(courseDropdownItems);
+  }, []);
+
+  // 지식 카테고리 로드
+  useEffect(() => {
+    // 지식 카테고리는 서버에서 가져오거나 동적으로 생성
+    // Category.tsx에서 사용하는 카테고리 정보 활용
+    const knowledgeDropdownItems = [
+      { id: 'all', label: '전체', href: '/knowledge?category=all' },
+      {
+        id: 'humanities',
+        label: '인문학',
+        href: '/knowledge?category=humanities',
+      },
+      {
+        id: 'philosophy',
+        label: '철학',
+        href: '/knowledge?category=philosophy',
+      },
+      {
+        id: 'psychology',
+        label: '심리학',
+        href: '/knowledge?category=psychology',
+      },
+      {
+        id: 'economics',
+        label: '경제학',
+        href: '/knowledge?category=economics',
+      },
+      {
+        id: 'self-development',
+        label: '자기계발',
+        href: '/knowledge?category=self-development',
+      },
+      {
+        id: 'leadership',
+        label: '리더십',
+        href: '/knowledge?category=leadership',
+      },
+    ];
+
+    setKnowledgeItems(knowledgeDropdownItems);
+  }, []);
+
+  // 커뮤니티 카테고리 로드
+  useEffect(() => {
+    const communityDropdownItems = [
+      { id: 'faq', label: '질문 게시판', href: '/community/faq' },
+      { id: 'chats', label: '자유게시판', href: '/community/chats' },
+      { id: 'study', label: '스터디', href: '/community/study' },
+      { id: 'notice', label: '공지사항', href: '/community/notice' },
+    ];
+
+    setCommunityItems(communityDropdownItems);
+  }, []);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -106,31 +188,26 @@ const Header = () => {
             </Link>
 
             {/* 데스크톱 메뉴 - 모바일에서는 숨김 */}
-            <div className="ml-6 hidden items-center space-x-4 whitespace-nowrap md:flex md:space-x-4 lg:ml-10 lg:space-x-6">
-              <Link
+            <div className="ml-6 hidden items-center space-x-4 whitespace-nowrap md:ml-10 md:flex md:space-x-6">
+              {/* 지식 드롭다운 */}
+              <NavDropdown
+                title="지식"
                 href="/knowledge"
-                className="text-gray-700 hover:text-gold-start"
-              >
-                지식
-              </Link>
-              <Link
-                href="/course"
-                className="text-gray-700 hover:text-gold-start"
-              >
-                코스
-              </Link>
-              <Link
-                href="/study"
-                className="text-gray-700 hover:text-gold-start"
-              >
-                스터디
-              </Link>
-              <Link
+                items={knowledgeItems}
+              />
+
+              {/* 코스 드롭다운 */}
+              <NavDropdown title="코스" href="/course" items={courseItems} />
+
+              {/* 스터디 드롭다운 */}
+              <NavDropdown title="스터디" href="/study" items={studyItems} />
+
+              {/* 커뮤니티 드롭다운 */}
+              <NavDropdown
+                title="커뮤니티"
                 href="/community"
-                className="text-gray-700 hover:text-gold-start"
-              >
-                커뮤니티
-              </Link>
+                items={communityItems}
+              />
             </div>
           </div>
 

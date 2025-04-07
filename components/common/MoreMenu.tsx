@@ -59,7 +59,7 @@ export default function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       },
     ],
     [
-      { icon: AlertCircle, label: '공지사항', href: '/notice' },
+      { icon: AlertCircle, label: '공지사항', href: '/community/notice' },
       { icon: Mail, label: '문의하기', href: '/contact' },
       { icon: null, label: '', href: '#' },
     ],
