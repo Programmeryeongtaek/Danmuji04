@@ -9,7 +9,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { MouseEvent, useEffect, useRef, useState } from 'react';
 
 const categories = [
@@ -30,7 +30,6 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
   const [scrollLeft, setScrollLeft] = useState(0);
 
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   // URL에서 카테고리 파라미터 확인
   useEffect(() => {
@@ -41,15 +40,18 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
   }, [searchParams, selectedCategory, onCategoryClick]);
 
   const handleCategoryClick = (categoryId: string) => {
-    // 카테고리 클릭 시 검색 쿼리 파라미터 제거
+    // 상태 업데이트를 먼저 실행
+    onCategoryClick(categoryId);
+
+    // URL을 복사하고 쿼리 파라미터 업데이트
     const url = new URL(window.location.href);
     if (categoryId !== 'search') {
       url.searchParams.delete('q');
     }
     url.searchParams.set('category', categoryId);
-    router.push(url.pathname + url.search);
 
-    onCategoryClick(categoryId);
+    // URL만 교체하고 페이지 전환 방지
+    window.history.pushState({}, '', url.toString());
   };
 
   const handleMouseDown = (e: MouseEvent) => {
