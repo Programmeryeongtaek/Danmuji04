@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
@@ -94,19 +94,81 @@ const Header = () => {
         </header>
       </section>
       <header className="border-title sticky top-0 z-50 flex h-[50px] w-full items-center border-t bg-light">
-        <nav className="flex w-full justify-between px-8">
-          <div>
-            <div>
-              <Menu className="h-6 w-6" />
+        <nav className="flex w-full items-center justify-between px-4 md:px-8">
+          {/* 왼쪽: 로고 및 네비게이션 링크 */}
+          <div className="flex min-w-fit flex-shrink-0 items-center">
+            {/* 모바일에서는 숨기고 데스크톱에서만 보이는 로고 */}
+            <Link
+              href="/"
+              className="hidden whitespace-nowrap bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-transparent md:flex"
+            >
+              단무지
+            </Link>
+
+            {/* 데스크톱 메뉴 - 모바일에서는 숨김 */}
+            <div className="ml-6 hidden items-center space-x-4 whitespace-nowrap md:flex md:space-x-4 lg:ml-10 lg:space-x-6">
+              <Link
+                href="/knowledge"
+                className="text-gray-700 hover:text-gold-start"
+              >
+                지식
+              </Link>
+              <Link
+                href="/course"
+                className="text-gray-700 hover:text-gold-start"
+              >
+                코스
+              </Link>
+              <Link
+                href="/study"
+                className="text-gray-700 hover:text-gold-start"
+              >
+                스터디
+              </Link>
+              <Link
+                href="/community"
+                className="text-gray-700 hover:text-gold-start"
+              >
+                커뮤니티
+              </Link>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-transparent">
-            <Link href={'/'}>단무지</Link>
+
+          {/* 중앙 로고 - 모바일에서만 표시 */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:hidden">
+            <Link
+              href="/"
+              className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-transparent"
+            >
+              단무지
+            </Link>
           </div>
 
-          <div className="flex">
+          {/* 가운데 꽉 차는 검색창 - 중간 크기 이상에서만 표시 */}
+          <div className="mx-4 hidden w-full max-w-xl md:block">
+            <div className="relative w-full">
+              <input
+                type="text"
+                placeholder="배우고 싶은 지식을 검색해보세요"
+                className="w-full rounded-full bg-gray-100 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-gold-start"
+              />
+              <search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+
+          {/* 오른쪽: 대시보드, 알림, 프로필 */}
+          <div className="flex min-w-fit flex-shrink-0 items-center space-x-3 md:space-x-4">
+            <Link
+              href="/dashboard"
+              className="hidden whitespace-nowrap text-gray-700 hover:text-gold-start md:flex"
+            >
+              대시보드
+            </Link>
+
             {/* 알림 드롭다운 추가 */}
-            <NotificationDropdown />
+            <div className="hidden md:block">
+              <NotificationDropdown />
+            </div>
 
             {isLoading ? (
               <span>로딩중...</span>
@@ -122,17 +184,22 @@ const Header = () => {
                       alt="프로필 이미지"
                       width={32}
                       height={32}
-                      className="rounded-full"
+                      className="h-8 w-8 min-w-[32px] rounded-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                    <div className="flex h-8 w-8 min-w-[32px] items-center justify-center rounded-full bg-gray-200">
                       <User className="h-5 w-5 text-gray-500" />
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <Button onClick={() => setIsLoginModalOpen(true)}>로그인</Button>
+              <Button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="whitespace-nowrap px-3 py-1.5 text-sm"
+              >
+                로그인
+              </Button>
             )}
           </div>
 
