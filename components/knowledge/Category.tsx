@@ -28,6 +28,14 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const searchParams = useSearchParams();
+
+  // URL에 검색 파라미터가 있으면 검색 카테고리 활성화
+  useEffect(() => {
+    if (searchParams.get('q')) {
+      onCategoryClick('search');
+    }
+  }, [searchParams, onCategoryClick]);
 
   const searchParams = useSearchParams();
 
