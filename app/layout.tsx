@@ -90,7 +90,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             <NotificationSubscriptionWrapper>
               <div className="flex min-h-screen flex-col">
                 <Header />
-                <main>{children}</main>
+                <main className="pb-[60px] md:pb-0">{children}</main>
                 {!isLecturePage &&
                   !isSettingsPage &&
                   !lectureCreate &&

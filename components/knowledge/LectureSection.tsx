@@ -41,6 +41,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   } = useBookmarks();
 
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
+  const [prevLectures, setPrevLectures] = useState<Lecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
@@ -52,6 +53,11 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   useEffect(() => {
     const loadLectures = async () => {
       try {
+        // 이전 데이터 유지
+        if (lectureList.length > 0) {
+          setPrevLectures(lectureList);
+        }
+
         setIsLoading(true);
         let data;
 
@@ -150,20 +156,35 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
         </Dropdown.Root>
       </div>
 
-      {filteredLectures.length > 0 ? (
-        <div className="flex flex-wrap justify-center gap-4">
-          {filteredLectures.map((lecture) => (
+      <div className="flex flex-wrap justify-center gap-4">
+        {/* 로딩 중에는 이전 데이터 표시, 없으면 로딩 표시 */}
+        {isLoading ? (
+          prevLectures.length > 0 ? (
+            prevLectures.map((lecture) => (
+              <div key={lecture.id} className="opacity-50">
+                <Card
+                  {...lecture}
+                  isBookmarked={bookmarkedLectures.includes(lecture.id)}
+                  onToggleBookmark={handleToggleBookmark}
+                />
+              </div>
+            ))
+          ) : (
+            <div>로딩 중...</div>
+          )
+        ) : filteredLectures.length > 0 ? (
+          filteredLectures.map((lecture) => (
             <Card
               key={lecture.id}
               {...lecture}
               isBookmarked={bookmarkedLectures.includes(lecture.id)}
               onToggleBookmark={handleToggleBookmark}
             />
-          ))}
-        </div>
-      ) : (
-        <div>검색 결과가 없습니다.</div>
-      )}
+          ))
+        ) : (
+          <div>검색 결과가 없습니다.</div>
+        )}
+      </div>
 
       <Pagination />
     </div>

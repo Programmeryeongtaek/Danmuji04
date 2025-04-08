@@ -1,6 +1,15 @@
 'use client';
 
-import { Bell, BookOpen, Heart, Settings, User, Video, X } from 'lucide-react';
+import {
+  Bell,
+  BookOpen,
+  GraduationCap,
+  Heart,
+  Settings,
+  User,
+  Video,
+  X,
+} from 'lucide-react';
 import Button from './Button/Button';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -18,10 +27,13 @@ interface RightSideBarProps {
 }
 
 const menuItems = [
-  // TODO: 이어서 학습하기 링크 연결 (캐시해서 자동으로 연결 - 마지막에 시청한 영상 링크로 이동하도록록)
+  // TODO: 이어서 학습하기 링크 연결 (캐시해서 자동으로 연결 - 마지막에 시청한 영상 링크로 이동하도록)
   { icon: BookOpen, label: '내 학습', href: '/my/learning' },
   { icon: Video, label: '이어서 학습하기', href: '/' },
   { icon: Heart, label: '찜 리스트', href: '/my/wishlist' },
+  { icon: BookOpen, label: '내 글 모음', href: '/my/writings' },
+  { icon: GraduationCap, label: '수료증', href: '/my/certificates' },
+  { icon: Bell, label: '알림', href: '/my/notifications' },
   { icon: Settings, label: '설정', href: '/settings' },
 ];
 
@@ -50,7 +62,6 @@ const RightSideBar = ({
         {/* Slider Header */}
         <div className="flex justify-between p-3">
           <X className="h-4 w-4" onClick={onClose} />
-          <Bell className="h-4 w-4" />
         </div>
 
         {/* User Profile Section */}
