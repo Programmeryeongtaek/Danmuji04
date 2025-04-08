@@ -30,7 +30,7 @@ const Card = ({
   isMyLecture = false,
 }: CardProps) => {
   const [isMarked, setIsMarked] = useState(isBookmarked);
-  const fallbackImageUrl = '/images/danmuji.jpg';
+  const fallbackImageUrl = '/images/danmuji.png';
 
   const handleBookmarkClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // 링크 이벤트 전파 방지
