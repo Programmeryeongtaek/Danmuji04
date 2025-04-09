@@ -4,19 +4,20 @@ import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import LoginModal from '@/components/home/LoginModal';
 import { userAtom } from '@/store/auth';
+import {
+  createPost,
+  fetchPopularTags,
+} from '@/utils/services/communityService';
+import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
 import { ChevronLeft, Plus, Upload, X } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 // 커뮤니티 카테고리 정의
 const communityCategories = [
-  {
-    id: 'faq',
-    label: '질문 게시판',
-    description: '궁금한 점을 질문하고 답변을 받아보세요',
-  },
   {
     id: 'chats',
     label: '자유게시판',
@@ -27,21 +28,11 @@ const communityCategories = [
     label: '스터디',
     description: '함께 공부하고 성장할 스터디를 찾아보세요',
   },
-];
-
-// 인기 태그 데이터
-const popularTags = [
-  '자바스크립트',
-  'React',
-  'TypeScript',
-  'Next.js',
-  'CSS',
-  'Node.js',
-  'Python',
-  '알고리즘',
-  '취업',
-  '백엔드',
-  '프론트엔드',
+  {
+    id: 'faq',
+    label: '질문 게시판',
+    description: '궁금한 점을 질문하고 답변을 받아보세요',
+  },
 ];
 
 export default function WritePage() {
@@ -53,20 +44,59 @@ export default function WritePage() {
   const [newTag, setNewTag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [popularTags, setPopularTags] = useState<
+    { name: string; count: number }[]
+  >([]);
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
 
+  // 인기 태그 로드
+  useEffect(() => {
+    const loadPopularTags = async () => {
+      try {
+        const tagsData = await fetchPopularTags(10);
+        setPopularTags(tagsData);
+      } catch (error) {
+        console.error('인기 태그 로드 실패:', error);
+      }
+    };
+
+    loadPopularTags();
+  }, []);
+
   // 로그인 상태 확인
   useEffect(() => {
+    const checkAuth = async () => {
+      // 로그인 상태 확인 중 로딩 상태 추가
+      setIsLoading(true);
+
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.getUser();
+
+      // 로그인 상태 확인 완료
+      setIsLoading(false);
+
+      // 로그인되지 않은 경우에만 모달 표시
+      if (error || !data.user) {
+        setIsLoginModalOpen(true);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // 로그인 모달 닫기 처리
+  const handleModalClose = useCallback(() => {
+    setIsLoginModalOpen(false);
     if (!user) {
-      showToast('로그인이 필요합니다.', 'error');
-      setIsLoginModalOpen(true);
+      router.push('/community');
     }
-  }, [user, showToast]);
+  }, [router, user]);
 
   // 태그 추가
   const addTag = () => {
@@ -157,8 +187,43 @@ export default function WritePage() {
     setImagePreviews(newPreviews);
   };
 
+  // 이미지 업로드 (실제 Storage에 업로드)
+  const uploadImages = async () => {
+    if (images.length === 0) return [];
+
+    const supabase = createClient();
+    const uploadedUrls: string[] = [];
+
+    for (const image of images) {
+      try {
+        const fileExt = image.name.split('.').pop();
+        const fileName = `post-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+        const filePath = `posts/${fileName}`;
+
+        // Storage에 이미지 업로드
+        const { error: uploadError } = await supabase.storage
+          .from('community')
+          .upload(filePath, image);
+
+        if (uploadError) throw uploadError;
+
+        // Public URL 가져오기
+        const { data } = supabase.storage
+          .from('community')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(data.publicUrl);
+      } catch (error) {
+        console.error('이미지 업로드 실패:', error);
+        showToast('이미지 업로드에 실패했습니다.', 'error');
+      }
+    }
+
+    return uploadedUrls;
+  };
+
   // 폼 제출
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!user) {
@@ -185,26 +250,33 @@ export default function WritePage() {
     try {
       setIsSubmitting(true);
 
-      // 여기서 실제 API 호출하여 게시글 작성 처리
-      // const formData = new FormData();
-      // formData.append('title', title);
-      // formData.append('content', content);
-      // formData.append('category', category);
-      // tags.forEach(tag => formData.append('tags[]', tag));
-      // images.forEach(image => formData.append('images[]', image));
+      // 이미지 업로드
+      const uploadedImageUrls = await uploadImages();
 
-      // const response = await fetch('/api/posts', {
-      //   method: 'POST',
-      //   body: formData
-      // });
+      // 이미지 URL을 본문에 추가
+      let finalContent = content;
+      if (uploadedImageUrls.length > 0) {
+        // 줄바꿈 추가하고 각 이미지를 마크다운 형식으로 추가
+        finalContent += '\n\n';
+        uploadedImageUrls.forEach((url) => {
+          // 이미지 URL을 마크다운 형식으로 추가
+          finalContent += `![이미지](${url})\n\n`;
+        });
+      }
 
-      // if (!response.ok) throw new Error('게시글 작성에 실패했습니다');
-
-      // 성공 시 처리 (더미 데이터)
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 작성 시간 시뮬레이션
+      // 게시글 생성
+      const postId = await createPost(
+        {
+          title,
+          content: finalContent,
+          category,
+          tags,
+        },
+        user
+      );
 
       showToast('게시글이 작성되었습니다.', 'success');
-      router.push('/community');
+      router.push(`/community/post/${postId}`);
     } catch (error) {
       console.error('게시글 작성 실패:', error);
       showToast('게시글 작성에 실패했습니다.', 'error');
@@ -219,6 +291,16 @@ export default function WritePage() {
       imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
     };
   }, [imagePreviews]);
+
+  // 반환 부분 시작 부분에 로딩 체크 추가
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
+        <p className="ml-2">로딩 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl p-4 md:p-6">
@@ -323,7 +405,7 @@ export default function WritePage() {
               onChange={(e) => setNewTag(e.target.value)}
               placeholder="태그를 입력하세요"
               className="flex-1 rounded-l-lg border p-2 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
-              onKeyDown={(e) => {
+              onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   addTag();
@@ -349,10 +431,10 @@ export default function WritePage() {
                 <button
                   key={index}
                   type="button"
-                  onClick={() => addPopularTag(tag)}
+                  onClick={() => addPopularTag(tag.name)}
                   className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700 hover:bg-gray-200"
                 >
-                  #{tag}
+                  #{tag.name}
                 </button>
               ))}
             </div>
@@ -368,9 +450,11 @@ export default function WritePage() {
                 key={index}
                 className="relative h-24 w-24 overflow-hidden rounded-lg border"
               >
-                <img
+                <Image
                   src={preview}
                   alt={`preview-${index}`}
+                  width={40}
+                  height={40}
                   className="h-full w-full object-cover"
                 />
                 <button
@@ -423,13 +507,7 @@ export default function WritePage() {
       </form>
 
       {/* 로그인 모달 */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => {
-          setIsLoginModalOpen(false);
-          router.push('/community');
-        }}
-      />
+      <LoginModal isOpen={isLoginModalOpen} onClose={handleModalClose} />
     </div>
   );
 }
