@@ -679,3 +679,181 @@ export async function fetchRelatedPosts(postId: number, limit: number = 3): Prom
     })
   );
 }
+
+// 북마크 토글 기능
+export async function togglePostBookmark(postId: number): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  try {
+    // 기존 북마크 확인
+    const { data: existingBookmark } = await supabase
+      .from('post_bookmarks')
+      .select()
+      .eq('post_i', postId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingBookmark) {
+      // 북마크 제거
+      const { error } = await supabase
+        .from('post_bookmarks')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      return false; // 북마크 제거됨
+    } else {
+      // 북마크 추가
+      const { error } = await supabase
+        .from('post_bookmarks')
+        .insert({
+          post_id: postId,
+          user_id: user.id
+        });
+
+      if (error) throw error;
+      return true; // 북마크 추가됨
+    }
+  } catch (error) {
+    console.error('북마크 토글 실패:', error);
+    throw error;
+  }
+}
+
+// 북마크 상태 확인
+export async function isPostBookmarked(postId: number): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  try {
+    const { data } = await supabase
+      .from('post_bookmarks')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    return !!data; // 북마크가 있으면 true, 없으면 false
+  } catch (error) {
+    console.error('북마크 상태 확인 실패:', error);
+    return false;
+  }
+}
+
+// 북마크한 게시글 목록 조회
+export async function fetchBookmarkedPosts(): Promise<Post[]> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  try {
+    // 사용자의 북마크 목록 조회
+    const { data: bookmarks, error: bookmarksError } = await supabase
+      .from('post_bookmarks')
+      .select('post_id')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (bookmarksError) throw bookmarksError;
+    if (!bookmarks || bookmarks.length === 0) return [];
+
+    // 북마크한 게시글 ID 목록
+    const postIds = bookmarks.map(bookmark => bookmark.post_id);
+
+    // 게시글 상세 정보 조회
+    const { data: posts, error: postsError } = await supabase
+      .from('community_posts')
+      .select('*')
+      .in('id', postIds);
+
+    if (postsError) throw postsError;
+    if (!posts) return [];
+
+    // 게시글 추가 정보 조회 (작성자, 태그 등
+    const enhancedPosts = await Promise.all(posts.map(async (post) => {
+      // fetchPostById와 유사한 방식으로 추가 정보 조회
+      // ...태그, 작성자, 좋아요 수 등 조회 코드...
+      
+      // 간단하게 기본 정보만 반환하는 예시
+      try {
+        // 태그 조회
+        const { data: tagsData } = await supabase
+          .from('post_tags')
+          .select('tag')
+          .eq('post_id', post.id);
+        
+        const tags = tagsData?.map(item => item.tag) || [];
+        
+        // 작성자 정보 조회
+        let authorName = '익명';
+        let avatarUrl = null;
+        
+        if (post.author_id) {
+          const { data: authorData } = await supabase
+            .from('profiles')
+            .select('name, nickname, avatar_url')
+            .eq('id', post.author_id)
+            .single();
+            
+          if (authorData) {
+            authorName = authorData.nickname || authorData.name || '익명';
+            
+            if (authorData.avatar_url) {
+              const { data: { publicUrl } } = supabase
+                .storage
+                .from('avatars')
+                .getPublicUrl(authorData.avatar_url);
+              avatarUrl = publicUrl;
+            }
+          }
+        }
+        
+        // 좋아요 및 댓글 수 조회
+        const [{ count: likesCount }, { count: commentsCount }] = await Promise.all([
+          supabase
+            .from('post_likes')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id),
+          supabase
+            .from('post_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id)
+        ]);
+        
+        return {
+          ...post,
+          tags,
+          author_name: authorName,
+          author_avatar: avatarUrl,
+          likes_count: likesCount || 0,
+          comments_count: commentsCount || 0,
+          is_bookmarked: true // 북마크 목록이므로 true
+        };
+      } catch (error) {
+        console.error(`게시글 ${post.id} 정보 조회 실패:`, error);
+        // 기본 정보만 반환
+        return {
+          ...post,
+          tags: [],
+          author_name: '익명',
+          author_avatar: null,
+          likes_count: 0,
+          comments_count: 0,
+          is_bookmarked: true
+        };
+      }
+    }));
+    
+    return enhancedPosts;
+  } catch (error) {
+    console.error('북마크 게시글 목록 조회 실패:', error);
+    return [];
+  }
+}

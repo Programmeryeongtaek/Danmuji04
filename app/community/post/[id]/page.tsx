@@ -10,8 +10,10 @@ import {
   fetchCommentsByPostId,
   fetchPostById,
   fetchRelatedPosts,
+  isPostBookmarked,
   Post,
   toggleCommentLike,
+  togglePostBookmark,
   togglePostLike,
 } from '@/utils/services/communityService';
 import { useAtomValue } from 'jotai';
@@ -112,6 +114,12 @@ export default function PostDetailPage() {
         // 관련 게시글 조회
         const relatedPostsData = await fetchRelatedPosts(numericPostId);
         setRelatedPosts(relatedPostsData);
+
+        // 북마크 상태 조회
+        if (user) {
+          const bookmarked = await isPostBookmarked(numericPostId);
+          setIsBookmarked(bookmarked);
+        }
       } catch (error) {
         console.error('게시글 데이터 로드 실패:', error);
         showToast('게시글을 불러오는데 실패했습니다.', 'error');
@@ -124,9 +132,9 @@ export default function PostDetailPage() {
     if (postId) {
       fetchPostData();
     }
-  }, [postId, router, showToast]);
+  }, [postId, router, showToast, user]);
 
-  const renderPostContent = (content: String) => {
+  const renderPostContent = (content: string) => {
     const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
     const parts = content.split(imageLinkRegex);
 
@@ -195,18 +203,28 @@ export default function PostDetailPage() {
     }
   };
 
-  // 북마크 처리 (실제 구현 필요)
-  const handleBookmark = () => {
+  // 북마크 처리
+  const handleBookmark = async () => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
 
-    setIsBookmarked(!isBookmarked);
-    showToast(
-      isBookmarked ? '북마크가 취소되었습니다.' : '북마크에 추가되었습니다.',
-      'success'
-    );
+    if (!post) return;
+
+    try {
+      const newBookmarkedState = await togglePostBookmark(post.id);
+      setIsBookmarked(newBookmarkedState);
+      showToast(
+        newBookmarkedState
+          ? '북마크에 추가되었습니다.'
+          : '북마크가 취소되었습니다.',
+        'success'
+      );
+    } catch (error) {
+      console.error('북마크 처리 실패:', error);
+      showToast('북마크 처리에 실패했습니다.', 'error');
+    }
   };
 
   // 댓글 작성 처리
