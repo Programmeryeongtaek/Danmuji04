@@ -3,6 +3,12 @@
 import { useToast } from '@/components/common/Toast/Context';
 import LoginModal from '@/components/home/LoginModal';
 import { userAtom } from '@/store/auth';
+import {
+  fetchPopularTags,
+  fetchPosts,
+  FilterOptions,
+  Post,
+} from '@/utils/services/communityService';
 import { useAtomValue } from 'jotai';
 import {
   Bell,
@@ -58,132 +64,6 @@ const communityCategories = [
   },
 ];
 
-// 인기 태그 데이터
-const popularTags = [
-  { name: 'JavaScript', count: 120 },
-  { name: 'React', count: 98 },
-  { name: 'TypeScript', count: 85 },
-  { name: 'Next.js', count: 72 },
-  { name: 'CSS', count: 65 },
-  { name: 'Node.js', count: 58 },
-];
-
-// 더미 게시글 데이터
-const dummyPosts = [
-  {
-    id: 1,
-    title: 'Next.js에서 상태 관리 어떻게 하시나요?',
-    content:
-      'Next.js 프로젝트에서 상태 관리를 어떻게 하시는지 궁금합니다. Redux, Jotai, Zustand 등 어떤 것이 좋을까요?',
-    author: '개발자123',
-    profileImage: '/images/danmuji.png',
-    category: 'faq',
-    views: 245,
-    comments: 18,
-    likes: 32,
-    createdAt: '2023-12-15T14:23:00',
-    tags: ['Next.js', 'React', '상태관리'],
-  },
-  {
-    id: 2,
-    title: '주말에 같이 코딩할 스터디원 모집합니다',
-    content:
-      '주말마다 모여서 함께 코딩하고 피드백을 나눌 스터디원을 모집합니다. 장소는 강남역 근처입니다.',
-    author: '스터디장',
-    profileImage: null,
-    category: 'study',
-    views: 189,
-    comments: 24,
-    likes: 15,
-    createdAt: '2023-12-14T09:45:00',
-    tags: ['스터디', '모집', '코딩'],
-  },
-  {
-    id: 3,
-    title: '새로운 강의 오픈 안내',
-    content:
-      '12월 20일부터 "Next.js 마스터 클래스" 강의가 오픈됩니다. 많은 관심 부탁드립니다.',
-    author: '관리자',
-    profileImage: '/images/danmuji.png',
-    category: 'notice',
-    views: 421,
-    comments: 5,
-    likes: 76,
-    createdAt: '2023-12-13T16:30:00',
-    tags: ['공지', '강의', 'Next.js'],
-  },
-  {
-    id: 4,
-    title: '요즘 읽고 있는 개발 서적 추천해주세요',
-    content:
-      '요즘 읽기 좋은 개발 관련 서적 추천 부탁드립니다. 주로 백엔드 개발을 하고 있습니다.',
-    author: '책벌레',
-    profileImage: null,
-    category: 'chats',
-    views: 156,
-    comments: 42,
-    likes: 23,
-    createdAt: '2023-12-11T10:15:00',
-    tags: ['책', '추천', '백엔드'],
-  },
-  {
-    id: 5,
-    title: 'TypeScript 타입 추론 관련 질문입니다',
-    content:
-      'TypeScript에서 제네릭 타입 추론이 잘 안되는 경우가 있는데, 어떻게 해결하시나요?',
-    author: '타입충',
-    profileImage: '/images/danmuji.png',
-    category: 'faq',
-    views: 203,
-    comments: 15,
-    likes: 28,
-    createdAt: '2023-12-10T19:20:00',
-    tags: ['TypeScript', '타입추론', '제네릭'],
-  },
-  {
-    id: 6,
-    title: '사이트 점검 안내',
-    content:
-      '12월 25일 오전 2시부터 4시까지 서버 점검이 있을 예정입니다. 이용에 참고 부탁드립니다.',
-    author: '관리자',
-    profileImage: '/images/danmuji.png',
-    category: 'notice',
-    views: 310,
-    comments: 2,
-    likes: 45,
-    createdAt: '2023-12-09T13:50:00',
-    tags: ['공지', '점검'],
-  },
-  {
-    id: 7,
-    title: '개발자 취업 준비 어떻게 하고 계신가요?',
-    content:
-      '취업 준비 중인 신입 개발자입니다. 포트폴리오나 이력서 준비 팁 있으면 공유해주세요.',
-    author: '취준생',
-    profileImage: null,
-    category: 'chats',
-    views: 278,
-    comments: 37,
-    likes: 52,
-    createdAt: '2023-12-07T11:25:00',
-    tags: ['취업', '포트폴리오', '신입개발자'],
-  },
-  {
-    id: 8,
-    title: 'React Hooks 관련 질문입니다',
-    content:
-      'useEffect의 의존성 배열에 관한 질문이 있습니다. 특정 상황에서 무한 루프가 발생하는데 어떻게 해결하나요?',
-    author: '리액트러버',
-    profileImage: '/images/danmuji.png',
-    category: 'faq',
-    views: 194,
-    comments: 21,
-    likes: 34,
-    createdAt: '2023-12-05T16:42:00',
-    tags: ['React', 'Hooks', 'useEffect'],
-  },
-];
-
 // 정렬 옵션
 const sortOptions = [
   { value: 'recent', label: ' 최신순' },
@@ -196,81 +76,72 @@ export default function CommunityPage() {
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
 
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  // URL 파라미터에서 초기값 가져오기
+  const initialCategory = searchParams.get('category') || 'all';
+  const initialTag = searchParams.get('tag') || null;
+
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredPosts, setFilteredPosts] = useState(dummyPosts);
-  const [sortBy, setSortBy] = useState('recent');
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [popularTags, setPopularTags] = useState<
+    { name: string; count: number }[]
+  >([]);
+  const [sortBy, setSortBy] = useState<FilterOptions['sort']>('recent');
   const [showSortOptions, setShowSortOptions] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [showTagSection, setShowTagSection] = useState(true);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(initialTag);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalPosts, setTotalPosts] = useState(0);
 
-  const postsPerPage = 2; // 페이지당 게시글 수
+  const postsPerPage = 10; // 페이지당 게시글 수
+
+  // 게시글 및 인기 태그 로드
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+
+        // 필터 옵션 설정
+        const filterOptions: FilterOptions = {
+          category: selectedCategory === 'all' ? undefined : selectedCategory,
+          sort: sortBy,
+          tag: selectedTag || undefined,
+        };
+
+        // 게시글 로드
+        const postsData = await fetchPosts(filterOptions);
+        setPosts(postsData);
+        setTotalPosts(postsData.length);
+
+        // 인기 태그 로드
+        const tagsData = await fetchPopularTags(10);
+        setPopularTags(tagsData);
+      } catch (error) {
+        console.error('데이터 로드 실패:', error);
+        showToast('게시글을 불러오는데 실패헀습니다.', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [selectedCategory, sortBy, selectedTag, showToast]);
 
   useEffect(() => {
-    // URL에서 카테고리 파라미터 가져오기
-    const categoryParam = searchParams.get('category');
-    if (categoryParam) {
-      setSelectedCategory(categoryParam);
-    }
-
-    // URL에서 태그 파라미터 가져오기
-    const tagParam = searchParams.get('tag');
-    if (tagParam) {
-      setSelectedTag(tagParam);
-    }
-
-    // 페이지 번호 초기화
-    setCurrentPage(1);
-
-    // 에러 메시지 확인
+    // URL 에러 메시지 확인
     const error = searchParams.get('error');
     if (error === 'post-not-found') {
       showToast('게시글을 찾을 수 없습니다.', 'error');
     }
   }, [searchParams, showToast]);
 
-  // 카테고리와 검색어에 따라 게시글 필터링
-  useEffect(() => {
-    let filtered = [...dummyPosts];
-
-    // 카테고리 필터링
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter((post) => post.category === selectedCategory);
-    }
-
-    // 태그 필터링
-    if (selectedTag) {
-      filtered = filtered.filter(
-        (post) =>
-          post.tags &&
-          post.tags.some(
-            (tag) => tag.toLowerCase() === selectedTag.toLowerCase()
-          )
-      );
-    }
-
-    // 정렬
-    switch (sortBy) {
-      case 'recent':
-        filtered.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        break;
-      case 'likes':
-        filtered.sort((a, b) => (b.likes = a.likes));
-    }
-
-    setFilteredPosts(filtered);
-  }, [selectedCategory, sortBy, selectedTag]);
-
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    setCurrentPage(1); // 카테고리 변경 시 페이지 초기화
+    setCurrentPage(1); //  카테고리 변경 시 페이지 초기화
 
-    // URL 업데이트 (깜박임 방지를 위해 히스토리 API 직접 사용)
+    // URL 업데이트
     const url = new URL(window.location.href);
     url.searchParams.set('category', categoryId);
 
@@ -278,19 +149,25 @@ export default function CommunityPage() {
       url.searchParams.set('tag', selectedTag);
     }
 
-    window.history.pushState({}, '', url.toString());
+    router.push(url.toString());
   };
 
   // 태그 클릭 핸들러
   const handleTagClick = (tag: string) => {
-    if (selectedTag === tag) {
-      // 이미 선택된 태그를 다시 클릭하면 선택 해제
-      setSelectedTag(null);
+    const newTag = selectedTag === tag ? null : tag;
+    setSelectedTag(newTag);
+    setCurrentPage(1); // 태그 변경 시 페이지 초기화
 
-      const url = new URL(window.location.href);
-      url.searchParams.set('tag', tag);
-      window.history.pushState({}, '', url.toString());
+    // URL 업데이트
+    const url = new URL(window.location.href);
+
+    if (newTag) {
+      url.searchParams.set('tag', newTag);
+    } else {
+      url.searchParams.delete('tag');
     }
+
+    router.push(url.toString());
   };
 
   // 검색 핸들러
@@ -317,8 +194,8 @@ export default function CommunityPage() {
   // 페이지네이션 계산
   const indexOfLastPost = currentPage * postsPerPage;
   const indexOfFirstPost = indexOfLastPost - postsPerPage;
-  const currentPosts = filteredPosts.slice(indexOfFirstPost, indexOfLastPost);
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
 
   // 페이지 변경 핸들러
   const paginate = (pageNumber: number) => {
@@ -468,7 +345,7 @@ export default function CommunityPage() {
                   <button
                     key={option.value}
                     onClick={() => {
-                      setSortBy(option.value);
+                      setSortBy(option.value as FilterOptions['sort']);
                       setShowSortOptions(false);
                     }}
                     className={`flex w-full items-center px-4 py-2 text-left hover:bg-gray-50 ${
@@ -519,7 +396,12 @@ export default function CommunityPage() {
           <div className="min-w-[120px] text-center">작성일</div>
         </div>
 
-        {currentPosts.length > 0 ? (
+        {isLoading ? (
+          <div className="py-12 text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
+            <p className="mt-2 text-gray-600">게시글을 불러오는 중...</p>
+          </div>
+        ) : currentPosts.length > 0 ? (
           currentPosts.map((post) => (
             <div
               key={post.id}
@@ -555,6 +437,7 @@ export default function CommunityPage() {
                   {/* 태그 목록 (모바일에서는 숨김) */}
                   <div className="hidden sm:flex sm:flex-wrap sm:gap-1">
                     {post.tags &&
+                      post.tags.length > 0 &&
                       post.tags.map((tag, idx) => (
                         <span
                           key={idx}
@@ -569,11 +452,11 @@ export default function CommunityPage() {
                       ))}
                   </div>
 
-                  {post.comments > 0 && (
+                  {post.comments_count && post.comments_count > 0 ? (
                     <span className="ml-1 rounded bg-gold-start/10 px-1.5 text-sm font-normal text-gold-start">
-                      {post.comments}
+                      {post.comments_count}
                     </span>
-                  )}
+                  ) : null}
                 </Link>
 
                 {/* 게시글 부가 정보 (모바일에서 표시) */}
@@ -584,39 +467,41 @@ export default function CommunityPage() {
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <MessageSquare className="h-3 w-3" />
-                    <span>{post.comments}</span>
+                    <span>{post.comments_count || 0}</span>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <ThumbsUp className="h-3 w-3" />
-                    <span>{post.likes}</span>
+                    <span>{post.likes_count || 0}</span>
                   </div>
                 </div>
               </div>
               <div className="min-w-[80px] text-center text-sm text-gray-600">
                 <div className="flex items-center justify-center gap-1">
                   <div className="relative h-5 w-5 overflow-hidden rounded-full bg-gray-200">
-                    {post.profileImage ? (
+                    {post.author_avatar ? (
                       <Image
-                        src={post.profileImage}
-                        alt={post.author}
+                        src={post.author_avatar}
+                        alt={post.author_name || ''}
                         width={40}
                         height={40}
                         className="h-full w-full object-cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                        {post.author.charAt(0).toUpperCase()}
+                        {post.author_name
+                          ? post.author_name.charAt(0).toUpperCase()
+                          : '?'}
                       </div>
                     )}
                   </div>
-                  <span>{post.author}</span>
+                  <span>{post.author_name}</span>
                 </div>
               </div>
               <div className="min-w-[80px] text-center text-sm text-gray-600">
                 {post.views}
               </div>
               <div className="min-w-[120px] text-center text-sm text-gray-600">
-                {formatDate(post.createdAt)}
+                {formatDate(post.created_at)}
               </div>
             </div>
           ))
