@@ -1,275 +1,184 @@
 'use client';
 
+import { useToast } from '@/components/common/Toast/Context';
 import {
+  FilterOptions,
+  Post,
+  searchPosts,
+} from '@/utils/services/communityService';
+import {
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   Eye,
   Filter,
-  Logs,
-  MessageCircle,
   MessageSquare,
   Search,
   ThumbsUp,
   X,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-
-// 더미 게시글 데이터
-const dummyPosts = [
-  {
-    id: 1,
-    title: 'Next.js에서 상태 관리 어떻게 하시나요?',
-    content:
-      'Next.js 프로젝트에서 상태 관리를 어떻게 하시는지 궁금합니다. Redux, Jotai, Zustand 등 어떤 것이 좋을까요?',
-    author: '개발자123',
-    authorId: 'user1',
-    profileImage: '/images/danmuji.png',
-    category: 'faq',
-    views: 245,
-    comments: 18,
-    likes: 32,
-    createdAt: '2023-12-15T14:23:00',
-    tags: ['Next.js', 'React', '상태관리'],
-  },
-  {
-    id: 2,
-    title: '주말에 같이 코딩할 스터디원 모집합니다',
-    content:
-      '주말마다 모여서 함께 코딩하고 피드백을 나눌 스터디원을 모집합니다. 장소는 강남역 근처입니다.',
-    author: '스터디장',
-    authorId: 'user2',
-    profileImage: null,
-    category: 'study',
-    views: 189,
-    comments: 24,
-    likes: 15,
-    createdAt: '2023-12-14T09:45:00',
-    tags: ['스터디', '모집', '코딩'],
-  },
-  {
-    id: 3,
-    title: '새로운 강의 오픈 안내',
-    content:
-      '12월 20일부터 "Next.js 마스터 클래스" 강의가 오픈됩니다. 많은 관심 부탁드립니다.',
-    author: '관리자',
-    authorId: 'admin',
-    profileImage: '/images/danmuji.png',
-    category: 'notice',
-    views: 421,
-    comments: 5,
-    likes: 76,
-    createdAt: '2023-12-13T16:30:00',
-    tags: ['공지', '강의', 'Next.js'],
-  },
-  {
-    id: 4,
-    title: '요즘 읽고 있는 개발 서적 추천해주세요',
-    content:
-      '요즘 읽기 좋은 개발 관련 서적 추천 부탁드립니다. 주로 백엔드 개발을 하고 있습니다.',
-    author: '책벌레',
-    authorId: 'user3',
-    profileImage: null,
-    category: 'chats',
-    views: 156,
-    comments: 42,
-    likes: 23,
-    createdAt: '2023-12-11T10:15:00',
-    tags: ['책', '추천', '백엔드'],
-  },
-  {
-    id: 5,
-    title: 'TypeScript 타입 추론 관련 질문입니다',
-    content:
-      'TypeScript에서 제네릭 타입 추론이 잘 안되는 경우가 있는데, 어떻게 해결하시나요?',
-    author: '타입충',
-    authorId: 'user4',
-    profileImage: '/images/danmuji.png',
-    category: 'faq',
-    views: 203,
-    comments: 15,
-    likes: 28,
-    createdAt: '2023-12-10T19:20:00',
-    tags: ['TypeScript', '타입추론', '제네릭'],
-  },
-  {
-    id: 6,
-    title: '사이트 점검 안내',
-    content:
-      '12월 25일 오전 2시부터 4시까지 서버 점검이 있을 예정입니다. 이용에 참고 부탁드립니다.',
-    author: '관리자',
-    authorId: 'admin',
-    profileImage: '/images/danmuji.png',
-    category: 'notice',
-    views: 310,
-    comments: 2,
-    likes: 45,
-    createdAt: '2023-12-09T13:50:00',
-    tags: ['공지', '점검'],
-  },
-];
+import { FormEvent, useEffect, useState } from 'react';
 
 // 커뮤니티 카테고리 정의
 const communityCategories = [
   {
     id: 'all',
     label: '전체',
-    icon: Logs,
-  },
-  {
-    id: 'faq',
-    label: '질문 게시판',
-    icon: MessageCircle,
-  },
-  {
-    id: 'chats',
-    label: '자유게시판',
-    icon: MessageCircle,
-  },
-  {
-    id: 'study',
-    label: '스터디',
-    icon: MessageCircle,
   },
   {
     id: 'notice',
     label: '공지사항',
-    icon: MessageCircle,
+  },
+  {
+    id: 'chats',
+    label: '자유게시판',
+  },
+  {
+    id: 'study',
+    label: '스터디',
+  },
+  {
+    id: 'faq',
+    label: '질문 게시판',
   },
 ];
-
-// 필터 옵션 타입 정의
-interface FilterOptions {
-  category: string;
-  period: 'all' | 'day' | 'week' | 'month' | 'year';
-  sort: 'recent' | 'views' | 'likes' | 'comments';
-}
 
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
+  const { showToast } = useToast();
 
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSearchTerm, setCurrentSearchTerm] = useState(query);
   const [filters, setFilters] = useState<FilterOptions>({
     category: 'all',
     period: 'all',
     sort: 'recent',
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
 
-  // 검색 결과 로드
+  const postsPerPage = 10;
+
   useEffect(() => {
-    const fetchSearchResults = () => {
+    const fetchSearchResults = async () => {
       setIsLoading(true);
 
       if (!query.trim()) {
         setSearchResults([]);
+        setTotalResults(0);
         setIsLoading(false);
         return;
       }
 
-      // 검색어로 게시글 필터링
-      let results = dummyPosts.filter(
-        (post) =>
-          post.title.toLowerCase().includes(query.toLowerCase()) ||
-          post.content.toLowerCase().includes(query.toLowerCase()) ||
-          post.tags.some((tag) =>
-            tag.toLowerCase().includes(query.toLowerCase())
-          )
-      );
-
-      // 카테고리 필터링
-      if (filters.category !== 'all') {
-        results = results.filter((post) => post.category === filters.category);
+      try {
+        // 검색 실행
+        const results = await searchPosts(query, filters);
+        setSearchResults(results);
+        setTotalResults(results.length);
+      } catch (error) {
+        console.error('검색 중 오류 발생:', error);
+        showToast('검색 결과를 불러오는데 실패했습니다.', 'error');
+      } finally {
+        setIsLoading(false);
       }
-
-      // 기간 필터링
-      if (filters.period !== 'all') {
-        const now = new Date();
-        const cutoffDate = new Date();
-
-        switch (filters.period) {
-          case 'day':
-            cutoffDate.setDate(now.getDate() - 1);
-            break;
-          case 'week':
-            cutoffDate.setDate(now.getDate() - 7);
-            break;
-          case 'month':
-            cutoffDate.setMonth(now.getMonth() - 1);
-            break;
-          case 'year':
-            cutoffDate.setFullYear(now.getFullYear() - 1);
-            break;
-        }
-
-        results = results.filter(
-          (post) => new Date(post.createdAt) >= cutoffDate
-        );
-      }
-
-      // 정렬
-      switch (filters.sort) {
-        case 'recent':
-          results.sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-          break;
-        case 'views':
-          results.sort((a, b) => b.views - a.views);
-          break;
-        case 'likes':
-          results.sort((a, b) => b.likes - a.likes);
-          break;
-        case 'comments':
-          results.sort((a, b) => b.comments - a.comments);
-          break;
-      }
-
-      setSearchResults(results);
-      setIsLoading(false);
     };
 
-    // 검색 실행
-    const searchTimeout = setTimeout(fetchSearchResults, 300);
+    fetchSearchResults();
+  }, [query, filters, showToast]);
 
-    return () => clearTimeout(searchTimeout);
-  }, [query, filters]);
+  // 검색 핸들러
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!currentSearchTerm.trim()) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('q', currentSearchTerm);
+
+    // 카테고리 필터가 'all'이 아닌 경우에만 URL에 추가
+    if (filters.category && filters.category !== 'all') {
+      url.searchParams.set('category', filters.category);
+    } else {
+      url.searchParams.delete('category');
+    }
+
+    router.push(url.toString());
+  };
 
   // 필터 적용
   const applyFilters = (newFilters: FilterOptions) => {
     setFilters(newFilters);
-    setShowFilters(false);
+    setCurrentPage(1); // 필터 변경 시 페이지 초기화
   };
 
-  // 필드 강조 표시 함수
+  // 페이지네이션 계산
+  const indexOfLastPost = currentPage * postsPerPage;
+  const indexOfFirstPost = indexOfLastPost - postsPerPage;
+  const currentResults = searchResults.slice(indexOfFirstPost, indexOfLastPost);
+  const totalPages = Math.ceil(totalResults / postsPerPage);
+
+  // 페이지 변경 핸들러
+  const paginate = (pageNumber: number) => {
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // 텍스트 하이라이트 함수
   const highlightText = (text: string, searchTerm: string) => {
     if (!searchTerm.trim()) return text;
 
-    const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
+    try {
+      const regex = new RegExp(`(${searchTerm})`, 'gi');
+      const parts = text.split(regex);
 
-    return parts.map((part, index) =>
-      part.toLowerCase() === searchTerm.toLowerCase() ? (
-        <mark key={index} className="bg-yellow-200">
-          {part}
-        </mark>
-      ) : (
-        part
-      )
-    );
+      return parts.map((part, index) =>
+        part.toLowerCase() === searchTerm.toLowerCase() ? (
+          <mark key={index} className="bg-yellow-200 px-0 py-0">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      );
+    } catch (error) {
+      // 정규식 오류 방지 (특수문자 등)
+      return text;
+    }
   };
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      // 오늘
+      return date.toLocaleTimeString('ko-Kr', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } else if (diffDays < 7) {
+      // 일주일 이내
+      return `${diffDays}일 전`;
+    } else {
+      // 일주일 이상
+      return date.toLocaleDateString('ko-Kr', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
   };
 
   return (
@@ -288,43 +197,40 @@ export default function SearchPage() {
       {/* 검색 헤더 */}
       <div className="mb-8">
         <h1 className="mb-2 text-2xl font-bold sm:text-3xl">검색 결과</h1>
-        <p className="text-gray-600">
-          <strong>{query}</strong>에 대한 검색 결과 {searchResults.length}개
-        </p>
+        {query && (
+          <p className="text-gray-600">
+            <strong>{query}</strong>에 대한 검색 결과 {totalResults}개
+          </p>
+        )}
       </div>
 
       {/* 검색창 */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-md">
+        <form onSubmit={handleSearch} className="relative w-full max-w-md">
           <input
             type="text"
             placeholder="검색어를 입력하세요"
-            defaultValue={query}
-            onChange={(e) => {
-              const newUrl = new URL(window.location.href);
-              const newQuery = e.target.value.trim();
-
-              if (newQuery) {
-                newUrl.searchParams.set('q', newQuery);
-              } else {
-                newUrl.searchParams.delete('q');
-              }
-
-              router.replace(newUrl.toString());
-            }}
+            value={currentSearchTerm}
+            onChange={(e) => setCurrentSearchTerm(e.target.value)}
             className="w-full rounded-lg border px-10 py-3 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
           />
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-          {query && (
+          {currentSearchTerm && (
             <button
               type="button"
-              onClick={() => router.push('/community/search')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              onClick={() => setCurrentSearchTerm('')}
+              className="absolute right-12 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
           )}
-        </div>
+          <button
+            type="submit"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-gold-start p-1 text-white"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </form>
 
         <div className="flex items-center gap-2">
           <button
@@ -333,6 +239,11 @@ export default function SearchPage() {
           >
             <Filter className="h-5 w-5" />
             <span className="hidden sm:inline">필터</span>
+            {showFilters ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>
@@ -353,7 +264,7 @@ export default function SearchPage() {
                   <button
                     key={category.id}
                     onClick={() =>
-                      setFilters({ ...filters, category: category.id })
+                      applyFilters({ ...filters, category: category.id })
                     }
                     className={`rounded-lg px-3 py-1 text-sm ${
                       filters.category === category.id
@@ -372,7 +283,7 @@ export default function SearchPage() {
               <h3 className="mb-2 text-sm font-medium text-gray-500">기간</h3>
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => setFilters({ ...filters, period: 'all' })}
+                  onClick={() => applyFilters({ ...filters, period: 'all' })}
                   className={`rounded-lg px-3 py-1 text-sm ${
                     filters.period === 'all'
                       ? 'bg-gold-start text-white'
@@ -382,7 +293,7 @@ export default function SearchPage() {
                   전체
                 </button>
                 <button
-                  onClick={() => setFilters({ ...filters, period: 'day' })}
+                  onClick={() => applyFilters({ ...filters, period: 'day' })}
                   className={`rounded-lg px-3 py-1 text-sm ${
                     filters.period === 'day'
                       ? 'bg-gold-start text-white'
@@ -392,7 +303,7 @@ export default function SearchPage() {
                   오늘
                 </button>
                 <button
-                  onClick={() => setFilters({ ...filters, period: 'week' })}
+                  onClick={() => applyFilters({ ...filters, period: 'week' })}
                   className={`rounded-lg px-3 py-1 text-sm ${
                     filters.period === 'week'
                       ? 'bg-gold-start text-white'
@@ -402,7 +313,7 @@ export default function SearchPage() {
                   이번 주
                 </button>
                 <button
-                  onClick={() => setFilters({ ...filters, period: 'month' })}
+                  onClick={() => applyFilters({ ...filters, period: 'month' })}
                   className={`rounded-lg px-3 py-1 text-sm ${
                     filters.period === 'month'
                       ? 'bg-gold-start text-white'
@@ -419,7 +330,7 @@ export default function SearchPage() {
               <h3 className="mb-2 text-sm font-medium text-gray-500">정렬</h3>
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => setFilters({ ...filters, sort: 'recent' })}
+                  onClick={() => applyFilters({ ...filters, sort: 'recent' })}
                   className={`rounded-lg px-3 py-1 text-sm ${
                     filters.sort === 'recent'
                       ? 'bg-gold-start text-white'
@@ -429,17 +340,7 @@ export default function SearchPage() {
                   최신순
                 </button>
                 <button
-                  onClick={() => setFilters({ ...filters, sort: 'views' })}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    filters.sort === 'views'
-                      ? 'bg-gold-start text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  조회순
-                </button>
-                <button
-                  onClick={() => setFilters({ ...filters, sort: 'likes' })}
+                  onClick={() => applyFilters({ ...filters, sort: 'likes' })}
                   className={`rounded-lg px-3 py-1 text-sm ${
                     filters.sort === 'likes'
                       ? 'bg-gold-start text-white'
@@ -448,16 +349,6 @@ export default function SearchPage() {
                 >
                   좋아요순
                 </button>
-                <button
-                  onClick={() => setFilters({ ...filters, sort: 'comments' })}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    filters.sort === 'comments'
-                      ? 'bg-gold-start text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  댓글순
-                </button>
               </div>
             </div>
           </div>
@@ -465,7 +356,7 @@ export default function SearchPage() {
           <div className="mt-4 flex justify-end">
             <button
               onClick={() => {
-                setFilters({
+                applyFilters({
                   category: 'all',
                   period: 'all',
                   sort: 'recent',
@@ -491,9 +382,9 @@ export default function SearchPage() {
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
           <p className="mt-2 text-gray-600">검색 중...</p>
         </div>
-      ) : searchResults.length > 0 ? (
+      ) : currentResults.length > 0 ? (
         <div className="space-y-6">
-          {searchResults.map((post) => (
+          {currentResults.map((post) => (
             <div
               key={post.id}
               className="rounded-lg border p-4 hover:border-gold-start hover:bg-gray-50"
@@ -517,7 +408,7 @@ export default function SearchPage() {
                     }
                   </span>
                   <div className="text-xs text-gray-500">
-                    {formatDate(post.createdAt)}
+                    {formatDate(post.created_at)}
                   </div>
                 </div>
 
@@ -534,33 +425,39 @@ export default function SearchPage() {
                   )}
                 </p>
 
-                <div className="mb-2 flex flex-wrap gap-2">
-                  {post.tags.map((tag: string, idx: number) => (
-                    <span
-                      key={idx}
-                      className="rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-700"
-                    >
-                      #{highlightText(tag, query)}
-                    </span>
-                  ))}
-                </div>
+                {post.tags && post.tags.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {post.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-700"
+                      >
+                        #{highlightText(tag, query)}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
-                      {post.profileImage ? (
-                        <img
-                          src={post.profileImage}
-                          alt={post.author}
+                      {post.author_avatar ? (
+                        <Image
+                          src={post.author_avatar}
+                          alt={post.author_name || ''}
+                          width={24}
+                          height={24}
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-gray-500">
-                          {post.author.charAt(0).toUpperCase()}
+                          {post.author_name
+                            ? post.author_name.charAt(0).toUpperCase()
+                            : '?'}
                         </div>
                       )}
                     </div>
-                    <span className="text-sm">{post.author}</span>
+                    <span className="text-sm">{post.author_name}</span>
                   </div>
 
                   <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -570,11 +467,11 @@ export default function SearchPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <MessageSquare className="h-4 w-4" />
-                      <span>{post.comments}</span>
+                      <span>{post.comments_count || 0}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <ThumbsUp className="h-4 w-4" />
-                      <span>{post.likes}</span>
+                      <span>{post.likes_count || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -592,6 +489,69 @@ export default function SearchPage() {
       ) : (
         <div className="rounded-lg border bg-gray-50 py-12 text-center">
           <p className="text-gray-500">검색어를 입력해주세요.</p>
+        </div>
+      )}
+
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex justify-center">
+          <div className="flex gap-2">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`rounded border px-3 py-1 text-sm ${
+                currentPage === 1
+                  ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              이전
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((page) => {
+                // 현재 페이지 앞뒤로 2페이지씩만 표시하고, 첫 페이지와 마지막 페이지는 항상 표시
+                const diff = Math.abs(page - currentPage);
+                return diff <= 2 || page === 1 || page === totalPages;
+              })
+              .map((page, i, filteredPages) => {
+                // 페이지 번호 사이에 ... 표시
+                const prevPage = filteredPages[i - 1];
+                const showEllipsis = prevPage && page - prevPage > 1;
+
+                return (
+                  <div key={page}>
+                    {showEllipsis && (
+                      <span className="flex h-8 w-8 items-center justify-center">
+                        ...
+                      </span>
+                    )}
+                    <button
+                      onClick={() => paginate(page)}
+                      className={`h-8 w-8 rounded ${
+                        currentPage === page
+                          ? 'bg-gold-start text-white'
+                          : 'border text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </div>
+                );
+              })}
+
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`rounded border px-3 py-1 text-sm ${
+                currentPage === totalPages
+                  ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              다음
+            </button>
+          </div>
         </div>
       )}
     </div>
