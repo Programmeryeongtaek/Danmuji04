@@ -4,17 +4,26 @@ import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import LoginModal from '@/components/home/LoginModal';
 import { userAtom } from '@/store/auth';
+import {
+  Comment,
+  createComment,
+  fetchCommentsByPostId,
+  fetchPostById,
+  fetchRelatedPosts,
+  Post,
+  toggleCommentLike,
+  togglePostLike,
+} from '@/utils/services/communityService';
 import { useAtomValue } from 'jotai';
 import {
   BookmarkPlus,
   ChevronLeft,
   Eye,
-  Logs,
-  MessageCircle,
   MessageSquare,
   Share2,
   ThumbsUp,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
@@ -24,148 +33,30 @@ const communityCategories = [
   {
     id: 'all',
     label: '전체',
-    icon: Logs,
-    description: '모든 게시글을 확인하세요',
-  },
-  {
-    id: 'faq',
-    label: '질문 게시판',
-    icon: MessageCircle,
-    description: '궁금한 점을 질문하고 답변을 받아보세요',
-  },
-  {
-    id: 'chats',
-    label: '자유게시판',
-    icon: MessageCircle,
-    description: '다양한 주제로 자유롭게 대화해보세요',
-  },
-  {
-    id: 'study',
-    label: '스터디',
-    icon: MessageCircle,
-    description: '함께 공부하고 성장할 스터디를 찾아보세요',
   },
   {
     id: 'notice',
     label: '공지사항',
-    icon: MessageCircle,
-    description: '중요한 공지사항을 확인하세요',
+  },
+  {
+    id: 'chats',
+    label: '자유게시판',
+  },
+  {
+    id: 'study',
+    label: '스터디',
+  },
+  {
+    id: 'faq',
+    label: '질문 게시판',
   },
 ];
-
-// 더미 게시글 데이터
-const dummyPosts = [
-  {
-    id: 1,
-    title: 'Next.js에서 상태 관리 어떻게 하시나요?',
-    content:
-      'Next.js 프로젝트에서 상태 관리를 어떻게 하시는지 궁금합니다. Redux, Jotai, Zustand 등 어떤 것이 좋을까요?\n\n저는 최근에 새로운 프로젝트를 시작했는데, 상태 관리 라이브러리를 어떤 것으로 선택해야 할지 고민이 많습니다. 기존에는 Redux를 사용했지만 보일러플레이트 코드가 많아 불편했고, Context API는 성능 이슈가 있다고 들었습니다.\n\n여러분의 경험과 의견을 듣고 싶습니다. 특히 대규모 프로젝트에서의 경험이 궁금합니다. 감사합니다!',
-    author: '개발자123',
-    authorId: 'user1',
-    profileImage: '/images/danmuji.png',
-    category: 'faq',
-    views: 245,
-    comments: 18,
-    likes: 32,
-    createdAt: '2023-12-15T14:23:00',
-    tags: ['Next.js', 'React', '상태관리'],
-  },
-  {
-    id: 2,
-    title: '주말에 같이 코딩할 스터디원 모집합니다',
-    content:
-      '주말마다 모여서 함께 코딩하고 피드백을 나눌 스터디원을 모집합니다. 장소는 강남역 근처입니다.',
-    author: '스터디장',
-    authorId: 'user2',
-    profileImage: null,
-    category: 'study',
-    views: 189,
-    comments: 24,
-    likes: 15,
-    createdAt: '2023-12-14T09:45:00',
-    tags: ['스터디', '모집', '코딩'],
-  },
-  {
-    id: 3,
-    title: '새로운 강의 오픈 안내',
-    content:
-      '12월 20일부터 "Next.js 마스터 클래스" 강의가 오픈됩니다. 많은 관심 부탁드립니다.',
-    author: '관리자',
-    authorId: 'admin',
-    profileImage: '/images/danmuji.png',
-    category: 'notice',
-    views: 421,
-    comments: 5,
-    likes: 76,
-    createdAt: '2023-12-13T16:30:00',
-    tags: ['공지', '강의', 'Next.js'],
-  },
-  {
-    id: 4,
-    title: '요즘 읽고 있는 개발 서적 추천해주세요',
-    content:
-      '요즘 읽기 좋은 개발 관련 서적 추천 부탁드립니다. 주로 백엔드 개발을 하고 있습니다.',
-    author: '책벌레',
-    authorId: 'user3',
-    profileImage: null,
-    category: 'chats',
-    views: 156,
-    comments: 42,
-    likes: 23,
-    createdAt: '2023-12-11T10:15:00',
-    tags: ['책', '추천', '백엔드'],
-  },
-  {
-    id: 5,
-    title: 'TypeScript 타입 추론 관련 질문입니다',
-    content:
-      'TypeScript에서 제네릭 타입 추론이 잘 안되는 경우가 있는데, 어떻게 해결하시나요?',
-    author: '타입충',
-    authorId: 'user4',
-    profileImage: '/images/danmuji.png',
-    category: 'faq',
-    views: 203,
-    comments: 15,
-    likes: 28,
-    createdAt: '2023-12-10T19:20:00',
-    tags: ['TypeScript', '타입추론', '제네릭'],
-  },
-  {
-    id: 6,
-    title: '사이트 점검 안내',
-    content:
-      '12월 25일 오전 2시부터 4시까지 서버 점검이 있을 예정입니다. 이용에 참고 부탁드립니다.',
-    author: '관리자',
-    authorId: 'admin',
-    profileImage: '/images/danmuji.png',
-    category: 'notice',
-    views: 310,
-    comments: 2,
-    likes: 45,
-    createdAt: '2023-12-09T13:50:00',
-    tags: ['공지', '점검'],
-  },
-];
-
-// 댓글 타입 정의
-interface Comment {
-  id: number;
-  postId: number;
-  author: string;
-  authorId: string;
-  profileImage: string | null;
-  content: string;
-  likes: number;
-  isLiked?: boolean;
-  createdAt: string;
-  replies?: Comment[];
-}
 
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
   const postId = params.id as string;
-  const [post, setPost] = useState<any>(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [newReply, setNewReply] = useState<{
@@ -176,105 +67,135 @@ export default function PostDetailPage() {
   const [likesCount, setLikesCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [relatedPosts, setRelatedPosts] = useState<any[]>([]);
 
   useEffect(() => {
-    // 게시글 데이터 불러오기 (실제로는 API 호출)
-    const fetchPost = () => {
-      setIsLoading(true);
+    if (post) {
+      console.log('게시글 내용:', post.content);
+      const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+      const matches = [...post.content.matchAll(imageLinkRegex)];
+      console.log('이미지 URL 매치:', matches);
+    }
+  }, [post]);
 
-      // ID로 게시글 찾기
-      const foundPost = dummyPosts.find((p) => p.id === parseInt(postId));
+  useEffect(() => {
+    const fetchPostData = async () => {
+      try {
+        setIsLoading(true);
 
-      if (foundPost) {
-        setPost(foundPost);
-        setLikesCount(foundPost.likes);
-
-        // 댓글 불러오기
-        const dummyComments: Comment[] = [
-          {
-            id: 1,
-            postId: foundPost.id,
-            author: '코드마스터',
-            authorId: 'user7',
-            profileImage: '/images/danmuji.png',
-            content: '저는 Zustand를 선호합니다. 간단하고 직관적이에요.',
-            likes: 12,
-            isLiked: false,
-            createdAt: '2023-12-15T15:30:00',
-            replies: [
-              {
-                id: 3,
-                postId: foundPost.id,
-                author: '개발자123',
-                authorId: 'user1',
-                profileImage: '/images/danmuji.png',
-                content: '감사합니다! Zustand 한번 살펴볼게요.',
-                likes: 3,
-                isLiked: false,
-                createdAt: '2023-12-15T16:15:00',
-              },
-            ],
-          },
-          {
-            id: 2,
-            postId: foundPost.id,
-            author: '리액트팬',
-            authorId: 'user8',
-            profileImage: null,
-            content:
-              'Redux는 러닝커브가 있지만 큰 프로젝트에서는 확실히 장점이 있어요.',
-            likes: 8,
-            isLiked: false,
-            createdAt: '2023-12-15T15:45:00',
-          },
-        ];
-
-        setComments(dummyComments);
-
-        // 관련 게시글 찾기 (같은 태그를 공유하는 게시글)
-        if (foundPost.tags && foundPost.tags.length > 0) {
-          const related = dummyPosts
-            .filter(
-              (p) =>
-                p.id !== foundPost.id &&
-                p.tags.some((tag) => foundPost.tags.includes(tag))
-            )
-            .slice(0, 3);
-          setRelatedPosts(related);
+        // 게시글 상세 정보 조회
+        const numericPostId = parseInt(postId, 10);
+        if (isNaN(numericPostId)) {
+          router.push('/commnunity?error-post-not-found');
+          return;
         }
-      } else {
-        // 게시글 없음
-        router.push('/community?error=post-not-found');
-      }
 
-      setIsLoading(false);
+        // 게시글 조회
+        const postData = await fetchPostById(numericPostId);
+        if (!postData) {
+          router.push('/community?error=post-not-fount');
+          return;
+        }
+
+        setPost(postData);
+        setIsLiked(postData.is_liked || false);
+        setLikesCount(postData.likes_count || 0);
+
+        // 댓글 조회
+        const commentsData = await fetchCommentsByPostId(numericPostId);
+        setComments(commentsData);
+
+        // 관련 게시글 조회
+        const relatedPostsData = await fetchRelatedPosts(numericPostId);
+        setRelatedPosts(relatedPostsData);
+      } catch (error) {
+        console.error('게시글 데이터 로드 실패:', error);
+        showToast('게시글을 불러오는데 실패했습니다.', 'error');
+        router.push('/community');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     if (postId) {
-      fetchPost();
+      fetchPostData();
     }
-  }, [postId, router]);
+  }, [postId, router, showToast]);
+
+  const renderPostContent = (content: String) => {
+    const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const parts = content.split(imageLinkRegex);
+
+    // 이미지가 없으면 일반 텍스트로 반환
+    if (parts.length === 1) {
+      return content;
+    }
+
+    const result = [];
+    let index = 0;
+
+    // 텍스트와 이미지 번갈아가며 렌더링
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 3 === 0) {
+        // 일반 텍스트 부분
+        if (parts[i]) {
+          result.push(<span key={`text-${index}`}>{parts[i]}</span>);
+          index++;
+        }
+      } else if (i % 3 === 2) {
+        // 이미지 URL 부분
+        const alt = parts[i - 1] || '이미지';
+        const src = parts[i];
+
+        result.push(
+          <div key={`img-${index}`} className="my-4">
+            <img
+              src={src}
+              alt={alt}
+              className="max-w-full rounded-lg"
+              onError={(e) => {
+                console.error(`이미지 로드 실패: ${src}`);
+                e.currentTarget.src = '/images/placeholder.png'; // 대체 이미지
+                e.currentTarget.alt = '이미지를 불러올 수 없습니다';
+              }}
+            />
+          </div>
+        );
+        index++;
+      }
+    }
+
+    return result;
+  };
 
   // 좋아요 처리
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
 
-    setIsLiked(!isLiked);
-    setLikesCount((prevCount) => (isLiked ? prevCount - 1 : prevCount + 1));
-    showToast(
-      isLiked ? '좋아요를 취소했습니다.' : '좋아요를 눌렀습니다.',
-      'success'
-    );
+    if (!post) return;
+
+    try {
+      const newLikedState = await togglePostLike(post.id, user.id);
+      setIsLiked(newLikedState);
+      setLikesCount((prev) => (newLikedState ? prev + 1 : prev - 1));
+      showToast(
+        newLikedState ? '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.',
+        'success'
+      );
+    } catch (error) {
+      console.error('좋아요 처리 실패:', error);
+      showToast('좋아요 처리에 실패했습니다.', 'error');
+    }
   };
 
-  // 북마크 처리
+  // 북마크 처리 (실제 구현 필요)
   const handleBookmark = () => {
     if (!user) {
       setIsLoginModalOpen(true);
@@ -289,7 +210,7 @@ export default function PostDetailPage() {
   };
 
   // 댓글 작성 처리
-  const handleSubmitComment = (e: FormEvent) => {
+  const handleSubmitComment = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!user) {
@@ -297,62 +218,70 @@ export default function PostDetailPage() {
       return;
     }
 
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !post) return;
 
-    // 새 댓글 추가 (실제로는 API 호출)
-    const newCommentObj: Comment = {
-      id: Math.max(0, ...comments.map((c) => c.id)) + 1,
-      postId: parseInt(postId),
-      author: user.email?.split('@')[0] || '익명',
-      authorId: user.id,
-      profileImage: null,
-      content: newComment,
-      likes: 0,
-      isLiked: false,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      // 새 댓글 추가
+      const postIdNum = parseInt(postId, 10);
+      const createdComment = await createComment(postIdNum, newComment);
 
-    setComments([...comments, newCommentObj]);
-    setNewComment('');
-    showToast('댓글이 등록되었습니다.', 'success');
+      // 상태 업데이트
+      setComments([...comments, createdComment]);
+      setNewComment('');
+      showToast('댓글이 등록되었습니다.', 'success');
+    } catch (error) {
+      console.error('댓글 등록 실패:', error);
+      showToast('댓글 등록에 실패했습니다.', 'error');
+    }
   };
 
   // 댓글 좋아요 처리
-  const handleCommentLike = (commentId: number) => {
+  const handleCommentLike = async (commentId: number) => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
-    setComments((prevComments) =>
-      prevComments.map((comment) => {
-        if (comment.id === commentId) {
-          const isLiked = comment.isLiked || false;
-          return {
-            ...comment,
-            likes: isLiked ? comment.likes - 1 : comment.likes + 1,
-            isLiked: !isLiked,
-          };
-        }
-        // 답글에 있는 경우도 확인
-        if (comment.replies) {
-          return {
-            ...comment,
-            replies: comment.replies.map((reply) => {
-              if (reply.id === commentId) {
-                const isLiked = reply.isLiked || false;
-                return {
-                  ...reply,
-                  likes: isLiked ? reply.likes - 1 : reply.likes + 1,
-                  isLiked: !isLiked,
-                };
-              }
-              return reply;
-            }),
-          };
-        }
-        return comment;
-      })
-    );
+
+    try {
+      const isLiked = await toggleCommentLike(commentId, user.id);
+
+      // 댓글 상태 업데이트
+      setComments((prevComments) =>
+        prevComments.map((comment) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likes_count: isLiked
+                ? (comment.likes_count || 0) + 1
+                : (comment.likes_count || 0) - 1,
+              is_liked: isLiked,
+            };
+          }
+          // 대댓글 확인
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.map((reply) => {
+                if (reply.id === commentId) {
+                  return {
+                    ...reply,
+                    likes_count: isLiked
+                      ? (reply.likes_count || 0) + 1
+                      : (reply.likes_count || 0) - 1,
+                    is_liked: isLiked,
+                  };
+                }
+                return reply;
+              }),
+            };
+          }
+          return comment;
+        })
+      );
+    } catch (error) {
+      console.error('댓글 좋아요 실패:', error);
+      showToast('좋아요 처리에 실패했습니다.', 'error');
+    }
   };
 
   // 답글 작성 모드 설정
@@ -364,7 +293,7 @@ export default function PostDetailPage() {
   };
 
   // 답글 제출
-  const handleSubmitReply = (e: React.FormEvent, commentId: number) => {
+  const handleSubmitReply = async (e: React.FormEvent, commentId: number) => {
     e.preventDefault();
 
     if (!user) {
@@ -372,35 +301,37 @@ export default function PostDetailPage() {
       return;
     }
 
-    if (!newReply.content.trim()) return;
+    if (!newReply.content.trim() || !post) return;
 
-    // 새 답글 추가
-    const newReplyObj: Comment = {
-      id: (Math.random() * 1000) | 0, // 임시 ID 생성
-      postId: parseInt(postId),
-      author: user.email?.split('@')[0] || '익명',
-      authorId: user.id,
-      profileImage: null,
-      content: newReply.content,
-      likes: 0,
-      isLiked: false,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      // 답글 생성
+      const postIdNum = parseInt(postId, 10);
+      const createdReply = await createComment(
+        postIdNum,
+        newReply.content,
+        commentId
+      );
 
-    setComments((prevComments) =>
-      prevComments.map((comment) => {
-        if (comment.id === commentId) {
-          return {
-            ...comment,
-            replies: [...(comment.replies || []), newReplyObj],
-          };
-        }
-        return comment;
-      })
-    );
+      // 댓글 상태 업데이트
+      setComments((prevComments) =>
+        prevComments.map((comment) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              replies: [...(comment.replies || []), createdReply],
+            };
+          }
+          return comment;
+        })
+      );
 
-    setReplyMode(null);
-    showToast('답글이 등록되었습니다.', 'success');
+      // 폼 초기화
+      setReplyMode(null);
+      showToast('답글이 등록되었습니다.', 'success');
+    } catch (error) {
+      console.error('답글 등록 실패:', error);
+      showToast('답글 등록에 실패했습니다.', 'error');
+    }
   };
 
   // 공유하기 기능
@@ -430,7 +361,8 @@ export default function PostDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="animate-pulse">로딩 중...</div>
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
+        <p className="ml-2">로딩 중...</p>
       </div>
     );
   }
@@ -483,22 +415,26 @@ export default function PostDetailPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between border-b pb-4">
           <div className="flex items-center gap-2">
             <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
-              {post.profileImage ? (
-                <img
-                  src={post.profileImage}
-                  alt={post.author}
+              {post.author_avatar ? (
+                <Image
+                  src={post.author_avatar}
+                  alt={post.author_name || ''}
+                  width={40}
+                  height={40}
                   className="h-full w-full object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-gray-500">
-                  {post.author.charAt(0).toUpperCase()}
+                  {post.author_name
+                    ? post.author_name.charAt(0).toUpperCase()
+                    : '?'}
                 </div>
               )}
             </div>
             <div>
-              <div className="font-medium">{post.author}</div>
+              <div className="font-medium">{post.author_name}</div>
               <div className="text-sm text-gray-500">
-                {formatDate(post.createdAt)}
+                {formatDate(post.created_at)}
               </div>
             </div>
           </div>
@@ -521,13 +457,13 @@ export default function PostDetailPage() {
 
       {/* 게시글 본문 */}
       <div className="mb-8 whitespace-pre-line text-gray-800">
-        {post.content}
+        {renderPostContent(post.content)}
       </div>
 
       {/* 태그 */}
       {post.tags && post.tags.length > 0 && (
         <div className="mb-8 flex flex-wrap gap-2">
-          {post.tags.map((tag: string, idx: number) => (
+          {post.tags.map((tag, idx) => (
             <Link
               key={idx}
               href={`/community?tag=${tag}`}
@@ -591,7 +527,7 @@ export default function PostDetailPage() {
                 <div className="flex items-start justify-between">
                   <h3 className="font-medium">{relatedPost.title}</h3>
                   <span className="text-xs text-gray-500">
-                    {formatDate(relatedPost.createdAt)
+                    {formatDate(relatedPost.created_at)
                       .split(' ')
                       .slice(0, 3)
                       .join(' ')}
@@ -636,35 +572,39 @@ export default function PostDetailPage() {
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
-                      {comment.profileImage ? (
-                        <img
-                          src={comment.profileImage}
-                          alt={comment.author}
+                      {comment.author_avatar ? (
+                        <Image
+                          src={comment.author_avatar}
+                          alt={comment.author_name || ''}
+                          width={32}
+                          height={32}
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-gray-500">
-                          {comment.author.charAt(0).toUpperCase()}
+                          {comment.author_name
+                            ? comment.author_name.charAt(0).toUpperCase()
+                            : '?'}
                         </div>
                       )}
                     </div>
                     <div>
-                      <div className="font-medium">{comment.author}</div>
+                      <div className="font-medium">{comment.author_name}</div>
                       <div className="text-xs text-gray-500">
-                        {formatDate(comment.createdAt)}
+                        {formatDate(comment.created_at)}
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => handleCommentLike(comment.id)}
                     className={`flex items-center gap-1 text-sm ${
-                      comment.isLiked
+                      comment.is_liked
                         ? 'text-gold-start'
                         : 'text-gray-500 hover:text-gold-start'
                     }`}
                   >
                     <ThumbsUp className="h-4 w-4" />
-                    <span>{comment.likes}</span>
+                    <span>{comment.likes_count || 0}</span>
                   </button>
                 </div>
 
@@ -726,37 +666,41 @@ export default function PostDetailPage() {
                         <div className="mb-2 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
-                              {reply.profileImage ? (
-                                <img
-                                  src={reply.profileImage}
-                                  alt={reply.author}
+                              {reply.author_avatar ? (
+                                <Image
+                                  src={reply.author_avatar}
+                                  alt={reply.author_name || ''}
+                                  width={24}
+                                  height={24}
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center text-gray-500">
-                                  {reply.author.charAt(0).toUpperCase()}
+                                  {reply.author_name
+                                    ? reply.author_name.charAt(0).toUpperCase()
+                                    : '?'}
                                 </div>
                               )}
                             </div>
                             <div>
                               <div className="text-sm font-medium">
-                                {reply.author}
+                                {reply.author_name}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {formatDate(reply.createdAt)}
+                                {formatDate(reply.created_at)}
                               </div>
                             </div>
                           </div>
                           <button
                             onClick={() => handleCommentLike(reply.id)}
                             className={`flex items-center gap-1 text-sm ${
-                              reply.isLiked
+                              reply.is_liked
                                 ? 'text-gold-start'
                                 : 'text-gray-500 hover:text-gold-start'
                             }`}
                           >
                             <ThumbsUp className="h-3 w-3" />
-                            <span>{reply.likes}</span>
+                            <span>{reply.likes_count || 0}</span>
                           </button>
                         </div>
 
