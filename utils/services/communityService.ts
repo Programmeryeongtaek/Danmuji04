@@ -950,3 +950,29 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
     throw error;
   }
 }
+
+// 북마크 일괄 삭제 함수
+export async function deleteMultipleBookmarks(postIds: number[]): Promise<number> {
+  if (!postIds.length) return 0;
+
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) throw new Error('로그인이 필요합니다.');
+
+    const { data, error } = await supabase.rpc(
+      'delete_multiple_bookmarks',
+      {
+        user_id: user.id,
+        bookmark_ids: postIds
+      }
+    );
+
+    if (error) throw error;
+    return data || 0; // 삭제된 항목 수 반환
+  } catch (error) {
+    console.error('북마크 일괄 삭제 실패:', error);
+    throw error;
+  }
+}

@@ -2,17 +2,92 @@
 
 import {
   BookmarkedPost,
+  deleteMultipleBookmarks,
   fetchBookmarkedPosts,
 } from '@/utils/services/communityService';
-import { BookmarkIcon, Eye, MessageSquare, ThumbsUp } from 'lucide-react';
+import {
+  BookmarkIcon,
+  CheckSquare,
+  Eye,
+  MessageSquare,
+  Square,
+  ThumbsUp,
+} from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { MouseEvent, useEffect, useState } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useToast } from '../Toast/Context';
+import Button from '../Button/Button';
 
 export default function BookmarksList() {
   // API 호출 상태 추적을 위한 플래그 추가
   const [isInitialized, setIsInitialized] = useState(false);
+  const { showToast } = useToast();
+
+  // 선택 모드 관련 상태 추가
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedBookmarks, setSelectedBookmarks] = useState<Set<number>>(
+    new Set()
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 선택 모드 토글
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedBookmarks(new Set());
+  };
+
+  // 북마크 선택/해제
+  const toggleBookmarkSelection = (postId: number, e: MouseEvent) => {
+    e.preventDefault(); // 링크 이동 방지
+    e.stopPropagation();
+
+    setSelectedBookmarks((prev) => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(postId)) {
+        newSelected.delete(postId);
+      } else {
+        newSelected.add(postId);
+      }
+      return newSelected;
+    });
+  };
+
+  // 전체 선택/해제
+  const toggleSelectAll = () => {
+    if (selectedBookmarks.size === bookmarks.length) {
+      // 모든 선택된 상태면 전체 해제
+      setSelectedBookmarks(new Set());
+    } else {
+      // 아니면 전체 선택
+      setSelectedBookmarks(new Set(bookmarks.map((post) => post.id)));
+    }
+  };
+
+  // 선택한 북마크 삭제
+  const deleteSelectedBookmarks = async () => {
+    if (selectedBookmarks.size === 0) return;
+
+    try {
+      setIsDeleting(true);
+      const postIds = Array.from(selectedBookmarks);
+      const deletedCount = await deleteMultipleBookmarks(postIds);
+
+      // bookmarks 상태를 직접 업데이트할 수 없으므로 reset 후 다시 로드하는 방식 사용
+      reset();
+      setSelectionMode(false);
+      setSelectedBookmarks(new Set());
+
+      // 토스트 메시지 표시
+      showToast(`${deletedCount}개의 북마크가 삭제되었습니다.`, 'success');
+    } catch (error) {
+      console.error('북마크 삭제 중 오류 발생:', error);
+      showToast('북마크 삭제에 실패했습니다.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const {
     data: bookmarks,
@@ -111,12 +186,63 @@ export default function BookmarksList() {
     <div className="space-y-4">
       <h2 className="mb-4 text-xl font-bold">북마크한 게시글</h2>
 
+      {bookmarks.length > 0 && (
+        <div className="flex gap-2">
+          <Button
+            onClick={toggleSelectionMode}
+            className={`px-3 py-1 text-sm ${selectionMode ? 'bg-red-500 hover:bg-red-600' : ''}`}
+          >
+            {selectionMode ? '선택 취소' : '선택 모드'}
+          </Button>
+
+          {selectionMode && (
+            <>
+              <Button onClick={toggleSelectAll} className="px-3 py-1 text-sm">
+                {selectedBookmarks.size === bookmarks.length
+                  ? '전체 해제'
+                  : '전체 선택'}
+              </Button>
+
+              <Button
+                onClick={deleteSelectedBookmarks}
+                className="bg-red-500 px-3 py-1 text-sm hover:bg-red-600"
+                disabled={selectedBookmarks.size === 0 || isDeleting}
+              >
+                {isDeleting ? '삭제 중...' : `삭제 (${selectedBookmarks.size})`}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 북마크 목록 */}
       {bookmarks.map((post) => (
         <Link
           key={post.id}
-          href={`/community/post/${post.id}`}
-          className="block rounded-lg border p-4 hover:border-gold-start hover:bg-gray-50"
+          href={selectionMode ? '#' : `/community/post/${post.id}`}
+          className={`block rounded-lg border p-4 ${
+            selectionMode && selectedBookmarks.has(post.id)
+              ? 'border-gold-start bg-gold-start/5'
+              : 'hover:border-gold-start hover:bg-gray-50'
+          }`}
+          onClick={selectionMode ? (e) => e.preventDefault() : undefined}
         >
+          {/* 선택 체크박스 추가 */}
+          {selectionMode && (
+            <div className="mb-2 flex justify-end">
+              <button
+                onClick={(e) => toggleBookmarkSelection(post.id, e)}
+                className="rounded p-1 hover:bg-gray-100"
+              >
+                {selectedBookmarks.has(post.id) ? (
+                  <CheckSquare className="h-5 w-5 text-gold-start" />
+                ) : (
+                  <Square className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+          )}
+
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
