@@ -36,6 +36,7 @@ export interface BookmarkedPost {
   is_bookmarked: boolean;
   is_liked: boolean;
   bookmark_created_at: string;
+  importance: number;
 }
 
 export interface Profile {
@@ -792,7 +793,8 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
       .select(`
         id,
         post_id,
-        created_at
+        created_at,
+        importance
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
@@ -934,7 +936,8 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
         author_avatar: authorAvatar, // 올바르게 생성된 URL 사용
         is_bookmarked: true,
         is_liked: likedPostIds.includes(post.id),
-        bookmark_created_at: bookmark?.created_at || post.created_at
+        bookmark_created_at: bookmark?.created_at ?? post.created_at,
+        importance: bookmark?.importance ?? 0,
       });
     });
 
@@ -973,6 +976,34 @@ export async function deleteMultipleBookmarks(postIds: number[]): Promise<number
     return data || 0; // 삭제된 항목 수 반환
   } catch (error) {
     console.error('북마크 일괄 삭제 실패:', error);
+    throw error;
+  }
+}
+
+// 북마크 중요도 업데이트
+export async function updateBookmarkImportance(
+  postId: number,
+  importance: number
+): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) throw new Error('로그인이 필요합니다.');
+
+    const { data, error } = await supabase.rpc(
+      'update_bookmark_importance',
+      {
+        user_id: user.id,
+        post_id: postId,
+        importance: importance
+      }
+    );
+
+    if (error) throw error;
+    return data || false;
+  } catch (error) {
+    console.error('북마크 중요도 업데이트 실패:', error);
     throw error;
   }
 }

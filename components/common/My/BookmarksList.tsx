@@ -4,6 +4,7 @@ import {
   BookmarkedPost,
   deleteMultipleBookmarks,
   fetchBookmarkedPosts,
+  updateBookmarkImportance,
 } from '@/utils/services/communityService';
 import {
   BookmarkIcon,
@@ -11,6 +12,7 @@ import {
   Eye,
   MessageSquare,
   Square,
+  Star,
   ThumbsUp,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -19,6 +21,14 @@ import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useToast } from '../Toast/Context';
 import Button from '../Button/Button';
+
+// 중요도 옵션 상수 정의
+const IMPORTANCE_OPTIONS = [
+  { value: 0, label: '없음', color: 'bg-gray-200' },
+  { value: 1, label: '낮음', color: 'bg-blue-400' },
+  { value: 2, label: '중간', color: 'bg-yellow-400' },
+  { value: 3, label: '높음', color: 'bg-red-400' },
+];
 
 export default function BookmarksList() {
   // API 호출 상태 추적을 위한 플래그 추가
@@ -33,8 +43,14 @@ export default function BookmarksList() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // 정렬 및 필터링 상태 추가
-  const [sortOption, setSortOption] = useState<'latest' | 'category'>('latest');
+  const [sortOption, setSortOption] = useState<
+    'latest' | 'category' | 'importance'
+  >('latest');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [importanceFilter, setImportanceFilter] = useState<number | null>(null);
+
+  // 북마크 목록을 내부 상태로 관리
+  const [localBookmarks, setBookmarks] = useState<BookmarkedPost[]>([]);
 
   // 선택 모드 토글
   const toggleSelectionMode = () => {
@@ -60,12 +76,12 @@ export default function BookmarksList() {
 
   // 전체 선택/해제
   const toggleSelectAll = () => {
-    if (selectedBookmarks.size === bookmarks.length) {
+    if (selectedBookmarks.size === filteredBookmarks.length) {
       // 모든 선택된 상태면 전체 해제
       setSelectedBookmarks(new Set());
     } else {
       // 아니면 전체 선택
-      setSelectedBookmarks(new Set(bookmarks.map((post) => post.id)));
+      setSelectedBookmarks(new Set(filteredBookmarks.map((post) => post.id)));
     }
   };
 
@@ -93,6 +109,25 @@ export default function BookmarksList() {
     }
   };
 
+  // 북마크 중요도 업데이트 핸들러
+  const handleImportanceChange = async (postId: number, importance: number) => {
+    try {
+      await updateBookmarkImportance(postId, importance);
+
+      // 현재 북마크 목록 업데이트
+      setBookmarks((prev) =>
+        prev.map((bookmark) =>
+          bookmark.id === postId ? { ...bookmark, importance } : bookmark
+        )
+      );
+
+      showToast('중요도가 업데이트되었습니다.', 'success');
+    } catch (error) {
+      console.error('중요도 업데이트 실패:', error);
+      showToast('중요도 업데이트에 실패했습니다.', 'error');
+    }
+  };
+
   const {
     data: bookmarks,
     isLoading,
@@ -113,8 +148,14 @@ export default function BookmarksList() {
       }
     },
     pageSize: 10,
-    dependencies: [isInitialized], // 의존성 배열에 isInitialized 추가
+    initialPage: 1,
+    dependencies: [isInitialized],
   });
+
+  // 북마크 데이터가 변경될 때마다 내부 상태 업데이트
+  useEffect(() => {
+    setBookmarks(bookmarks);
+  }, [bookmarks]);
 
   // 컴포넌트 마운트 시 한 번만 초기화
   useEffect(() => {
@@ -122,9 +163,7 @@ export default function BookmarksList() {
       setIsInitialized(true);
     }
 
-    // 컴포넌트 언마운트 시 정리
     return () => {
-      // reset 기능이 있다면 호출
       if (reset) reset();
     };
   }, []);
@@ -132,19 +171,24 @@ export default function BookmarksList() {
   // 카테고리 목록 추출
   const categories = useMemo(() => {
     const categorySet = new Set<string>();
-    bookmarks.forEach((post) => {
+    localBookmarks.forEach((post) => {
       if (post.category) categorySet.add(post.category);
     });
     return Array.from(categorySet);
-  }, [bookmarks]);
+  }, [localBookmarks]);
 
   // 필터링 및 정렬된 북마크 계산
   const filteredBookmarks = useMemo(() => {
-    let result = [...bookmarks];
+    let result = [...localBookmarks];
 
     // 카테고리 필터링
     if (categoryFilter) {
       result = result.filter((post) => post.category === categoryFilter);
+    }
+
+    // 중요도 필터링
+    if (importanceFilter !== null) {
+      result = result.filter((post) => post.importance === importanceFilter);
     }
 
     // 정렬
@@ -159,10 +203,20 @@ export default function BookmarksList() {
         }
         return a.category.localeCompare(b.category);
       });
+    } else if (sortOption === 'importance') {
+      result.sort((a, b) => {
+        if (b.importance === a.importance) {
+          return (
+            new Date(b.bookmark_created_at).getTime() -
+            new Date(a.bookmark_created_at).getTime()
+          );
+        }
+        return b.importance - a.importance;
+      });
     }
 
     return result;
-  }, [bookmarks, sortOption, categoryFilter]);
+  }, [localBookmarks, sortOption, categoryFilter, importanceFilter]);
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -191,7 +245,7 @@ export default function BookmarksList() {
   };
 
   // 로딩 중 표시
-  if (isLoading && bookmarks.length === 0) {
+  if (isLoading && localBookmarks.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
@@ -201,7 +255,7 @@ export default function BookmarksList() {
   }
 
   // 데이터 없음 표시
-  if (bookmarks.length === 0 && !isLoading) {
+  if (localBookmarks.length === 0 && !isLoading) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-lg border bg-gray-50 p-8">
         <BookmarkIcon className="mb-2 h-12 w-12 text-gray-300" />
@@ -225,8 +279,8 @@ export default function BookmarksList() {
     <div className="space-y-4">
       <h2 className="mb-4 text-xl font-bold">북마크한 게시글</h2>
 
-      {bookmarks.length > 0 && (
-        <div className="flex gap-2">
+      {localBookmarks.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={toggleSelectionMode}
             className={`px-3 py-1 text-sm ${selectionMode ? 'bg-red-500 hover:bg-red-600' : ''}`}
@@ -237,7 +291,7 @@ export default function BookmarksList() {
           {selectionMode && (
             <>
               <Button onClick={toggleSelectAll} className="px-3 py-1 text-sm">
-                {selectedBookmarks.size === bookmarks.length
+                {selectedBookmarks.size === filteredBookmarks.length
                   ? '전체 해제'
                   : '전체 선택'}
               </Button>
@@ -253,16 +307,19 @@ export default function BookmarksList() {
           )}
 
           {!selectionMode && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={sortOption}
                 onChange={(e) =>
-                  setSortOption(e.target.value as 'latest' | 'category')
+                  setSortOption(
+                    e.target.value as 'latest' | 'category' | 'importance'
+                  )
                 }
                 className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
               >
                 <option value="latest">최신순</option>
                 <option value="category">카테고리별</option>
+                <option value="importance">중요도순</option>
               </select>
 
               <select
@@ -277,6 +334,25 @@ export default function BookmarksList() {
                   </option>
                 ))}
               </select>
+
+              <select
+                value={
+                  importanceFilter !== null ? importanceFilter.toString() : ''
+                }
+                onChange={(e) =>
+                  setImportanceFilter(
+                    e.target.value ? parseInt(e.target.value) : null
+                  )
+                }
+                className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+              >
+                <option value="">모든 중요도</option>
+                {IMPORTANCE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} 중요도
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>
@@ -285,114 +361,172 @@ export default function BookmarksList() {
       {/* 북마크 목록 */}
       {filteredBookmarks.length > 0 ? (
         filteredBookmarks.map((post) => (
-          <Link
+          <div
             key={post.id}
-            href={selectionMode ? '#' : `/community/post/${post.id}`}
-            className={`block rounded-lg border p-4 ${
+            className={`relative block rounded-lg border p-4 ${
               selectionMode && selectedBookmarks.has(post.id)
                 ? 'border-gold-start bg-gold-start/5'
                 : 'hover:border-gold-start hover:bg-gray-50'
             }`}
-            onClick={selectionMode ? (e) => e.preventDefault() : undefined}
           >
-            {/* 선택 체크박스 추가 */}
-            {selectionMode && (
-              <div className="mb-2 flex justify-end">
-                <button
-                  onClick={(e) => toggleBookmarkSelection(post.id, e)}
-                  className="rounded p-1 hover:bg-gray-100"
-                >
-                  {selectedBookmarks.has(post.id) ? (
-                    <CheckSquare className="h-5 w-5 text-gold-start" />
-                  ) : (
-                    <Square className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
+            {/* 중요도 표시 */}
+            {post.importance > 0 && (
+              <div
+                className="absolute left-0 top-0 h-full w-1.5 rounded-l-lg"
+                style={{
+                  backgroundColor: IMPORTANCE_OPTIONS[post.importance].color,
+                }}
+              />
             )}
 
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-2 py-1 text-xs ${
-                    post.category === 'notice'
-                      ? 'bg-red-100 text-red-800'
-                      : post.category === 'faq'
-                        ? 'bg-blue-100 text-blue-800'
-                        : post.category === 'study'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {post.category}
-                </span>
+            <div className="relative">
+              {/* 선택 체크박스 추가 */}
+              {selectionMode && (
+                <div className="mb-2 flex justify-end">
+                  <button
+                    onClick={(e) => toggleBookmarkSelection(post.id, e)}
+                    className="rounded p-1 hover:bg-gray-100"
+                  >
+                    {selectedBookmarks.has(post.id) ? (
+                      <CheckSquare className="h-5 w-5 text-gold-start" />
+                    ) : (
+                      <Square className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+              )}
 
-                {post.tags && post.tags.length > 0 && (
-                  <div className="hidden flex-wrap gap-1 sm:flex">
-                    {post.tags.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="rounded bg-gray-100 px-1.5 text-xs text-gray-600"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
+              {/* 북마크 메인 컨텐츠 */}
+              <Link
+                href={selectionMode ? '#' : `/community/post/${post.id}`}
+                className="block"
+                onClick={selectionMode ? (e) => e.preventDefault() : undefined}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        post.category === 'notice'
+                          ? 'bg-red-100 text-red-800'
+                          : post.category === 'faq'
+                            ? 'bg-blue-100 text-blue-800'
+                            : post.category === 'study'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {post.category}
+                    </span>
+
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="hidden flex-wrap gap-1 sm:flex">
+                        {post.tags.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded bg-gray-100 px-1.5 text-xs text-gray-600"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <span className="text-xs text-gray-500">
-                {formatDate(post.created_at)}
-              </span>
-            </div>
 
-            <h3 className="mb-2 text-lg font-medium">{post.title}</h3>
+                  {/* 북마크 아이콘 및 중요도 표시 */}
+                  <div className="flex items-center gap-2">
+                    {!selectionMode && (
+                      <div className="group relative">
+                        <button
+                          className="flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          <Star
+                            className={`h-5 w-5 ${post.importance > 0 ? 'fill-yellow-400 text-yellow-500' : 'text-gray-300'}`}
+                          />
+                        </button>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
-                  {/* 이 부분 수정 */}
-                  {post.author_avatar ? (
-                    <Image
-                      src={post.author_avatar}
-                      alt={post.author_name || ''}
-                      width={24}
-                      height={24}
-                      className="h-full w-full object-cover"
-                      unoptimized // 외부 이미지이므로 최적화 스킵
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                      {post.author_name
-                        ? post.author_name.charAt(0).toUpperCase()
-                        : '?'}
+                        {/* 중요도 선택 드롭다운 */}
+                        <div className="absolute right-0 top-full z-20 hidden w-40 flex-col rounded-lg border bg-white p-2 shadow-lg group-hover:flex">
+                          {IMPORTANCE_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              className="flex items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-gray-100"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleImportanceChange(post.id, option.value);
+                              }}
+                            >
+                              <div
+                                className={`h-3 w-3 rounded-full ${option.color}`}
+                              ></div>
+                              <span>{option.label} 중요도</span>
+                              {post.importance === option.value && (
+                                <CheckSquare className="ml-auto h-4 w-4 text-green-500" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <span className="text-xs text-gray-500">
+                      {formatDate(post.created_at)}
+                    </span>
+                  </div>
+                </div>
+
+                <h3 className="mb-2 text-lg font-medium">{post.title}</h3>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
+                      {post.author_avatar ? (
+                        <Image
+                          src={post.author_avatar}
+                          alt={post.author_name || ''}
+                          width={24}
+                          height={24}
+                          className="h-full w-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
+                          {post.author_name
+                            ? post.author_name.charAt(0).toUpperCase()
+                            : '?'}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <span className="text-sm text-gray-600">
-                  {post.author_name}
-                </span>
-              </div>
+                    <span className="text-sm text-gray-600">
+                      {post.author_name}
+                    </span>
+                  </div>
 
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <div className="flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  <span>{post.views}</span>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Eye className="h-4 w-4" />
+                      <span>{post.views}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>{post.comments_count}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <ThumbsUp className="h-4 w-4" />
+                      <span>{post.likes_count}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{post.comments_count}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <ThumbsUp className="h-4 w-4" />
-                  <span>{post.likes_count}</span>
-                </div>
-              </div>
+              </Link>
             </div>
-          </Link>
+          </div>
         ))
       ) : (
         <div className="py-8 text-center text-gray-500">
-          {bookmarks.length > 0
+          {localBookmarks.length > 0
             ? '선택한 필터에 맞는 북마크가 없습니다.'
             : '북마크가 없습니다.'}
         </div>
@@ -409,7 +543,7 @@ export default function BookmarksList() {
           )}
         </div>
       ) : (
-        bookmarks.length > 0 && (
+        localBookmarks.length > 0 && (
           <div className="py-4 text-center text-gray-500">
             모든 북마크를 불러왔습니다.
           </div>
