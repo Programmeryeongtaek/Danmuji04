@@ -610,11 +610,13 @@ export async function createComment(
   // 아바타 URL
   let avatarUrl = null;
   if (profile?.avatar_url) {
-    const { data: { publicUrl } } = supabase
-      .storage
-      .from('avatars')
-      .getPublicUrl(profile.avatar_url);
-    avatarUrl = publicUrl;
+    try {
+      const { data } = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url);
+      console.log('생성된 아바타 URL:', data.publicUrl);
+      avatarUrl = data.publicUrl;
+    } catch (err) {
+      console.error('아바타 URL 생성 오류:', err, profile.avatar_url);
+    }
   }
 
   return {
@@ -820,16 +822,16 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
     if (postsError) throw postsError;
     if (!posts || posts.length === 0) return [];
 
-    // 태그 정보를 별도로 조회
+    // 태그 정보를 별도로 조회 (post_tags 테이블 사용)
     const tagsPromises = postIds.map(async (postId) => {
       const { data: tagData } = await supabase
         .from('post_tags')
         .select('tag')
         .eq('post_id', postId);
-
+      
       return { postId, tags: tagData?.map(t => t.tag) || [] };
     });
-
+    
     const tagsResults = await Promise.all(tagsPromises);
     const tagsMap = new Map(tagsResults.map(item => [item.postId, item.tags]));
 
@@ -891,13 +893,29 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
     const likesCountMap = new Map(likesResults.map(item => [item.postId, item.count || 0]));
     const commentsCountMap = new Map(commentsResults.map(item => [item.postId, item.count || 0]));
 
-    // 결과 배열을 명확하게 타입 지정
+    // 결과 배열을 위한 준비
     const result: BookmarkedPost[] = [];
 
     // 각 포스트를 순회하며 BookmarkedPost 객체 생성
     posts.forEach(post => {
       const bookmark = bookmarks.find(b => b.post_id === post.id);
       const profile = post.author_id ? profileMap.get(post.author_id) : null;
+      
+      // 여기를 수정: 아바타 URL 올바르게 처리
+      let authorAvatar = null;
+      if (profile?.avatar_url) {
+        try {
+          // Supabase Storage에서 공개 URL 생성
+          const { data } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(profile.avatar_url);
+          
+          authorAvatar = data.publicUrl;
+          console.log('생성된 아바타 URL:', authorAvatar);
+        } catch (err) {
+          console.error('아바타 URL 생성 오류:', err);
+        }
+      }
       
       // BookmarkedPost 객체 생성 및 배열에 추가
       result.push({
@@ -913,14 +931,20 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
         comments_count: commentsCountMap.get(post.id) || 0,
         author_id: post.author_id,
         author_name: profile?.nickname || profile?.name || '익명',
-        author_avatar: profile?.avatar_url || null,
+        author_avatar: authorAvatar, // 올바르게 생성된 URL 사용
         is_bookmarked: true,
         is_liked: likedPostIds.includes(post.id),
-        bookmark_created_at: bookmark?.created_at || post.created_at  // 반드시 값이 있도록 보장
+        bookmark_created_at: bookmark?.created_at || post.created_at
       });
     });
+
+    // 북마크 생성 시간 기준으로 정렬
+    return result.sort((a, b) => {
+      const dateA = new Date(a.bookmark_created_at);
+      const dateB = new Date(b.bookmark_created_at);
+      return dateB.getTime() - dateA.getTime();
+    });
     
-    return result;
   } catch (error) {
     console.error('북마크 게시글 조회 실패:', error);
     throw error;

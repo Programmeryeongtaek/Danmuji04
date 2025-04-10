@@ -156,17 +156,15 @@ export default function BookmarksList() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
+                {/* 이 부분 수정 */}
                 {post.author_avatar ? (
                   <Image
-                    src={
-                      post.author_avatar.startsWith('http')
-                        ? post.author_avatar
-                        : `/${post.author_avatar}`
-                    } // 상대 경로에 '/'를 추가
+                    src={post.author_avatar}
                     alt={post.author_name || ''}
                     width={24}
                     height={24}
                     className="h-full w-full object-cover"
+                    unoptimized // 외부 이미지이므로 최적화 스킵
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
