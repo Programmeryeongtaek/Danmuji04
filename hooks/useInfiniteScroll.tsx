@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-interface UseInfiniteScrollOptions<T> {
+interface UseInfiniteScrollOptions<T, D = unknown> {
   // 초기 데이터 (선택 사항)
   initialData?: T[];
 
@@ -23,6 +23,9 @@ interface UseInfiniteScrollOptions<T> {
 
   // 자동으로 첫 페이지를 로드할지 여부
   autoLoad?: boolean;
+
+  // 의존성 배열 (선택 사항) - 값이 변경될 때 데이터를 다시 로드
+  dependencies?: D[];
 }
 
 interface UseInfiniteScrollResult<T> {
@@ -53,7 +56,7 @@ interface UseInfiniteScrollResult<T> {
 
 // 무한 스크롤을 구현하기 위한 커스텀 훅
 // Intersection Observer API를 사용하여 효율적으로 스크롤 감지
-export function useInfiniteScroll<T>({
+export function useInfiniteScroll<T, D = unknown>({
   initialData = [],
   fetchData,
   pageSize = 10,
@@ -61,7 +64,8 @@ export function useInfiniteScroll<T>({
   rootMargin = '0px 0px 200px 0px', // 기본적으로 하단에서 200px 전에 로드 시작
   initialPage = 1,
   autoLoad = true,
-}: UseInfiniteScrollOptions<T>): UseInfiniteScrollResult<T> {
+  dependencies = [],
+}: UseInfiniteScrollOptions<T, D>): UseInfiniteScrollResult<T> {
   const [data, setData] = useState<T[]>(initialData);
   const [page, setPage] = useState(initialPage);
   const [isLoading, setIsLoading] = useState(false);
@@ -143,7 +147,7 @@ export function useInfiniteScroll<T>({
         observer.current.disconnect();
       }
     };
-  }, [autoLoad, hasMore, data.length, isLoading, loadData]);
+  }, [autoLoad, hasMore, data.length, isLoading, loadData, ...dependencies]);
 
   // 상태 초기화 함수
   const reset = useCallback(() => {

@@ -1,33 +1,54 @@
 'use client';
 
-import { fetchBookmarkedPosts, Post } from '@/utils/services/communityService';
-import { useEffect, useState } from 'react';
-import { useToast } from '../Toast/Context';
+import {
+  BookmarkedPost,
+  fetchBookmarkedPosts,
+} from '@/utils/services/communityService';
 import { BookmarkIcon, Eye, MessageSquare, ThumbsUp } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 export default function BookmarksList() {
-  const [bookmarks, setBookmarks] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { showToast } = useToast();
+  // API 호출 상태 추적을 위한 플래그 추가
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  useEffect(() => {
-    const loadBookmarks = async () => {
+  const {
+    data: bookmarks,
+    isLoading,
+    hasMore,
+    observerRef,
+    error,
+    reset,
+  } = useInfiniteScroll<BookmarkedPost>({
+    fetchData: async (page) => {
+      console.log(`북마크 데이터 요청: 페이지 ${page}`);
       try {
-        setIsLoading(true);
-        const data = await fetchBookmarkedPosts();
-        setBookmarks(data);
+        const result = await fetchBookmarkedPosts(page, 10);
+        console.log(`북마크 데이터 응답: ${result.length}개 항목`);
+        return result;
       } catch (error) {
-        console.error('북마크 로드 실패:', error);
-        showToast('북마크를 불러오는데 실패했습니다.', 'error');
-      } finally {
-        setIsLoading(false);
+        console.error('북마크 데이터 로드 에러:', error);
+        throw error;
       }
-    };
+    },
+    pageSize: 10,
+    dependencies: [isInitialized], // 의존성 배열에 isInitialized 추가
+  });
 
-    loadBookmarks();
-  }, [showToast]);
+  // 컴포넌트 마운트 시 한 번만 초기화
+  useEffect(() => {
+    if (!isInitialized) {
+      setIsInitialized(true);
+    }
+
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      // reset 기능이 있다면 호출
+      if (reset) reset();
+    };
+  }, []);
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -55,7 +76,8 @@ export default function BookmarksList() {
     }
   };
 
-  if (isLoading) {
+  // 로딩 중 표시
+  if (isLoading && bookmarks.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
@@ -64,7 +86,8 @@ export default function BookmarksList() {
     );
   }
 
-  if (bookmarks.length === 0) {
+  // 데이터 없음 표시
+  if (bookmarks.length === 0 && !isLoading) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-lg border bg-gray-50 p-8">
         <BookmarkIcon className="mb-2 h-12 w-12 text-gray-300" />
@@ -135,7 +158,11 @@ export default function BookmarksList() {
               <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
                 {post.author_avatar ? (
                   <Image
-                    src={post.author_avatar}
+                    src={
+                      post.author_avatar.startsWith('http')
+                        ? post.author_avatar
+                        : `/${post.author_avatar}`
+                    } // 상대 경로에 '/'를 추가
                     alt={post.author_name || ''}
                     width={24}
                     height={24}
@@ -169,6 +196,31 @@ export default function BookmarksList() {
           </div>
         </Link>
       ))}
+
+      {/* 무한 스크롤을 위한 관찰 요소 */}
+      {hasMore ? (
+        <div ref={observerRef} className="py-4">
+          {isLoading && (
+            <div className="flex items-center justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gold-start"></div>
+              <span className="ml-2 text-gray-600">더 불러오는 중...</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        bookmarks.length > 0 && (
+          <div className="py-4 text-center text-gray-500">
+            모든 북마크를 불러왔습니다.
+          </div>
+        )
+      )}
+
+      {/* 에러 발생 시 표시 */}
+      {error && (
+        <div className="rounded-lg bg-red-50 p-4 text-red-500">
+          북마크를 불러오는데 실패했습니다. 다시 시도해주세요.
+        </div>
+      )}
     </div>
   );
 }
