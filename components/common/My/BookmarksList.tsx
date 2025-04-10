@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MouseEvent, useEffect, useState } from 'react';
+import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useToast } from '../Toast/Context';
 import Button from '../Button/Button';
@@ -31,6 +31,10 @@ export default function BookmarksList() {
     new Set()
   );
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 정렬 및 필터링 상태 추가
+  const [sortOption, setSortOption] = useState<'latest' | 'category'>('latest');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // 선택 모드 토글
   const toggleSelectionMode = () => {
@@ -125,6 +129,41 @@ export default function BookmarksList() {
     };
   }, []);
 
+  // 카테고리 목록 추출
+  const categories = useMemo(() => {
+    const categorySet = new Set<string>();
+    bookmarks.forEach((post) => {
+      if (post.category) categorySet.add(post.category);
+    });
+    return Array.from(categorySet);
+  }, [bookmarks]);
+
+  // 필터링 및 정렬된 북마크 계산
+  const filteredBookmarks = useMemo(() => {
+    let result = [...bookmarks];
+
+    // 카테고리 필터링
+    if (categoryFilter) {
+      result = result.filter((post) => post.category === categoryFilter);
+    }
+
+    // 정렬
+    if (sortOption === 'category') {
+      result.sort((a, b) => {
+        if (a.category === b.category) {
+          // 카테고리가 같으면 날짜 기준 정렬
+          return (
+            new Date(b.bookmark_created_at).getTime() -
+            new Date(a.bookmark_created_at).getTime()
+          );
+        }
+        return a.category.localeCompare(b.category);
+      });
+    }
+
+    return result;
+  }, [bookmarks, sortOption, categoryFilter]);
+
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -212,114 +251,152 @@ export default function BookmarksList() {
               </Button>
             </>
           )}
+
+          {!selectionMode && (
+            <div className="flex items-center gap-2">
+              <select
+                value={sortOption}
+                onChange={(e) =>
+                  setSortOption(e.target.value as 'latest' | 'category')
+                }
+                className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+              >
+                <option value="latest">최신순</option>
+                <option value="category">카테고리별</option>
+              </select>
+
+              <select
+                value={categoryFilter || ''}
+                onChange={(e) => setCategoryFilter(e.target.value || null)}
+                className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+              >
+                <option value="">모든 카테고리</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       )}
 
       {/* 북마크 목록 */}
-      {bookmarks.map((post) => (
-        <Link
-          key={post.id}
-          href={selectionMode ? '#' : `/community/post/${post.id}`}
-          className={`block rounded-lg border p-4 ${
-            selectionMode && selectedBookmarks.has(post.id)
-              ? 'border-gold-start bg-gold-start/5'
-              : 'hover:border-gold-start hover:bg-gray-50'
-          }`}
-          onClick={selectionMode ? (e) => e.preventDefault() : undefined}
-        >
-          {/* 선택 체크박스 추가 */}
-          {selectionMode && (
-            <div className="mb-2 flex justify-end">
-              <button
-                onClick={(e) => toggleBookmarkSelection(post.id, e)}
-                className="rounded p-1 hover:bg-gray-100"
-              >
-                {selectedBookmarks.has(post.id) ? (
-                  <CheckSquare className="h-5 w-5 text-gold-start" />
-                ) : (
-                  <Square className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
-            </div>
-          )}
+      {filteredBookmarks.length > 0 ? (
+        filteredBookmarks.map((post) => (
+          <Link
+            key={post.id}
+            href={selectionMode ? '#' : `/community/post/${post.id}`}
+            className={`block rounded-lg border p-4 ${
+              selectionMode && selectedBookmarks.has(post.id)
+                ? 'border-gold-start bg-gold-start/5'
+                : 'hover:border-gold-start hover:bg-gray-50'
+            }`}
+            onClick={selectionMode ? (e) => e.preventDefault() : undefined}
+          >
+            {/* 선택 체크박스 추가 */}
+            {selectionMode && (
+              <div className="mb-2 flex justify-end">
+                <button
+                  onClick={(e) => toggleBookmarkSelection(post.id, e)}
+                  className="rounded p-1 hover:bg-gray-100"
+                >
+                  {selectedBookmarks.has(post.id) ? (
+                    <CheckSquare className="h-5 w-5 text-gold-start" />
+                  ) : (
+                    <Square className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            )}
 
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${
-                  post.category === 'notice'
-                    ? 'bg-red-100 text-red-800'
-                    : post.category === 'faq'
-                      ? 'bg-blue-100 text-blue-800'
-                      : post.category === 'study'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                }`}
-              >
-                {post.category}
-              </span>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`rounded-full px-2 py-1 text-xs ${
+                    post.category === 'notice'
+                      ? 'bg-red-100 text-red-800'
+                      : post.category === 'faq'
+                        ? 'bg-blue-100 text-blue-800'
+                        : post.category === 'study'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {post.category}
+                </span>
 
-              {post.tags && post.tags.length > 0 && (
-                <div className="hidden flex-wrap gap-1 sm:flex">
-                  {post.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="rounded bg-gray-100 px-1.5 text-xs text-gray-600"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-            <span className="text-xs text-gray-500">
-              {formatDate(post.created_at)}
-            </span>
-          </div>
-
-          <h3 className="mb-2 text-lg font-medium">{post.title}</h3>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
-                {/* 이 부분 수정 */}
-                {post.author_avatar ? (
-                  <Image
-                    src={post.author_avatar}
-                    alt={post.author_name || ''}
-                    width={24}
-                    height={24}
-                    className="h-full w-full object-cover"
-                    unoptimized // 외부 이미지이므로 최적화 스킵
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                    {post.author_name
-                      ? post.author_name.charAt(0).toUpperCase()
-                      : '?'}
+                {post.tags && post.tags.length > 0 && (
+                  <div className="hidden flex-wrap gap-1 sm:flex">
+                    {post.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="rounded bg-gray-100 px-1.5 text-xs text-gray-600"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
-              <span className="text-sm text-gray-600">{post.author_name}</span>
+              <span className="text-xs text-gray-500">
+                {formatDate(post.created_at)}
+              </span>
             </div>
 
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                <span>{post.views}</span>
+            <h3 className="mb-2 text-lg font-medium">{post.title}</h3>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
+                  {/* 이 부분 수정 */}
+                  {post.author_avatar ? (
+                    <Image
+                      src={post.author_avatar}
+                      alt={post.author_name || ''}
+                      width={24}
+                      height={24}
+                      className="h-full w-full object-cover"
+                      unoptimized // 외부 이미지이므로 최적화 스킵
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
+                      {post.author_name
+                        ? post.author_name.charAt(0).toUpperCase()
+                        : '?'}
+                    </div>
+                  )}
+                </div>
+                <span className="text-sm text-gray-600">
+                  {post.author_name}
+                </span>
               </div>
-              <div className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4" />
-                <span>{post.comments_count}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <ThumbsUp className="h-4 w-4" />
-                <span>{post.likes_count}</span>
+
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  <span>{post.views}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>{post.comments_count}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <ThumbsUp className="h-4 w-4" />
+                  <span>{post.likes_count}</span>
+                </div>
               </div>
             </div>
-          </div>
-        </Link>
-      ))}
+          </Link>
+        ))
+      ) : (
+        <div className="py-8 text-center text-gray-500">
+          {bookmarks.length > 0
+            ? '선택한 필터에 맞는 북마크가 없습니다.'
+            : '북마크가 없습니다.'}
+        </div>
+      )}
 
       {/* 무한 스크롤을 위한 관찰 요소 */}
       {hasMore ? (
