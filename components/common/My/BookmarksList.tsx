@@ -5,10 +5,12 @@ import {
   deleteMultipleBookmarks,
   fetchBookmarkedPosts,
   updateBookmarkImportance,
+  updateBookmarkMemo,
 } from '@/utils/services/communityService';
 import {
   BookmarkIcon,
   CheckSquare,
+  Edit,
   Eye,
   MessageSquare,
   Square,
@@ -17,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MouseEvent, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useToast } from '../Toast/Context';
 import Button from '../Button/Button';
@@ -61,6 +63,12 @@ export default function BookmarksList() {
 
   // 북마크 목록을 내부 상태로 관리
   const [localBookmarks, setBookmarks] = useState<BookmarkedPost[]>([]);
+
+  const [editingMemo, setEditingMemo] = useState<{
+    postId: number;
+    memo: string;
+  } | null>(null);
+  const memoInputRef = useRef<HTMLTextAreaElement>(null);
 
   // 필터 타입 변경 핸들러
   const handleFilterTypeChange = (type: FilterType) => {
@@ -247,6 +255,68 @@ export default function BookmarksList() {
   const getCategoryName = (categoryId: string): string => {
     return CATEGORY_NAMES[categoryId] || categoryId;
   };
+
+  // 메모 편집 시작 함수
+  const startEditingMemo = (post: BookmarkedPost, e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setEditingMemo({ postId: post.id, memo: post.memo || '' });
+
+    // 다음 렌더링 후 input에 포커스
+    setTimeout(() => {
+      if (memoInputRef.current) {
+        memoInputRef.current.focus();
+      }
+    }, 0);
+  };
+
+  // 메모 저장 함수
+  const saveMemo = async () => {
+    if (!editingMemo) return;
+
+    try {
+      await updateBookmarkMemo(editingMemo.postId, editingMemo.memo);
+
+      // 현재 북마크 목록 업데이트
+      setBookmarks((prev) =>
+        prev.map((bookmark) =>
+          bookmark.id === editingMemo.postId
+            ? { ...bookmark, memo: editingMemo.memo }
+            : bookmark
+        )
+      );
+
+      setEditingMemo(null);
+      showToast('메모가 저장되었습니다.', 'success');
+    } catch (error) {
+      console.error('메모 저장 실패:', error);
+      showToast('메모 저장에 실패헀습니다.', 'error');
+    }
+  };
+
+  // 메모 취소 함수
+  const cancelEditingMemo = () => {
+    setEditingMemo(null);
+  };
+
+  // 메모 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        editingMemo &&
+        memoInputRef.current &&
+        !memoInputRef.current.contains(e.target as Node)
+      ) {
+        saveMemo();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside as any);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside as any);
+    };
+  }, [editingMemo]);
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -556,6 +626,56 @@ export default function BookmarksList() {
                   </div>
                 </div>
               </Link>
+
+              {/* 메모 영역 - 기존 Link 태그 다음에 추가 */}
+              <div className="mt-3 border-t pt-2">
+                {editingMemo && editingMemo.postId === post.id ? (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      ref={memoInputRef}
+                      value={editingMemo.memo}
+                      onChange={(e) =>
+                        setEditingMemo({ ...editingMemo, memo: e.target.value })
+                      }
+                      className="h-20 w-full resize-none rounded-md border border-gray-300 p-2 text-sm focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+                      placeholder="북마크에 메모를 남겨보세요..."
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={cancelEditingMemo}
+                        className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={saveMemo}
+                        className="rounded bg-gold-start px-2 py-1 text-xs text-white hover:bg-gold-end"
+                      >
+                        저장
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="group flex items-start justify-between">
+                    {post.memo ? (
+                      <p className="whitespace-pre-wrap text-sm text-gray-600">
+                        {post.memo}
+                      </p>
+                    ) : (
+                      <p className="text-sm italic text-gray-400">메모 없음</p>
+                    )}
+                    {!selectionMode && (
+                      <button
+                        onClick={(e) => startEditingMemo(post, e)}
+                        className="ml-2 hidden rounded p-1 text-gray-500 hover:bg-gray-100 group-hover:block"
+                        title="메모 편집"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))

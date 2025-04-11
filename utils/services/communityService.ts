@@ -37,6 +37,7 @@ export interface BookmarkedPost {
   is_liked: boolean;
   bookmark_created_at: string;
   importance: number;
+  memo: string;
 }
 
 export interface Profile {
@@ -794,7 +795,8 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
         id,
         post_id,
         created_at,
-        importance
+        importance,
+        memo
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
@@ -938,6 +940,7 @@ export async function fetchBookmarkedPosts(page: number = 1, limit: number = 10)
         is_liked: likedPostIds.includes(post.id),
         bookmark_created_at: bookmark?.created_at ?? post.created_at,
         importance: bookmark?.importance ?? 0,
+        memo: bookmark?.memo ?? '',
       });
     });
 
@@ -1004,6 +1007,56 @@ export async function updateBookmarkImportance(
     return data || false;
   } catch (error) {
     console.error('북마크 중요도 업데이트 실패:', error);
+    throw error;
+  }
+}
+
+// 북마크 메모 업데이트 함수
+export async function updateBookmarkMemo(
+  postId: number, 
+  memo: string
+): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) throw new Error('로그인이 필요합니다.');
+
+    // 북마크 존재 여부 확인
+    const { data: existingBookmark } = await supabase
+      .from('post_bookmarks')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingBookmark) {
+      // 기존 북마크가 있으면 메모만 업데이트
+      const { error } = await supabase
+        .from('post_bookmarks')
+        .update({ memo })
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    } else {
+      // 북마크가 없으면 새로 생성
+      const { error } = await supabase
+        .from('post_bookmarks')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          memo,
+          importance: 0
+        });
+
+      if (error) throw error;
+    }
+    
+    console.log(`메모 저장 성공: ${memo}`);
+    return true;
+  } catch (error) {
+    console.error('북마크 메모 업데이트 실패:', error);
     throw error;
   }
 }
