@@ -126,15 +126,41 @@ export default function BookmarksList() {
     try {
       setIsDeleting(true);
       const postIds = Array.from(selectedBookmarks);
-      const deletedCount = await deleteMultipleBookmarks(postIds);
 
-      // bookmarks 상태를 직접 업데이트할 수 없으므로 reset 후 다시 로드하는 방식 사용
-      reset();
+      console.log('삭제 요청 - 선택된 북마크 ID:', postIds);
+
+      // API 호출 성공 여부 확인
+      let deletedCount;
+      try {
+        deletedCount = await deleteMultipleBookmarks(postIds);
+        console.log('삭제 응답 - 삭제된 항목 수:', deletedCount);
+      } catch (apiError) {
+        console.error('API 호출 에러:', apiError);
+        throw apiError;
+      }
+
+      // UI 상태 업데이트 (즉시 화면에 반영)
+      console.log('UI 상태 업데이트 전 북마크 수:', localBookmarks.length);
+      setBookmarks((prev) => {
+        const filtered = prev.filter(
+          (bookmark) => !selectedBookmarks.has(bookmark.id)
+        );
+        console.log('필터링 후 북마크 수:', filtered.length);
+        return filtered;
+      });
+
+      // 선택 모드 초기화
       setSelectionMode(false);
       setSelectedBookmarks(new Set());
 
-      // 토스트 메시지 표시
+      // 성공 메시지
       showToast(`${deletedCount}개의 북마크가 삭제되었습니다.`, 'success');
+
+      // 데이터 새로고침 (UI 업데이트 후에 실행)
+      setTimeout(() => {
+        console.log('데이터 새로고침 시작');
+        reset();
+      }, 500);
     } catch (error) {
       console.error('북마크 삭제 중 오류 발생:', error);
       showToast('북마크 삭제에 실패했습니다.', 'error');

@@ -967,6 +967,9 @@ export async function deleteMultipleBookmarks(postIds: number[]): Promise<number
 
     if (!user) throw new Error('로그인이 필요합니다.');
 
+    console.log('deleteMultipleBookmarks 호출:', { userId: user.id, postIds });
+
+    // SQL 함수 호출
     const { data, error } = await supabase.rpc(
       'delete_multiple_bookmarks',
       {
@@ -975,8 +978,13 @@ export async function deleteMultipleBookmarks(postIds: number[]): Promise<number
       }
     );
 
-    if (error) throw error;
-    return data || 0; // 삭제된 항목 수 반환
+    if (error) {
+      console.error('북마크 삭제 RPC 오류:', error);
+      throw error;
+    }
+    
+    console.log('북마크 삭제 결과:', data);
+    return data || 0;
   } catch (error) {
     console.error('북마크 일괄 삭제 실패:', error);
     throw error;
