@@ -90,14 +90,18 @@ export default function BookmarksList() {
   // 북마크 선택/해제
   const toggleBookmarkSelection = (postId: number, e: MouseEvent) => {
     e.preventDefault(); // 링크 이동 방지
-    e.stopPropagation();
+    e.stopPropagation(); // 이벤트 버블링 방지
+
+    console.log('북마크 선택 토글:', postId); // 로깅 추가
 
     setSelectedBookmarks((prev) => {
       const newSelected = new Set(prev);
       if (newSelected.has(postId)) {
         newSelected.delete(postId);
+        console.log('북마크 선택 해제됨');
       } else {
         newSelected.add(postId);
+        console.log('북마크 선택됨');
       }
       return newSelected;
     });
@@ -312,7 +316,7 @@ export default function BookmarksList() {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside as any);
+    document.addEventListener('mousedown', handleClickOutside as asny);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside as any);
     };
@@ -465,9 +469,9 @@ export default function BookmarksList() {
 
       {/* 북마크 목록 */}
       {filteredBookmarks.length > 0 ? (
-        filteredBookmarks.map((post) => (
+        filteredBookmarks.map((post, index) => (
           <div
-            key={post.id}
+            key={`bookmark-${post.id}-${index}`}
             className={`relative block rounded-lg border p-4 ${
               selectionMode && selectedBookmarks.has(post.id)
                 ? 'border-gold-start bg-gold-start/5'
@@ -527,7 +531,7 @@ export default function BookmarksList() {
                       <div className="hidden flex-wrap gap-1 sm:flex">
                         {post.tags.map((tag, idx) => (
                           <span
-                            key={idx}
+                            key={`tag-${post.id}-${idx}`}
                             className="rounded bg-gray-100 px-1.5 text-xs text-gray-600"
                           >
                             #{tag}
