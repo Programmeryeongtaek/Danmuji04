@@ -58,7 +58,7 @@ export interface Comment {
   updated_at: string;
   // 조회 결과에 추가되는 필드
   author_name?: string;
-  author_avatar?: string;
+  author_avatar?: string | null;
   likes_count?: number;
   is_liked?: boolean;
   replies?: Comment[];
@@ -589,45 +589,71 @@ export async function createComment(
 
   if (!user) throw new Error('로그인이 필요합니다');
 
-  const { data, error } = await supabase
-    .from('post_comments')
-    .insert({
-      post_id: postId,
-      author_id: user.id,
-      content: content,
-      parent_id: parentId
-    })
-    .select(`
-      *,
-      profiles:profiles!author_id(name, nickname, avatar_url)
-    `)
-    .single();
+  try {
+    // 1. 사용자 프로필 정보를 먼저 가져옵니다
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('name, nickname, avatar_url')
+      .eq('id', user.id)
+      .single();
 
-  if (error) throw error;
-
-  // 작성자 정보
-  const profile = data.profiles;
-  const authorName = profile?.nickname || profile?.name || '익명';
-
-  // 아바타 URL
-  let avatarUrl = null;
-  if (profile?.avatar_url) {
-    try {
-      const { data } = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url);
-      console.log('생성된 아바타 URL:', data.publicUrl);
-      avatarUrl = data.publicUrl;
-    } catch (err) {
-      console.error('아바타 URL 생성 오류:', err, profile.avatar_url);
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.warn('프로필 조회 오류:', profileError);
+      // 프로필 오류가 있어도 진행
     }
-  }
 
-  return {
-    ...data,
-    author_name: authorName,
-    author_avatar: avatarUrl,
-    likes_count: 0,
-    is_liked: false
-  };
+    // 2. 댓글 추가
+    const { data, error } = await supabase
+      .from('post_comments')
+      .insert({
+        post_id: postId,
+        author_id: user.id,
+        content: content,
+        parent_id: parentId
+      })
+      .select();
+
+    if (error) {
+      console.error('댓글 생성 오류:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      throw new Error('댓글 생성 결과가 없습니다');
+    }
+
+    // 3. 프로필 정보를 기반으로 사용자명 설정
+    const authorName = profileData?.nickname || profileData?.name || '익명';
+
+    // 4. 아바타 URL 생성 (있는 경우)
+    let authorAvatar = undefined;
+    if (profileData?.avatar_url) {
+      try {
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(profileData.avatar_url);
+        
+        authorAvatar = urlData.publicUrl;
+      } catch (err) {
+        console.warn('아바타 URL 생성 오류:', err);
+      }
+    }
+
+    // 5. 완성된 댓글 객체 생성
+    const comment: Comment = {
+      ...data[0],
+      author_name: authorName,
+      author_avatar: authorAvatar,
+      likes_count: 0,
+      is_liked: false,
+      replies: []
+    };
+
+    return comment;
+  } catch (error) {
+    console.error('댓글 생성 중 오류 발생:', error);
+    throw error;
+  }
 }
 
 // 댓글 좋아요 토글
