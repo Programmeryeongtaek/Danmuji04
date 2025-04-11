@@ -76,10 +76,10 @@ export default function PostDetailPage() {
   const { showToast } = useToast();
 
   useEffect(() => {
-    if (post) {
+    if (post && post.content) {
       console.log('게시글 내용:', post.content);
       const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-      const matches = [...post.content.matchAll(imageLinkRegex)];
+      const matches = [...(post.content.matchAll(imageLinkRegex) || [])];
       console.log('이미지 URL 매치:', matches);
     }
   }, [post]);
@@ -134,7 +134,10 @@ export default function PostDetailPage() {
     }
   }, [postId, router, showToast, user]);
 
-  const renderPostContent = (content: string) => {
+  const renderPostContent = (content: string | undefined) => {
+    // 내용이 없으면 빈 문자열 반환
+    if (!content) return '';
+
     const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
     const parts = content.split(imageLinkRegex);
 
@@ -244,8 +247,8 @@ export default function PostDetailPage() {
       const createdComment = await createComment(postIdNum, newComment);
 
       // 상태 업데이트
-      setComments([...comments, createdComment]);
-      setNewComment('');
+      setComments((prev) => [...prev, createdComment]);
+      setNewComment(''); // 입력 필드 초기화
       showToast('댓글이 등록되었습니다.', 'success');
     } catch (error) {
       console.error('댓글 등록 실패:', error);
@@ -552,9 +555,9 @@ export default function PostDetailPage() {
                   </span>
                 </div>
                 <div className="mt-1 text-sm text-gray-500">
-                  {relatedPost.content.length > 100
+                  {relatedPost.content && relatedPost.content.length > 100
                     ? relatedPost.content.slice(0, 100) + '...'
-                    : relatedPost.content}
+                    : relatedPost.content || '내용 없음'}
                 </div>
               </Link>
             ))}
