@@ -88,7 +88,10 @@ export default function BookmarksList() {
   };
 
   // 북마크 선택/해제
-  const toggleBookmarkSelection = (postId: number, e: MouseEvent) => {
+  const toggleBookmarkSelection = (
+    postId: number,
+    e: MouseEvent<HTMLButtonElement>
+  ) => {
     e.preventDefault(); // 링크 이동 방지
     e.stopPropagation(); // 이벤트 버블링 방지
 
@@ -98,10 +101,8 @@ export default function BookmarksList() {
       const newSelected = new Set(prev);
       if (newSelected.has(postId)) {
         newSelected.delete(postId);
-        console.log('북마크 선택 해제됨');
       } else {
         newSelected.add(postId);
-        console.log('북마크 선택됨');
       }
       return newSelected;
     });
@@ -261,7 +262,10 @@ export default function BookmarksList() {
   };
 
   // 메모 편집 시작 함수
-  const startEditingMemo = (post: BookmarkedPost, e: MouseEvent) => {
+  const startEditingMemo = (
+    post: BookmarkedPost,
+    e: MouseEvent<HTMLButtonElement>
+  ) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -316,9 +320,15 @@ export default function BookmarksList() {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside as asny);
+    document.addEventListener(
+      'mousedown',
+      handleClickOutside as unknown as EventListener
+    );
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside as any);
+      document.addEventListener(
+        'mousedown',
+        handleClickOutside as unknown as EventListener
+      );
     };
   }, [editingMemo]);
 
@@ -493,7 +503,9 @@ export default function BookmarksList() {
               {selectionMode && (
                 <div className="mb-2 flex justify-end">
                   <button
-                    onClick={(e) => toggleBookmarkSelection(post.id, e)}
+                    onClick={(e: MouseEvent<HTMLButtonElement>) =>
+                      toggleBookmarkSelection(post.id, e)
+                    }
                     className="rounded p-1 hover:bg-gray-100"
                   >
                     {selectedBookmarks.has(post.id) ? (
@@ -670,7 +682,9 @@ export default function BookmarksList() {
                     )}
                     {!selectionMode && (
                       <button
-                        onClick={(e) => startEditingMemo(post, e)}
+                        onClick={(e: MouseEvent<HTMLButtonElement>) =>
+                          startEditingMemo(post, e)
+                        }
                         className="ml-2 hidden rounded p-1 text-gray-500 hover:bg-gray-100 group-hover:block"
                         title="메모 편집"
                       >
