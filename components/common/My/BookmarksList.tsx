@@ -30,6 +30,18 @@ const IMPORTANCE_OPTIONS = [
   { value: 3, label: '높음', color: 'bg-red-400' },
 ];
 
+// 카테고리 한글 이름 매핑
+const CATEGORY_NAMES: Record<string, string> = {
+  notice: '공지사항',
+  faq: '질문 게시판',
+  study: '스터디',
+  chats: '자유게시판',
+  all: '전체',
+};
+
+// 필터 타입 정의
+type FilterType = 'latest' | 'category' | 'importance';
+
 export default function BookmarksList() {
   // API 호출 상태 추적을 위한 플래그 추가
   const [isInitialized, setIsInitialized] = useState(false);
@@ -42,15 +54,24 @@ export default function BookmarksList() {
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 정렬 및 필터링 상태 추가
-  const [sortOption, setSortOption] = useState<
-    'latest' | 'category' | 'importance'
-  >('latest');
+  // 필터 및 정렬 상태 수정
+  const [filterType, setFilterType] = useState<FilterType>('latest');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [importanceFilter, setImportanceFilter] = useState<number | null>(null);
 
   // 북마크 목록을 내부 상태로 관리
   const [localBookmarks, setBookmarks] = useState<BookmarkedPost[]>([]);
+
+  // 필터 타입 변경 핸들러
+  const handleFilterTypeChange = (type: FilterType) => {
+    setFilterType(type);
+
+    // 필터 타입이 변경되면 하위 필터값 초기화
+    if (type === 'latest') {
+      setCategoryFilter(null);
+      setImportanceFilter(null);
+    }
+  };
 
   // 선택 모드 토글
   const toggleSelectionMode = () => {
@@ -181,21 +202,17 @@ export default function BookmarksList() {
   const filteredBookmarks = useMemo(() => {
     let result = [...localBookmarks];
 
-    // 카테고리 필터링
-    if (categoryFilter) {
+    // 필터 적용
+    if (filterType === 'category' && categoryFilter) {
       result = result.filter((post) => post.category === categoryFilter);
-    }
-
-    // 중요도 필터링
-    if (importanceFilter !== null) {
+    } else if (filterType === 'importance' && importanceFilter !== null) {
       result = result.filter((post) => post.importance === importanceFilter);
     }
 
-    // 정렬
-    if (sortOption === 'category') {
+    // 정렬 로직
+    if (filterType === 'category') {
       result.sort((a, b) => {
         if (a.category === b.category) {
-          // 카테고리가 같으면 날짜 기준 정렬
           return (
             new Date(b.bookmark_created_at).getTime() -
             new Date(a.bookmark_created_at).getTime()
@@ -203,7 +220,7 @@ export default function BookmarksList() {
         }
         return a.category.localeCompare(b.category);
       });
-    } else if (sortOption === 'importance') {
+    } else if (filterType === 'importance') {
       result.sort((a, b) => {
         if (b.importance === a.importance) {
           return (
@@ -213,10 +230,23 @@ export default function BookmarksList() {
         }
         return b.importance - a.importance;
       });
+    } else {
+      // 최신순 정렬 (기본값)
+      result.sort((a, b) => {
+        return (
+          new Date(b.bookmark_created_at).getTime() -
+          new Date(a.bookmark_created_at).getTime()
+        );
+      });
     }
 
     return result;
-  }, [localBookmarks, sortOption, categoryFilter, importanceFilter]);
+  }, [localBookmarks, filterType, categoryFilter, importanceFilter]);
+
+  // 카테고리 이름 가져오기 (한글로 변환)
+  const getCategoryName = (categoryId: string): string => {
+    return CATEGORY_NAMES[categoryId] || categoryId;
+  };
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -308,51 +338,56 @@ export default function BookmarksList() {
 
           {!selectionMode && (
             <div className="flex flex-wrap items-center gap-2">
+              {/* 주 필터 드롭다운 */}
               <select
-                value={sortOption}
+                value={filterType}
                 onChange={(e) =>
-                  setSortOption(
-                    e.target.value as 'latest' | 'category' | 'importance'
-                  )
+                  handleFilterTypeChange(e.target.value as FilterType)
                 }
                 className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
               >
                 <option value="latest">최신순</option>
-                <option value="category">카테고리별</option>
-                <option value="importance">중요도순</option>
+                <option value="category">카테고리</option>
+                <option value="importance">중요도</option>
               </select>
 
-              <select
-                value={categoryFilter || ''}
-                onChange={(e) => setCategoryFilter(e.target.value || null)}
-                className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
-              >
-                <option value="">모든 카테고리</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+              {/* 카테고리 하위 필터 (카테고리 필터 선택 시에만 표시) */}
+              {filterType === 'category' && (
+                <select
+                  value={categoryFilter || ''}
+                  onChange={(e) => setCategoryFilter(e.target.value || null)}
+                  className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                >
+                  <option value="">모든 카테고리</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {getCategoryName(category)}
+                    </option>
+                  ))}
+                </select>
+              )}
 
-              <select
-                value={
-                  importanceFilter !== null ? importanceFilter.toString() : ''
-                }
-                onChange={(e) =>
-                  setImportanceFilter(
-                    e.target.value ? parseInt(e.target.value) : null
-                  )
-                }
-                className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
-              >
-                <option value="">모든 중요도</option>
-                {IMPORTANCE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} 중요도
-                  </option>
-                ))}
-              </select>
+              {/* 중요도 하위 필터 (중요도 필터 선택 시에만 표시) */}
+              {filterType === 'importance' && (
+                <select
+                  value={
+                    importanceFilter !== null ? importanceFilter.toString() : ''
+                  }
+                  onChange={(e) =>
+                    setImportanceFilter(
+                      e.target.value ? parseInt(e.target.value) : null
+                    )
+                  }
+                  className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                >
+                  <option value="">모든 중요도</option>
+                  {IMPORTANCE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
         </div>
@@ -415,7 +450,7 @@ export default function BookmarksList() {
                               : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      {post.category}
+                      {getCategoryName(post.category)}
                     </span>
 
                     {post.tags && post.tags.length > 0 && (
