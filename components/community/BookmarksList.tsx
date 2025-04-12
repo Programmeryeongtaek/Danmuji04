@@ -21,8 +21,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { useToast } from '../Toast/Context';
-import Button from '../Button/Button';
+import { useToast } from '../common/Toast/Context';
+import Button from '../common/Button/Button';
 
 // 중요도 옵션 상수 정의
 const IMPORTANCE_OPTIONS = [

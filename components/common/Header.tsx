@@ -11,7 +11,7 @@ import { isLoadingAtom, userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { Profile } from '@/app/settings/profile/page';
 import RightSideBar from './RightSideBar';
-import NotificationDropdown from './My/NotificationDropdown';
+import NotificationDropdown from '../My/NotificationDropdown';
 import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
 import NavDropdown from '../NavDropdown';
 

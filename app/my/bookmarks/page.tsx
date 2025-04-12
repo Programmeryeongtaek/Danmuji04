@@ -1,4 +1,4 @@
-import BookmarksList from '@/components/common/My/BookmarksList';
+import BookmarksList from '@/components/community/BookmarksList';
 
 export default function BookmarksPage() {
   return (
