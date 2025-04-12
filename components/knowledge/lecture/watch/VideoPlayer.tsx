@@ -1,23 +1,49 @@
 'use client';
 
-import CompletionModal from '@/components/Course/[slug]/[videoId]/CompletionModal';
+import CompletionModal from '@/components/common/CompletionModal';
+import { useToast } from '@/components/common/Toast/Context';
+
 import { useEffect, useRef, useState } from 'react';
 
 interface VideoPlayerProps {
-  contentUrl: string;
-  type: 'video' | 'text';
-  onComplete?: () => void;
+  contentUrl?: string; // YouTube URL이나 일반 비디오 URL
+  type?: 'video' | 'text';
+  youtubeId?: string; // YouTube ID
+  onComplete?: () => void | Promise<void>;
   isLastItem?: boolean;
+  courseId?: string;
+  itemId?: string;
+  category?: string;
 }
 
 export default function VideoPlayer({
   contentUrl,
   type,
+  youtubeId,
   onComplete,
   isLastItem,
+  courseId,
+  itemId,
+  category,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [hasMarkedAsComplete, setHasMarkedAsComplete] = useState(false);
+  const { showToast } = useToast();
+
+  // 디버깅용 로그 추가
+  useEffect(() => {
+    console.log('VideoPlayer 마운트됨:', {
+      contentUrl,
+      type,
+      youtubeId,
+      isLastItem,
+      courseId,
+      itemId,
+      category,
+    });
+  }, [contentUrl, type, youtubeId, isLastItem, courseId, itemId, category]);
 
   useEffect(() => {
     // 비디오 타입일 때만 이벤트 리스너 설정
@@ -28,7 +54,19 @@ export default function VideoPlayer({
 
     // 비디오 완료 감지
     const handleVideoEnded = () => {
-      setShowCompletionModal(true);
+      if (!hasMarkedAsComplete) {
+        console.log('비디오 종료됨, 완료 처리 시작');
+        setHasMarkedAsComplete(true);
+        showToast('학습을 완료했습니다!', 'success');
+        setShowCompletionModal(true);
+        if (onComplete) {
+          try {
+            onComplete();
+          } catch (error) {
+            console.error('완료 콜백 실행 중 오류:', error);
+          }
+        }
+      }
     };
 
     // 95%이상 시청 시 완료로 간주
@@ -38,10 +76,30 @@ export default function VideoPlayer({
 
       const duration = video.duration;
       const currentTime = video.currentTime;
+
+      // NaN이나 Infinity 체크 추가
+      if (isNaN(duration) || !isFinite(duration) || duration <= 0) return;
+
       const progressPercent = (currentTime / duration) * 100;
 
-      if (progressPercent >= 95 && !showCompletionModal) {
+      setProgress(progressPercent);
+
+      if (
+        progressPercent >= 95 &&
+        !hasMarkedAsComplete &&
+        !showCompletionModal
+      ) {
+        console.log('95% 이상 시청, 완료 처리 시작');
+        setHasMarkedAsComplete(true);
+        showToast('학습을 완료했습니다!', 'success');
         setShowCompletionModal(true);
+        if (onComplete) {
+          try {
+            onComplete();
+          } catch (error) {
+            console.error('완료 콜백 실행 중 오류:', error);
+          }
+        }
       }
     };
 
@@ -52,7 +110,7 @@ export default function VideoPlayer({
       videoElement.removeEventListener('ended', handleVideoEnded);
       videoElement.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, [type, showCompletionModal]);
+  }, [type, showCompletionModal, hasMarkedAsComplete, showToast, onComplete]);
 
   // 모달 닫기 처리
   const handleCloseModal = () => {
@@ -62,7 +120,11 @@ export default function VideoPlayer({
   // 다음 강의로 이동
   const handleNextVideo = () => {
     if (onComplete) {
-      onComplete();
+      try {
+        onComplete();
+      } catch (error) {
+        console.error('다음 비디오 이동 중 오류:', error);
+      }
     }
     setShowCompletionModal(false);
   };
@@ -83,12 +145,13 @@ export default function VideoPlayer({
     contentUrl &&
     (contentUrl.includes('youtube.com') || contentUrl.includes('youtu.be'))
   ) {
-    // YouTube 임베드 코드 유지...
+    // YouTube 임베드에서는 진행률 추적이 어렵기 때문에
+    // 별도의 버튼을 제공하여 사용자가 직접 완료 표시하도록 함
     const videoId = contentUrl.includes('youtube.com/watch?v=')
       ? contentUrl.split('v=')[1]?.split('&')[0]
       : contentUrl.includes('youtu.be/')
         ? contentUrl.split('youtu.be/')[1]
-        : '';
+        : youtubeId || '';
 
     return (
       <div className="flex flex-col">
@@ -101,11 +164,33 @@ export default function VideoPlayer({
           ></iframe>
         </div>
 
+        {/* YouTube 영상은 직접 진행률 추적이 어려워 사용자가 완료 버튼을 클릭하도록 함 */}
+        {!hasMarkedAsComplete && (
+          <button
+            onClick={async () => {
+              console.log('사용자가 학습 완료 버튼 클릭');
+              try {
+                if (onComplete) {
+                  await onComplete();
+                }
+                setHasMarkedAsComplete(true);
+                showToast('학습을 완료했습니다!', 'success');
+              } catch (error) {
+                console.error('완료 콜백 실행 중 오류:', error);
+                showToast('완료 처리 중 오류가 발생했습니다.', 'error');
+              }
+            }}
+            className="mt-4 w-full rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+          >
+            학습 완료 표시하기
+          </button>
+        )}
+
         {/* 완료 모달 */}
         <CompletionModal
           isOpen={showCompletionModal}
           onClose={handleCloseModal}
-          isLastVideo={isLastItem}
+          isLastVideo={isLastItem || false}
           onNextVideo={handleNextVideo}
         />
       </div>
@@ -137,11 +222,24 @@ export default function VideoPlayer({
         </video>
       </div>
 
+      {/* 진행률 표시 */}
+      <div className="mt-2 flex w-full items-center">
+        <div className="flex-1 rounded-full bg-gray-200">
+          <div
+            className="h-2 rounded-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="ml-2 text-sm text-gray-600">
+          {Math.round(progress)}%
+        </span>
+      </div>
+
       {/* 완료 모달 */}
       <CompletionModal
         isOpen={showCompletionModal}
         onClose={handleCloseModal}
-        isLastVideo={isLastItem}
+        isLastVideo={isLastItem || false}
         onNextVideo={handleNextVideo}
       />
     </div>

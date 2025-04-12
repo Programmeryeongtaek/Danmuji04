@@ -2,10 +2,24 @@
 
 import LectureSection from '@/components/knowledge/LectureSection';
 import Category from '@/components/knowledge/Category';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 const KnowledgePage = () => {
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const searchParams = useSearchParams();
+  const queryCategory = searchParams.get('category');
+  const searchQuery = searchParams.get('q');
+
+  const [selectedCategory, setSelectedCategory] = useState(
+    queryCategory || 'all'
+  );
+
+  // URL 파라미터가 변경되면 카테고리 업데이트
+  useEffect(() => {
+    if (queryCategory) {
+      setSelectedCategory(queryCategory);
+    }
+  }, [queryCategory]);
 
   return (
     <div>
@@ -13,7 +27,10 @@ const KnowledgePage = () => {
         selectedCategory={selectedCategory}
         onCategoryClick={setSelectedCategory}
       />
-      <LectureSection selectedCategory={selectedCategory} />
+      <LectureSection
+        selectedCategory={selectedCategory}
+        searchQuery={searchQuery || ''}
+      />
     </div>
   );
 };

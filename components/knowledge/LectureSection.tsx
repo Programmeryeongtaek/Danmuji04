@@ -20,6 +20,10 @@ import {
 } from '@/utils/supabase/client';
 import { useBookmarks } from '@/hooks/useBookmarks';
 
+interface ExtendedLectureSectionProps extends LectureSectionProps {
+  searchQuery?: string;
+}
+
 const categoryLabelMap = new Map([
   ['all', '전체'],
   ['search', '검색'],
@@ -31,9 +35,14 @@ const categoryLabelMap = new Map([
   ['leadership', '리더십'],
 ]);
 
-const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
+const LectureSection = ({
+  selectedCategory,
+  searchQuery = '',
+}: ExtendedLectureSectionProps) => {
   const searchParams = useSearchParams();
-  const searchQuery = searchParams.get('q')?.toLowerCase() || '';
+  const querySearchTerm = searchParams.get('q')?.toLowerCase() || '';
+  const effectiveSearchQuery = searchQuery || querySearchTerm;
+
   const {
     bookmarkedLectures,
     handleToggleBookmark,
@@ -41,6 +50,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   } = useBookmarks();
 
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
+  const [prevLectures, setPrevLectures] = useState<Lecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     depth: [],
@@ -52,11 +62,16 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
   useEffect(() => {
     const loadLectures = async () => {
       try {
+        // 이전 데이터 유지
+        if (lectureList.length > 0) {
+          setPrevLectures(lectureList);
+        }
+
         setIsLoading(true);
         let data;
 
-        if (selectedCategory === 'search' && searchQuery) {
-          data = await searchLectures(searchQuery);
+        if (selectedCategory === 'search' && effectiveSearchQuery) {
+          data = await searchLectures(effectiveSearchQuery);
         } else if (selectedCategory !== 'all') {
           const categoryLabel = categoryLabelMap.get(selectedCategory);
           data = await fetchLecturesByCategory(categoryLabel || '');
@@ -73,7 +88,7 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
     };
 
     loadLectures();
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, effectiveSearchQuery]);
 
   const onApply = (newFilters: FilterState) => {
     setActiveFilters(newFilters);
@@ -132,10 +147,10 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
 
   return (
     <div className="flex flex-col">
-      {searchQuery && (
+      {effectiveSearchQuery && (
         <div>
           <h2>
-            {searchQuery} 검색 결과 ({filteredLectures.length}개)
+            {effectiveSearchQuery} 검색 결과 ({filteredLectures.length}개)
           </h2>
         </div>
       )}
@@ -150,20 +165,35 @@ const LectureSection = ({ selectedCategory }: LectureSectionProps) => {
         </Dropdown.Root>
       </div>
 
-      {filteredLectures.length > 0 ? (
-        <div className="flex flex-wrap justify-center gap-4">
-          {filteredLectures.map((lecture) => (
+      <div className="flex flex-wrap justify-center gap-4">
+        {/* 로딩 중에는 이전 데이터 표시, 없으면 로딩 표시 */}
+        {isLoading ? (
+          prevLectures.length > 0 ? (
+            prevLectures.map((lecture) => (
+              <div key={lecture.id} className="opacity-50">
+                <Card
+                  {...lecture}
+                  isBookmarked={bookmarkedLectures.includes(lecture.id)}
+                  onToggleBookmark={handleToggleBookmark}
+                />
+              </div>
+            ))
+          ) : (
+            <div>로딩 중...</div>
+          )
+        ) : filteredLectures.length > 0 ? (
+          filteredLectures.map((lecture) => (
             <Card
               key={lecture.id}
               {...lecture}
               isBookmarked={bookmarkedLectures.includes(lecture.id)}
               onToggleBookmark={handleToggleBookmark}
             />
-          ))}
-        </div>
-      ) : (
-        <div>검색 결과가 없습니다.</div>
-      )}
+          ))
+        ) : (
+          <div>검색 결과가 없습니다.</div>
+        )}
+      </div>
 
       <Pagination />
     </div>
