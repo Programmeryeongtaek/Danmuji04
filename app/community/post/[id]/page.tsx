@@ -437,7 +437,19 @@ export default function PostDetailPage() {
     isReply: boolean = false,
     parentId?: number
   ) => {
-    if (!window.confirm('정말 이 댓글을 삭제하시겠습니까?')) return;
+    // 답글인 경우 바로 삭제 진행
+    if (isReply) {
+      if (!window.confirm('정말로 이 답글을 삭제하시겠습니까?')) return;
+    } else {
+      // 댓글인 경우, 답글이 있는지 확인
+      const comment = comments.find((c) => c.id === commentId);
+      if (comment?.replies && comment.replies.length > 0) {
+        showToast('답글이 있는 댓글은 삭제할 수 없습니다.', 'error');
+        return;
+      }
+
+      if (!window.confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
+    }
 
     try {
       const success = await deletedComment(commentId);
@@ -800,6 +812,14 @@ export default function PostDetailPage() {
                 ) : (
                   <div className="whitespace-pre-line pl-10 text-gray-800">
                     {comment.content}
+                    {comment.updated_at !== comment.created_at && (
+                      <span
+                        className="ml-2 cursor-help text-xs text-gray-500"
+                        title={`수정 시간: ${formatDate(comment.updated_at)}`}
+                      >
+                        (수정됨)
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -953,6 +973,14 @@ export default function PostDetailPage() {
                         ) : (
                           <div className="whitespace-pre-line pl-8 text-sm text-gray-800">
                             {reply.content}
+                            {reply.updated_at !== reply.created_at && (
+                              <span
+                                className="ml-2 cursor-help text-xs text-gray-500"
+                                title={`수정 시간: ${formatDate(reply.updated_at)}`}
+                              >
+                                (수정됨)
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
