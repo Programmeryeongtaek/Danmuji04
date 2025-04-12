@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useToast } from '../Toast/Context';
+import { useToast } from '../common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';

@@ -1,6 +1,6 @@
 'use client';
 
-import { LectureItemForm } from '@/components/common/My/LectureItemForm';
+import { LectureItemForm } from '@/components/My/LectureItemForm';
 import { useLectureForm } from '@/hooks/useLectureForm';
 import {
   CATEGORY_OPTIONS,

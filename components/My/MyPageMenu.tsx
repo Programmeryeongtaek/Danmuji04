@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useToast } from '../Toast/Context';
+import { useToast } from '../common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
-import Button from '../Button/Button';
+import Button from '../common/Button/Button';
 import Image from 'next/image';
 
 interface UserProfile {
