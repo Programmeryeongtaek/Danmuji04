@@ -7,6 +7,7 @@ import { userAtom } from '@/store/auth';
 import {
   Comment,
   createComment,
+  deletedComment,
   fetchCommentsByPostId,
   fetchPostById,
   fetchRelatedPosts,
@@ -15,6 +16,7 @@ import {
   toggleCommentLike,
   togglePostBookmark,
   togglePostLike,
+  updateComment,
 } from '@/utils/services/communityService';
 import { useAtomValue } from 'jotai';
 import {
@@ -71,6 +73,13 @@ export default function PostDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  // 수정 모드 상태 추가
+  const [editingComment, setEditingComment] = useState<{
+    id: number;
+    content: string;
+    isReply: boolean;
+  } | null>(null);
 
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
@@ -355,6 +364,115 @@ export default function PostDetailPage() {
     }
   };
 
+  // 댓글 수정 시작 핸들러
+  const handleEditComment = (comment: Comment, isReply: boolean = false) => {
+    setEditingComment({
+      id: comment.id,
+      content: comment.content,
+      isReply,
+    });
+  };
+
+  // 댓글 수정 취소 핸들러
+  const handleCancelEdit = () => {
+    setEditingComment(null);
+  };
+
+  // 댓글 수정 제출 핸들러
+  const handleSubmitEdit = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!editingComment) return;
+
+    try {
+      // updateComment 함수 호출하여 댓글 업데이트
+      const updatedComment = await updateComment(
+        editingComment.id,
+        editingComment.content
+      );
+
+      // 받아온 updatedComment를 사용하여 상태 업데이트
+      setComments((prevComments) =>
+        prevComments.map((comment) => {
+          // 수정 중인 댓글이 일반 댓글인 경우
+          if (comment.id === editingComment.id) {
+            return {
+              ...comment,
+              content: updatedComment.content,
+              updated_at: updatedComment.updated_at,
+            };
+          }
+
+          // 수정 중인 댓글이 답글인 경우
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.map((reply) =>
+                reply.id === editingComment.id
+                  ? {
+                      ...reply,
+                      content: updatedComment.content,
+                      updated_at: updatedComment.updated_at,
+                    }
+                  : reply
+              ),
+            };
+          }
+
+          return comment;
+        })
+      );
+
+      setEditingComment(null);
+      showToast('댓글이 수정되었습니다.', 'success');
+    } catch (error) {
+      console.error('댓글 수정 실패:', error);
+      showToast('댓글 수정에 실패했습니다.', 'error');
+    }
+  };
+
+  // 댓글 삭제 핸들러
+  const handleDeleteComment = async (
+    commentId: number,
+    isReply: boolean = false,
+    parentId?: number
+  ) => {
+    if (!window.confirm('정말 이 댓글을 삭제하시겠습니까?')) return;
+
+    try {
+      const success = await deletedComment(commentId);
+
+      if (success) {
+        if (isReply && parentId) {
+          // 답글 삭제
+          setComments((prevComments) =>
+            prevComments.map((comment) => {
+              if (comment.id === parentId && comment.replies) {
+                return {
+                  ...comment,
+                  replies: comment.replies.filter(
+                    (reply) => reply.id !== commentId
+                  ),
+                };
+              }
+              return comment;
+            })
+          );
+        } else {
+          // 일반 댓글 삭제
+          setComments((prevComments) =>
+            prevComments.filter((comment) => comment.id !== commentId)
+          );
+        }
+
+        showToast('댓글이 삭제되었습니다.', 'success');
+      }
+    } catch (error) {
+      console.error('댓글 삭제 실패:', error);
+      showToast('댓글 삭제에 실패했습니다.', 'error');
+    }
+  };
+
   // 공유하기 기능
   const handleShare = () => {
     navigator.clipboard
@@ -616,23 +734,74 @@ export default function PostDetailPage() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleCommentLike(comment.id)}
-                    className={`flex items-center gap-1 text-sm ${
-                      comment.is_liked
-                        ? 'text-gold-start'
-                        : 'text-gray-500 hover:text-gold-start'
-                    }`}
-                  >
-                    <ThumbsUp className="h-4 w-4" />
-                    <span>{comment.likes_count || 0}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleCommentLike(comment.id)}
+                      className={`flex items-center gap-1 text-sm ${
+                        comment.is_liked
+                          ? 'text-gold-start'
+                          : 'text-gray-500 hover:text-gold-start'
+                      }`}
+                    >
+                      <ThumbsUp className="h-4 w-4" />
+                      <span>{comment.likes_count || 0}</span>
+                    </button>
+
+                    {/* 수정/삭제 버튼 추가 - 작성자일 경우만 표시 */}
+                    {user && user.id === comment.author_id && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleEditComment(comment)}
+                          className="text-sm text-gray-500 hover:text-blue-500"
+                        >
+                          수정
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="text-sm text-gray-500 hover:text-red-500"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* 댓글 내용 */}
-                <div className="whitespace-pre-line pl-10 text-gray-800">
-                  {comment.content}
-                </div>
+                {/* 댓글 내용 - 수정 모드인 경우 수정 폼 표시 */}
+                {editingComment && editingComment.id === comment.id ? (
+                  <form onSubmit={handleSubmitEdit} className="pl-10">
+                    <textarea
+                      value={editingComment.content}
+                      onChange={(e) =>
+                        setEditingComment({
+                          ...editingComment,
+                          content: e.target.value,
+                        })
+                      }
+                      className="mb-2 h-20 w-full resize-none rounded-lg border p-3 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="rounded-lg border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-3 py-1 text-sm text-white"
+                      >
+                        저장
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="whitespace-pre-line pl-10 text-gray-800">
+                    {comment.content}
+                  </div>
+                )}
 
                 {/* 답글 버튼 */}
                 <div className="mt-2 flex justify-end">
@@ -712,23 +881,80 @@ export default function PostDetailPage() {
                               </div>
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleCommentLike(reply.id)}
-                            className={`flex items-center gap-1 text-sm ${
-                              reply.is_liked
-                                ? 'text-gold-start'
-                                : 'text-gray-500 hover:text-gold-start'
-                            }`}
-                          >
-                            <ThumbsUp className="h-3 w-3" />
-                            <span>{reply.likes_count || 0}</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleCommentLike(reply.id)}
+                              className={`flex items-center gap-1 text-sm ${
+                                reply.is_liked
+                                  ? 'text-gold-start'
+                                  : 'text-gray-500 hover:text-gold-start'
+                              }`}
+                            >
+                              <ThumbsUp className="h-3 w-3" />
+                              <span>{reply.likes_count || 0}</span>
+                            </button>
+
+                            {/* 수정/삭제 버튼 추가 - 작성자일 경우만 표시 */}
+                            {user && user.id === reply.author_id && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <button
+                                  onClick={() => handleEditComment(reply, true)}
+                                  className="text-gray-500 hover:text-blue-500"
+                                >
+                                  수정
+                                </button>
+                                <span className="text-gray-300">|</span>
+                                <button
+                                  onClick={() =>
+                                    handleDeleteComment(
+                                      reply.id,
+                                      true,
+                                      comment.id
+                                    )
+                                  }
+                                  className="text-gray-500 hover:text-red-500"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
-                        {/* 답글 내용 */}
-                        <div className="whitespace-pre-line pl-8 text-sm text-gray-800">
-                          {reply.content}
-                        </div>
+                        {/* 답글 내용 - 수정 모드인 경우 수정 폼 표시 */}
+                        {editingComment && editingComment.id === reply.id ? (
+                          <form onSubmit={handleSubmitEdit} className="pl-8">
+                            <textarea
+                              value={editingComment.content}
+                              onChange={(e) =>
+                                setEditingComment({
+                                  ...editingComment,
+                                  content: e.target.value,
+                                })
+                              }
+                              className="mb-2 h-16 w-full resize-none rounded-lg border p-2 text-sm focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={handleCancelEdit}
+                                className="rounded-lg border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+                              >
+                                취소
+                              </button>
+                              <button
+                                type="submit"
+                                className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-2 py-1 text-xs text-white"
+                              >
+                                저장
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="whitespace-pre-line pl-8 text-sm text-gray-800">
+                            {reply.content}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -692,6 +692,98 @@ export async function toggleCommentLike(commentId: number, userId: string): Prom
   }
 }
 
+// 댓글 수정 함수
+export async function updateComment(commentId: number, content: string): Promise<Comment> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다');
+
+  try {
+    // single() 메서드로 단일 행 조회
+    const { data: commentData, error } = await supabase
+      .from('post_comments')
+      .update({ 
+        content, 
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', commentId)
+      .eq('author_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('댓글 수정 오류:', error);
+      throw error;
+    }
+
+    // 프로필 정보 가져오기
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('name, nickname, avatar_url')
+      .eq('id', user.id)
+      .single();
+
+    // 아바타 URL 처리
+    let authorAvatar = undefined;
+    if (profileData?.avatar_url) {
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(profileData.avatar_url);
+      
+      authorAvatar = urlData.publicUrl;
+    }
+
+    // 업데이트된 댓글 객체 생성
+    const updatedComment: Comment = {
+      id: commentData.id,
+      post_id: commentData.post_id,
+      author_id: commentData.author_id,
+      content: commentData.content,
+      parent_id: commentData.parent_id,
+      created_at: commentData.created_at,
+      updated_at: commentData.updated_at,
+      author_name: profileData?.nickname || profileData?.name || '익명',
+      author_avatar: authorAvatar,
+      likes_count: 0,
+      is_liked: false,
+      replies: []
+    };
+
+    return updatedComment;
+  } catch (error) {
+    console.error('댓글 수정 실패:', error);
+    throw error;
+  }
+}
+
+// 댓글 삭제 함수
+export async function deletedComment(commentId: number): Promise<boolean> {
+  const supabase = createClient();
+  const { data : { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('로그인이 필요합니다.');
+
+  try {
+    // 본인 작성 댓글만 삭제 가능
+    const { error } = await supabase
+      .from('post_comments')
+      .delete()
+      .eq('id', commentId)
+      .eq('author_id', user.id);
+
+    if (error) {
+      console.error('댓글 삭제 오류:', error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('댓글 삭제 실패:', error);
+    throw error;
+  }
+}
+
 // 인기 태그 조회
 export async function fetchPopularTags(limit: number = 10): Promise<{name: string, count: number}[]> {
   const supabase = createClient();
