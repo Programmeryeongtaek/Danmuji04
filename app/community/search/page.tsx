@@ -46,6 +46,11 @@ const communityCategories = [
   },
 ];
 
+const ALLOWED_IMAGE_HOSTS = [
+  'hcqusfewtyxmpdvzpeor.supabase.co',
+  'picsum.photos',
+];
+
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -149,8 +154,8 @@ export default function SearchPage() {
           part
         )
       );
-    } catch (error) {
-      // 정규식 오류 방지 (특수문자 등)
+    } catch {
+      // 정규식 오류 방지 (특수문자 등) - error 변수를 사용하지 않도록 수정
       return text;
     }
   };
@@ -178,6 +183,45 @@ export default function SearchPage() {
         month: 'long',
         day: 'numeric',
       });
+    }
+  };
+
+  // 이미지 URL 추출 (최대 3개)
+  const extractImages = (content: string): string[] => {
+    if (!content) return [];
+
+    const imageRegex = /!\[.*?\]\((.*?)\)/g;
+    const matches = [...content.matchAll(imageRegex)];
+    const imageUrls = matches.map((match) => match[1]).slice(0, 3); // 최대 3개로 제한
+
+    return imageUrls;
+  };
+
+  // 내용 미리보기 (이미지 마크다운 제외)
+  const getContentPreview = (
+    content: string,
+    maxLength: number = 150
+  ): string => {
+    if (!content) return '';
+
+    // 이미지 마크다운 제거
+    const contentWithoutImages = content.replace(/!\[.*?\]\(.*?\)/g, '');
+
+    if (contentWithoutImages.length <= maxLength) {
+      return contentWithoutImages;
+    }
+
+    return contentWithoutImages.substring(0, maxLength) + '...';
+  };
+
+  // URL이 허용된 이미지 호스트인지 확인
+  const isAllowedImageHost = (url: string): boolean => {
+    try {
+      const urlObj = new URL(url);
+      // 호스트명뿐만 아니라 경로도 검사
+      return ALLOWED_IMAGE_HOSTS.some((host) => urlObj.hostname.includes(host));
+    } catch {
+      return false;
     }
   };
 
@@ -384,100 +428,140 @@ export default function SearchPage() {
         </div>
       ) : currentResults.length > 0 ? (
         <div className="space-y-6">
-          {currentResults.map((post) => (
-            <div
-              key={post.id}
-              className="rounded-lg border p-4 hover:border-gold-start hover:bg-gray-50"
-            >
-              <Link href={`/community/post/${post.id}`}>
-                <div className="mb-2 flex items-center justify-between">
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs ${
-                      post.category === 'notice'
-                        ? 'bg-red-100 text-red-800'
-                        : post.category === 'faq'
-                          ? 'bg-blue-100 text-blue-800'
-                          : post.category === 'study'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {
-                      communityCategories.find((c) => c.id === post.category)
-                        ?.label
-                    }
-                  </span>
-                  <div className="text-xs text-gray-500">
-                    {formatDate(post.created_at)}
+          {currentResults.map((post) => {
+            // 이미지 URL 추출 (최대 3개)
+            const imageUrls = extractImages(post.content || '');
+            // 내용 미리보기 (이미지 마크다운 제외)
+            const contentPreview = getContentPreview(post.content || '');
+
+            return (
+              <div
+                key={post.id}
+                className="rounded-lg border p-4 hover:border-gold-start hover:bg-gray-50"
+              >
+                <Link href={`/community/post/${post.id}`}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        post.category === 'notice'
+                          ? 'bg-red-100 text-red-800'
+                          : post.category === 'faq'
+                            ? 'bg-blue-100 text-blue-800'
+                            : post.category === 'study'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {
+                        communityCategories.find((c) => c.id === post.category)
+                          ?.label
+                      }
+                    </span>
+                    <div className="text-xs text-gray-500">
+                      {formatDate(post.created_at)}
+                    </div>
                   </div>
-                </div>
 
-                <h2 className="mb-2 text-lg font-medium">
-                  {highlightText(post.title, query)}
-                </h2>
+                  <h2 className="mb-2 text-lg font-medium">
+                    {highlightText(post.title, query)}
+                  </h2>
 
-                <p className="mb-3 text-gray-600">
-                  {highlightText(
-                    post.content.length > 150
-                      ? post.content.substring(0, 150) + '...'
-                      : post.content,
-                    query
+                  {contentPreview && (
+                    <p className="mb-3 text-gray-600">
+                      {highlightText(contentPreview, query)}
+                    </p>
                   )}
-                </p>
 
-                {post.tags && post.tags.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {post.tags.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-700"
-                      >
-                        #{highlightText(tag, query)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
-                      {post.author_avatar ? (
-                        <Image
-                          src={post.author_avatar}
-                          alt={post.author_name || ''}
-                          width={24}
-                          height={24}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-500">
-                          {post.author_name
-                            ? post.author_name.charAt(0).toUpperCase()
-                            : '?'}
+                  {/* 이미지 미리보기 (최대 3개) */}
+                  {/* 이미지 미리보기 (최대 3개) */}
+                  {imageUrls.length > 0 && (
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {imageUrls.map((url, index) => (
+                        <div
+                          key={index}
+                          className="relative h-24 w-24 overflow-hidden rounded-lg border bg-gray-100"
+                        >
+                          {/* 모든 이미지를 일반 img 태그로 처리하여 Next.js 이미지 최적화 우회 */}
+                          <Image
+                            src={url}
+                            alt={`게시글 이미지 ${index + 1}`}
+                            fill
+                            unoptimized={true}
+                            className="object-cover"
+                            sizes="96px"
+                            onError={(e) => {
+                              // 이미지 로드 실패 시 기본 이미지로 대체
+                              (e.target as HTMLImageElement).src =
+                                '/images/placeholder.png';
+                            }}
+                          />
                         </div>
-                      )}
+                      ))}
                     </div>
-                    <span className="text-sm">{post.author_name}</span>
-                  </div>
+                  )}
 
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-4 w-4" />
-                      <span>{post.views}</span>
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {post.tags.map((tag, idx) => (
+                        <span
+                          key={idx}
+                          className="rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-700"
+                        >
+                          #{highlightText(tag, query)}
+                        </span>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="h-4 w-4" />
-                      <span>{post.comments_count || 0}</span>
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 overflow-hidden rounded-full bg-gray-200">
+                        {post.author_avatar &&
+                        isAllowedImageHost(post.author_avatar) ? (
+                          <Image
+                            src={post.author_avatar}
+                            alt={post.author_name || ''}
+                            width={24}
+                            height={24}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : post.author_avatar ? (
+                          <Image
+                            src={post.author_avatar}
+                            alt={post.author_name || ''}
+                            unoptimized={true}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-gray-500">
+                            {post.author_name
+                              ? post.author_name.charAt(0).toUpperCase()
+                              : '?'}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-sm">{post.author_name}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <ThumbsUp className="h-4 w-4" />
-                      <span>{post.likes_count || 0}</span>
+
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-4 w-4" />
+                        <span>{post.views}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MessageSquare className="h-4 w-4" />
+                        <span>{post.comments_count || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <ThumbsUp className="h-4 w-4" />
+                        <span>{post.likes_count || 0}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            </div>
-          ))}
+                </Link>
+              </div>
+            );
+          })}
         </div>
       ) : query ? (
         <div className="rounded-lg border bg-gray-50 py-12 text-center">
