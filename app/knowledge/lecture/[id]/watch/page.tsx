@@ -378,7 +378,16 @@ export default function LectureWatchPage() {
 
   return (
     <div className="mx-auto max-w-5xl pb-16 pt-4">
-      <h1 className="mb-4 text-xl font-bold">{lecture.title}</h1>
+
+      {/* 제목 및 정보 */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">{lecture.title}</h1>
+        <div className="mt-1 flex items-center gap-3 text-sm text-gray-600">
+          <span>{lecture.category}</span>
+          <span>•</span>
+          <span>{lecture.instructor}</span>
+        </div>
+      </div>
 
       {/* 비디오 플레이어 */}
       <div className="mb-6 overflow-hidden rounded-lg bg-black shadow-lg">
