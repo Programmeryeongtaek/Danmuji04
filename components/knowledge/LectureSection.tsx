@@ -176,18 +176,25 @@ const LectureSection = ({
           </h2>
         </div>
       )}
-      <div className="flex justify-between">
+
+      {/* 필터 및 정렬 영역 */}
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex">
           <KeywordSelector />
           <Filter onApply={onApply} />
         </div>
-        <Dropdown.Root onSort={handleSort}>
-          <Dropdown.Trigger />
-          <Dropdown.Context />
-        </Dropdown.Root>
+
+        {/* 드롭다운 영역 - 더 높은 z-index 값 부여 */}
+        <div className="relative z-40">
+          <Dropdown.Root onSort={handleSort}>
+            <Dropdown.Trigger />
+            <Dropdown.Context />
+          </Dropdown.Root>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      {/* 강의 카드 그리드 - z-index를 낮게 설정 */}
+      <div className="relative z-10 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {/* 로딩 중에는 이전 데이터 표시, 없으면 로딩 표시 */}
         {isLoading ? (
           prevLectures.length > 0 ? (
