@@ -45,6 +45,10 @@ const LectureSection = ({
   const querySearchTerm = searchParams.get('q')?.toLowerCase() || '';
   const effectiveSearchQuery = searchQuery || querySearchTerm;
 
+  // 키워드 필터링 파라미터 가져오기
+  const keywordsParam = searchParams.get('keywords') || '';
+  const selectedKeywords = keywordsParam ? keywordsParam.split(',') : [];
+
   const {
     bookmarkedLectures,
     handleToggleBookmark,
@@ -97,10 +101,17 @@ const LectureSection = ({
     loadLectures();
   }, [selectedCategory, effectiveSearchQuery]);
 
+  // 필터 파라미터나 키워드가 변경될 때마다 페이지네이션 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [keywordsParam, activeFilters]);
+
   const onApply = (newFilters: FilterState) => {
     setActiveFilters(newFilters);
+    setCurrentPage(1); // 필터 적용 시 첫 페이지로 이동
   };
 
+  // 카테고리 변경 시 필터 초기화
   useEffect(() => {
     if (selectedCategory !== 'search') {
       setActiveFilters({
@@ -111,7 +122,34 @@ const LectureSection = ({
     }
   }, [selectedCategory]);
 
+  // 키워드가 강의 keyword 필드에 포함되어 있는지 확인하는 함수
+  const hasMatchingKeyword = (
+    lecture: Lecture,
+    searchKeywords: string[]
+  ): boolean => {
+    if (!searchKeywords.length) return true; // 선택된 키워드가 없으면 모든 강의 표시
+    if (!lecture.keyword) return false; // 강의에 키워드가 없으면 매칭되지 않음
+
+    // 강의 키워드 문자열을 개별 키워드로 분리
+    const lectureKeywords = lecture.keyword
+      .split(',')
+      .map((k) => k.trim().toLowerCase());
+
+    // 선택된 키워드 중 하나라도 강의 키워드에 포함되어 있으면 true 반환
+    return searchKeywords.some((searchKeyword) =>
+      lectureKeywords.includes(searchKeyword.toLowerCase())
+    );
+  };
+
   const filteredLectures = lectureList.filter((lecture) => {
+    // 키워드 필터링
+    if (
+      selectedKeywords.length > 0 &&
+      !hasMatchingKeyword(lecture, selectedKeywords)
+    ) {
+      return false;
+    }
+
     // 필터 적용
     if (
       activeFilters.depth.length > 0 &&
@@ -170,16 +208,16 @@ const LectureSection = ({
   return (
     <div className="flex flex-col px-4">
       {effectiveSearchQuery && (
-        <div>
-          <h2>
+        <div className="mb-4">
+          <h2 className="text-lg font-medium">
             {effectiveSearchQuery} 검색 결과 ({filteredLectures.length}개)
           </h2>
         </div>
       )}
 
       {/* 필터 및 정렬 영역 */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <KeywordSelector />
           <Filter onApply={onApply} />
         </div>
@@ -191,6 +229,11 @@ const LectureSection = ({
             <Dropdown.Context />
           </Dropdown.Root>
         </div>
+      </div>
+
+      {/* 총 결과 수 표시 */}
+      <div className="mb-4 text-sm text-gray-600">
+        총 {filteredLectures.length}개의 강의
       </div>
 
       {/* 강의 카드 그리드 - z-index를 낮게 설정 */}
@@ -223,7 +266,14 @@ const LectureSection = ({
           ))
         ) : (
           <div className="col-span-full flex justify-center py-8">
-            검색 결과가 없습니다.
+            <div className="text-center">
+              <p className="mb-2 text-lg font-medium text-gray-700">
+                검색 결과가 없습니다.
+              </p>
+              <p className="text-sm text-gray-500">
+                다른 키워드나 필터를 사용해 보세요.
+              </p>
+            </div>
           </div>
         )}
       </div>
