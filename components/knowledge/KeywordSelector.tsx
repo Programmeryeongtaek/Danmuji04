@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Button from '../common/Button/Button';
 import { Tag, X } from 'lucide-react';
-import Modal from '../common/Modal';
 
 // API에서 인기 키워드를 가져오는 함수
 const fetchKeywords = async (): Promise<string[]> => {
@@ -95,6 +94,11 @@ const KeywordSelector = () => {
     setIsModalOpen(true);
   };
 
+  // 모달 닫기
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
   // 키워드 선택 토글
   const toggleKeyword = (keywords: string) => {
     setTempSelectedKeywords((prev) => {
@@ -151,13 +155,22 @@ const KeywordSelector = () => {
         </span>
       </button>
 
-      {/* 모달 */}
-      <Modal.Root isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+      {/* 모달 - 직접 구현으로 변경 */}
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div
+            className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-medium">키워드 선택</h2>
-              <button onClick={() => setIsModalOpen(false)}>
+              <button
+                onClick={closeModal}
+                className="rounded-full p-1 hover:bg-gray-100"
+              >
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
@@ -222,7 +235,7 @@ const KeywordSelector = () => {
 
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={closeModal}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
               >
                 취소
@@ -233,7 +246,7 @@ const KeywordSelector = () => {
             </div>
           </div>
         </div>
-      </Modal.Root>
+      )}
     </>
   );
 };
