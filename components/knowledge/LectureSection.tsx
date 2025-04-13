@@ -2,7 +2,6 @@
 
 import Card from '../common/Card';
 import KeywordSelector from './KeywordSelector';
-import Pagination from '../common/Pagination';
 import Filter from './Filter';
 import {
   FilterState,
@@ -19,6 +18,7 @@ import {
   searchLectures,
 } from '@/utils/supabase/client';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import Pagination from '../common/Pagination';
 
 interface ExtendedLectureSectionProps extends LectureSectionProps {
   searchQuery?: string;
@@ -34,6 +34,8 @@ const categoryLabelMap = new Map([
   ['self-development', '자기계발'],
   ['leadership', '리더십'],
 ]);
+
+const ITEMS_PER_PAGE = 12;
 
 const LectureSection = ({
   selectedCategory,
@@ -58,6 +60,9 @@ const LectureSection = ({
     hasGroup: false,
   });
 
+  // 페이지네이션 관련 상태
+  const [currentPage, setCurrentPage] = useState(1);
+
   // 강의 데이터 가져오기
   useEffect(() => {
     const loadLectures = async () => {
@@ -80,6 +85,8 @@ const LectureSection = ({
         }
 
         setLectureList(data || []);
+        // 카테고리나 검색어가 변경되면 페이지를 1로 리셋
+        setCurrentPage(1);
       } catch (error) {
         console.error('Failed to fetch lectures:', error);
       } finally {
@@ -141,12 +148,27 @@ const LectureSection = ({
     setLectureList(sorted);
   };
 
+  // 페이지네이션 처리
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+  const currentItems = filteredLectures.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    // 페이지 상단으로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (isLoading || bookmarksLoading) {
     return <div>로딩 중...</div>;
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col px-4">
       {effectiveSearchQuery && (
         <div>
           <h2>
@@ -165,11 +187,11 @@ const LectureSection = ({
         </Dropdown.Root>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {/* 로딩 중에는 이전 데이터 표시, 없으면 로딩 표시 */}
         {isLoading ? (
           prevLectures.length > 0 ? (
-            prevLectures.map((lecture) => (
+            prevLectures.slice(0, ITEMS_PER_PAGE).map((lecture) => (
               <div key={lecture.id} className="opacity-50">
                 <Card
                   {...lecture}
@@ -179,10 +201,12 @@ const LectureSection = ({
               </div>
             ))
           ) : (
-            <div>로딩 중...</div>
+            <div className="col-span-full flex justify-center py-8">
+              로딩 중...
+            </div>
           )
-        ) : filteredLectures.length > 0 ? (
-          filteredLectures.map((lecture) => (
+        ) : currentItems.length > 0 ? (
+          currentItems.map((lecture) => (
             <Card
               key={lecture.id}
               {...lecture}
@@ -191,11 +215,29 @@ const LectureSection = ({
             />
           ))
         ) : (
-          <div>검색 결과가 없습니다.</div>
+          <div className="col-span-full flex justify-center py-8">
+            검색 결과가 없습니다.
+          </div>
         )}
       </div>
 
-      <Pagination />
+      {/* 페이지네이션 */}
+      {filteredLectures.length > ITEMS_PER_PAGE && (
+        <div className="mt-8 flex justify-center">
+          <Pagination.Root
+            currentPage={currentPage}
+            totalItems={filteredLectures.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={handlePageChange}
+          >
+            <div className="flex items-center gap-4">
+              <Pagination.Control direction="prev" />
+              <Pagination.List />
+              <Pagination.Control direction="next" />
+            </div>
+          </Pagination.Root>
+        </div>
+      )}
     </div>
   );
 };

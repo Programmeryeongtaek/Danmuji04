@@ -27,6 +27,9 @@ export default function Control({
     }
   };
 
+  // 모바일에서는 아이콘만 표시
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
   return (
     <button
       onClick={handleClick}
@@ -41,11 +44,11 @@ export default function Control({
       {direction === 'prev' ? (
         <div className="flex items-center">
           <ChevronLeft className="mr-1 h-4 w-4" />
-          <span>이전</span>
+          {!isMobile && <span className="ml-1">이전</span>}
         </div>
       ) : (
         <div className="flex items-center">
-          <span>다음</span>
+          {!isMobile && <span className="mr-1">다음</span>}
           <ChevronRight className="ml-1 h-4 w-4" />
         </div>
       )}
