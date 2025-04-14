@@ -81,9 +81,9 @@ export default function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         }`}
       />
 
-      {/* Menu Content */}
+      {/* Menu Content - 가로축 꽉 차도록 수정 */}
       <div
-        className={`relative w-full max-w-md rounded-t-xl bg-white transition-transform duration-300 ${
+        className={`relative w-full rounded-t-xl bg-white transition-transform duration-300 ${
           showBackdrop ? 'translate-y-0' : 'translate-y-full'
         }`}
         onClick={(e) => e.stopPropagation()}
