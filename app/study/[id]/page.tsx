@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface Study {
