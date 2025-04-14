@@ -272,7 +272,7 @@ const Header = () => {
               onClick={() => setIsSearchOpen(true)}
               className="mr-3 text-gray-700"
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-5 w-5 md:hidden" />
             </button>
 
             {/* 모바일에서는 숨기고 데스크톱에서만 보이는 로고 */}
