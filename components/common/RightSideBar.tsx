@@ -8,6 +8,7 @@ import {
   Heart,
   Settings,
   User,
+  UserCircle,
   Video,
   X,
 } from 'lucide-react';
@@ -62,9 +63,9 @@ const RightSideBar = ({
         }`}
       >
         {/* Slider Header */}
-        <div className="flex justify-between p-3">
+        <button className="p-3">
           <X className="h-4 w-4" onClick={onClose} />
-        </div>
+        </button>
 
         {/* User Profile Section */}
         <div className="border-b px-3 pb-4 pt-2">
@@ -88,6 +89,14 @@ const RightSideBar = ({
                   userProfile?.name ||
                   userProfile?.email}
               </span>
+              <Link
+                href="/my/profile"
+                className="mt-1 flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50 hover:text-gold-start"
+                onClick={onClose}
+              >
+                <UserCircle className="h-3.5 w-3.5" />
+                마이페이지
+              </Link>
             </div>
           </div>
         </div>
