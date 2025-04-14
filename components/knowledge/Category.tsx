@@ -78,6 +78,14 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
     }
   }, [selectedCategory]);
 
+  // URL에서 카테고리 파라미터 확인
+  useEffect(() => {
+    const categoryParams = searchParams.get('category');
+    if (categoryParams && categoryParams !== selectedCategory) {
+      onCategoryClick(categoryParams);
+    }
+  }, [searchParams, selectedCategory, onCategoryClick]);
+
   const handleCategoryClick = (categoryId: string) => {
     // 상태 업데이트를 먼저 실행
     onCategoryClick(categoryId);

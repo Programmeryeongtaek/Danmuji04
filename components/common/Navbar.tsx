@@ -31,7 +31,7 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="fixed bottom-0 z-40 flex h-[60px] w-full items-center bg-white md:hidden">
+      <nav className="fixed bottom-0 z-40 flex h-[60px] w-full items-center bg-light md:hidden">
         <div className="flex w-full">
           {navItems.map((item) =>
             item.onClick ? (

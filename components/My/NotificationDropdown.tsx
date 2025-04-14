@@ -86,9 +86,9 @@ export default function NotificationDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-full p-1 hover:bg-gray-100"
+        className="relative rounded-full p-1"
       >
-        <Bell className="h-6 w-6 text-gray-600" />
+        <Bell className="h-6 w-6 text-gray-600 hover:text-gold-start" />
         {visibleUnreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
             {visibleUnreadCount > 9 ? '9+' : visibleUnreadCount}
