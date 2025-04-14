@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  Bookmark,
   BookOpen,
   GraduationCap,
   Heart,
@@ -31,6 +32,7 @@ const menuItems = [
   { icon: BookOpen, label: '내 학습', href: '/my/learning' },
   { icon: Video, label: '이어서 학습하기', href: '/' },
   { icon: Heart, label: '찜 리스트', href: '/my/wishlist' },
+  { icon: Bookmark, label: '북마크', href: '/my/bookmarks' },
   { icon: BookOpen, label: '내 글 모음', href: '/my/writings' },
   { icon: GraduationCap, label: '수료증', href: '/my/certificates' },
   { icon: Bell, label: '알림', href: '/my/notifications' },

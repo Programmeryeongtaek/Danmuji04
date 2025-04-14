@@ -28,7 +28,6 @@ export default function VideoPlayer({
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [hasMarkedAsComplete, setHasMarkedAsComplete] = useState(false);
   const { showToast } = useToast();
 
@@ -81,8 +80,6 @@ export default function VideoPlayer({
       if (isNaN(duration) || !isFinite(duration) || duration <= 0) return;
 
       const progressPercent = (currentTime / duration) * 100;
-
-      setProgress(progressPercent);
 
       if (
         progressPercent >= 95 &&
@@ -220,19 +217,6 @@ export default function VideoPlayer({
           <source src={contentUrl} type="video/mp4" />
           브라우저에서 비디오 재생을 지원하지 않습니다.
         </video>
-      </div>
-
-      {/* 진행률 표시 */}
-      <div className="mt-2 flex w-full items-center">
-        <div className="flex-1 rounded-full bg-gray-200">
-          <div
-            className="h-2 rounded-full bg-blue-500 transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className="ml-2 text-sm text-gray-600">
-          {Math.round(progress)}%
-        </span>
       </div>
 
       {/* 완료 모달 */}

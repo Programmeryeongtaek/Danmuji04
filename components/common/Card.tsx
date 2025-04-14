@@ -46,53 +46,63 @@ const Card = ({
       href={
         isMyLecture ? `/my/lectures/${id}/manage` : `/knowledge/lecture/${id}`
       }
-      className="flex h-[250px] w-[160px] flex-col border border-black bg-gold-end"
+      className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md"
     >
-      <div className="relative h-[105px] w-full border border-gray-700">
+      <div className="relative aspect-video w-full overflow-hidden bg-gray-200">
         <Image
           src={thumbnail_url || fallbackImageUrl}
           alt={title}
-          width={160}
-          height={105}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
           className="h-full w-full object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = fallbackImageUrl;
+          }}
         />
         {showBookmark && (
           <button
             onClick={handleBookmarkClick}
-            className="absolute right-1 top-1 z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-light"
+            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm transition-colors hover:bg-white"
+            aria-label={isMarked ? '북마크 취소' : '북마크 추가'}
           >
             <Bookmark
-              className={`z-10 h-4 w-4 ${
-                isMarked ? 'fill-gold-start text-gold-start' : 'text-gold-start'
+              className={`h-5 w-5 ${
+                isMarked ? 'fill-gold-start text-gold-start' : 'text-gray-700'
               }`}
             />
           </button>
         )}
       </div>
-      <div className="flex-col">
-        <div className="flex h-[60px] flex-col justify-between">
-          <div className="flex gap-2">
-            <span>{group_type}</span>
-            <div>{category}</div>
-          </div>
-          <div>{title}</div>
-          <div>{instructor}</div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="mb-1 line-clamp-2 flex-1 text-sm font-medium text-gray-800">
+          {title}
+        </h3>
+
+        <p className="mb-2 text-xs text-gray-700">{instructor}</p>
+
+        <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
+          <span className="rounded-full bg-gray-100 px-2 py-0.5">
+            {group_type}
+          </span>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5">
+            {category}
+          </span>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5">{depth}</span>
         </div>
 
-        <div className="flex flex-col">
-          <div className="flex gap-1">
-            <span>{depth}</span>
-            <span>/</span>
-            <span>{keyword}</span>
-          </div>
-          <div className="flex">
-            <div className="flex">
-              <Heart />
-              <span className="text-sm">{likes}</span>
+        <div className="truncate text-xs">{keyword}</div>
+
+        <div className="mt-auto flex items-center justify-between text-xs text-gray-600">
+          <div className="flex gap-3">
+            <div className="flex items-center gap-1">
+              <Heart className="h-4 w-4" />
+              <span>{likes}</span>
             </div>
-            <div className="flex">
-              <User />
-              <span className="text-sm">{students}</span>
+            <div className="flex items-center gap-1">
+              <User className="h-4 w-4" />
+              <span>{students}</span>
             </div>
           </div>
         </div>

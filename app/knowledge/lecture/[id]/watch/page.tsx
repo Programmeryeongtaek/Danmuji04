@@ -15,7 +15,8 @@ import {
   markItemAsCompleted,
   saveLastWatchedItem,
 } from '@/utils/supabase/client';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -54,7 +55,6 @@ export default function LectureWatchPage() {
   const [lecture, setLecture] = useState<Lecture | null>(null);
   const [sections, setSections] = useState<LectureSection[]>([]);
   const [currentItem, setCurrentItem] = useState<LectureItem | null>(null);
-  const [showCurriculum, setShowCurriculum] = useState(true);
   const [prevItemId, setPrevItemId] = useState<number | null>(null);
   const [nextItemId, setNextItemId] = useState<number | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -378,7 +378,28 @@ export default function LectureWatchPage() {
 
   return (
     <div className="mx-auto max-w-5xl pb-16 pt-4">
-      <h1 className="mb-4 text-xl font-bold">{lecture.title}</h1>
+      <div className="mx-auto max-w-6xl px-4">
+        {/* 상단 네비게이션 */}
+        <div className="mb-6 flex items-center gap-2">
+          <Link
+            href={`/knowledge/lecture/${lectureId}`}
+            className="flex items-center gap-1"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span>강의 상세로 돌아가기</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* 제목 및 정보 */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">{lecture.title}</h1>
+        <div className="mt-1 flex items-center gap-3 text-sm text-gray-600">
+          <span>{lecture.category}</span>
+          <span>•</span>
+          <span>{lecture.instructor}</span>
+        </div>
+      </div>
 
       {/* 비디오 플레이어 */}
       <div className="mb-6 overflow-hidden rounded-lg bg-black shadow-lg">
@@ -410,15 +431,6 @@ export default function LectureWatchPage() {
         isCurrentItemCompleted={completedItems.includes(currentItem.id)}
         isCourseCompleted={isCourseCompleted} // 추가
       />
-
-      {/* 커리큘럼 토글 */}
-      <div
-        className="my-4 flex cursor-pointer items-center justify-between rounded-lg bg-gray-100 p-3"
-        onClick={() => setShowCurriculum(!showCurriculum)}
-      >
-        <h3 className="font-medium">커리큘럼</h3>
-        {showCurriculum ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-      </div>
 
       {/* 커리큘럼 */}
       <LectureCurriculum

@@ -1,6 +1,6 @@
 'use client';
 
-import LectureManageButtons from '@/components/common/My/LectureManageButtons';
+import LectureManageButtons from '@/components/My/LectureManageButtons';
 import { useToast } from '@/components/common/Toast/Context';
 import {
   LectureDetail,

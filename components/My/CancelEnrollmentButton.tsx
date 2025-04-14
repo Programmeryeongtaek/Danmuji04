@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useToast } from '../Toast/Context';
+import { useToast } from '../common/Toast/Context';
 import { cancelEnrollment } from '@/utils/supabase/client';
-import { ToastType } from '../Toast/type';
+import { ToastType } from '../common/Toast/type';
 import { AlertTriangle } from 'lucide-react';
 
 interface CancelEnrollmentButtonProps {
