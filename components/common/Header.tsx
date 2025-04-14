@@ -1,10 +1,10 @@
 'use client';
 
-import { SearchIcon, User } from 'lucide-react';
+import { Search, SearchIcon, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Button from './Button/Button';
 import { useAtomValue } from 'jotai';
 import { isLoadingAtom, userAtom } from '@/store/auth';
@@ -14,6 +14,7 @@ import RightSideBar from './RightSideBar';
 import NotificationDropdown from '../My/NotificationDropdown';
 import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
 import NavDropdown from '../NavDropdown';
+import { useRouter } from 'next/navigation';
 
 interface DropdownItem {
   id: string;
@@ -34,6 +35,11 @@ const Header = () => {
 
   const user = useAtomValue(userAtom);
   const isLoading = useAtomValue(isLoadingAtom);
+
+  // 검색 기능
+  const router = useRouter();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 코스 카테고리 로드
   useEffect(() => {
@@ -94,10 +100,10 @@ const Header = () => {
   // 커뮤니티 카테고리 로드
   useEffect(() => {
     const communityDropdownItems = [
-      { id: 'faq', label: '질문 게시판', href: '/community/faq' },
-      { id: 'chats', label: '자유게시판', href: '/community/chats' },
-      { id: 'study', label: '스터디', href: '/community/study' },
       { id: 'notice', label: '공지사항', href: '/community/notice' },
+      { id: 'chats', label: '자유게시판', href: '/community/chats' },
+      { id: 'faq', label: '질문 게시판', href: '/community/faq' },
+      { id: 'study', label: '스터디', href: '/community/study' },
     ];
 
     setCommunityItems(communityDropdownItems);
@@ -148,6 +154,17 @@ const Header = () => {
     await supabase.auth.signOut();
   };
 
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(
+        `/knowledge?category=search&q=${encodeURIComponent(searchQuery)}`
+      );
+      setIsSearchOpen(false);
+      setSearchQuery('');
+    }
+  };
+
   return (
     <>
       <section className="flex h-10 w-full items-center">
@@ -169,20 +186,87 @@ const Header = () => {
             </li>
             <span>｜</span>
             <li>
-              <Link href={'/introduce'}>소개</Link>
+              <Link
+                href={'/introduce'}
+                className="text-sm hover:text-gold-start"
+              >
+                소개
+              </Link>
             </li>
           </ul>
           <ul className="flex items-center gap-1">
-            <li>강사등록</li>
+            <li>
+              <Link
+                href="/instructor/register"
+                className="text-sm hover:text-gold-start"
+              >
+                강사등록
+              </Link>
+            </li>
             <span>｜</span>
-            <li>문의하기</li>
+            <li>
+              <Link href="/contact" className="text-sm hover:text-gold-start">
+                문의하기
+              </Link>
+            </li>
           </ul>
         </header>
       </section>
+
+      {/* 모바일 검색 입력창 */}
+      {isSearchOpen && (
+        <div className="fixed inset-x-0 top-0 z-[100] bg-white p-4 shadow-md md:hidden">
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="검색어를 입력하세요"
+              className="w-full rounded-full border border-gray-300 bg-gray-100 py-2 pl-4 pr-10 focus:border-gold-start focus:outline-none"
+              autoFocus
+            />
+            <div className="absolute right-0 top-0 flex h-full items-center">
+              <button type="submit" className="px-3 text-gray-500">
+                <Search className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="px-3 text-gray-500"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       <header className="border-title sticky top-0 z-50 flex h-[50px] w-full items-center border-t bg-light">
         <nav className="flex w-full items-center justify-between px-4 md:px-8">
           {/* 왼쪽: 로고 및 네비게이션 링크 */}
           <div className="flex min-w-fit flex-shrink-0 items-center">
+            {/* 모바일에서만 표시되는 검색 버튼 */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="mr-3 text-gray-700"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+
             {/* 모바일에서는 숨기고 데스크톱에서만 보이는 로고 */}
             <Link
               href="/"
