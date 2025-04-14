@@ -90,7 +90,7 @@ const RightSideBar = ({
                   userProfile?.email}
               </span>
               <Link
-                href="/my/profile"
+                href="/my"
                 className="mt-1 flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50 hover:text-gold-start"
                 onClick={onClose}
               >
@@ -118,7 +118,13 @@ const RightSideBar = ({
 
         {/* Logout Button */}
         <div className="p-6">
-          <Button onClick={onLogout} className="w-full justify-center">
+          <Button
+            onClick={async () => {
+              await onLogout();
+              onClose();
+            }}
+            className="w-full justify-center"
+          >
             로그아웃
           </Button>
         </div>

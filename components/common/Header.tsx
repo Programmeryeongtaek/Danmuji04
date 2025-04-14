@@ -6,7 +6,7 @@ import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
 import { FormEvent, useEffect, useState } from 'react';
 import Button from './Button/Button';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { Profile } from '@/app/settings/profile/page';
@@ -33,11 +33,12 @@ const Header = () => {
   const [studyItems, setStudyItems] = useState<DropdownItem[]>([]);
   const [communityItems, setCommunityItems] = useState<DropdownItem[]>([]);
 
+  const router = useRouter();
   const user = useAtomValue(userAtom);
+  const setUser = useSetAtom(userAtom);
   const isLoading = useAtomValue(isLoadingAtom);
 
   // 검색 기능
-  const router = useRouter();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -158,8 +159,14 @@ const Header = () => {
   }, [user]);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      setUser(null);
+      router.push('/');
+    } catch (error) {
+      console.error('로그아웃 중 오류 발생:', error);
+    }
   };
 
   const handleSearch = (e: FormEvent) => {
