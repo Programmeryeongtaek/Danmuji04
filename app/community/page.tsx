@@ -12,7 +12,6 @@ import {
 import { useAtomValue } from 'jotai';
 import {
   Bell,
-  BookOpen,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -49,12 +48,6 @@ const communityCategories = [
     label: '자유게시판',
     icon: MessageCircle,
     description: '다양한 주제로 자유롭게 대화해보세요',
-  },
-  {
-    id: 'study',
-    label: '스터디',
-    icon: BookOpen,
-    description: '함께 공부하고 성장할 스터디를 찾아보세요',
   },
   {
     id: 'faq',
@@ -136,6 +129,14 @@ export default function CommunityPage() {
       showToast('게시글을 찾을 수 없습니다.', 'error');
     }
   }, [searchParams, showToast]);
+
+  // URL 파라미터가 변경될 때마다 카테고리 업데이트
+  useEffect(() => {
+    const category = searchParams.get('category');
+    if (category) {
+      setSelectedCategory(category);
+    }
+  }, [searchParams]); // searchParams가 변경될 때마다 실행
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);

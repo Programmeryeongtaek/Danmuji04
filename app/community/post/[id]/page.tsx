@@ -47,10 +47,6 @@ const communityCategories = [
     label: '자유게시판',
   },
   {
-    id: 'study',
-    label: '스터디',
-  },
-  {
     id: 'faq',
     label: '질문 게시판',
   },
@@ -101,7 +97,7 @@ export default function PostDetailPage() {
         // 게시글 상세 정보 조회
         const numericPostId = parseInt(postId, 10);
         if (isNaN(numericPostId)) {
-          router.push('/commnunity?error-post-not-found');
+          router.push('/community?error-post-not-found');
           return;
         }
 
