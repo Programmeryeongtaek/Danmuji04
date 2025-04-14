@@ -78,23 +78,6 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
     }
   }, [selectedCategory]);
 
-  const handleCategoryClick = (categoryId: string) => {
-    // 상태 업데이트를 먼저 실행
-    onCategoryClick(categoryId);
-
-    // URL을 복사하고 쿼리 파라미터 업데이트
-    const url = new URL(window.location.href);
-    if (categoryId !== 'search') {
-      url.searchParams.delete('q');
-    }
-    url.searchParams.set('category', categoryId);
-
-    // URL만 교체하고 페이지 전환 방지
-    window.history.pushState({}, '', url.toString());
-  };
-
-  const searchParams = useSearchParams();
-
   // URL에서 카테고리 파라미터 확인
   useEffect(() => {
     const categoryParams = searchParams.get('category');
