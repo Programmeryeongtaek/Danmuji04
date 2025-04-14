@@ -54,72 +54,95 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
 
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
-      <div className="fixed inset-0 flex flex-col bg-light p-4">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between border-b pb-2">
-          <h2 className="text-lg font-semibold">필터</h2>
-          <Modal.CloseButton className="text-gray-500" />
-        </div>
+      <Modal.CloseButton className="absolute right-[70px] top-[180px]" />
+      <Modal.Content>
+        <div className="px-2 pb-6 pt-2">
+          <h2 className="mb-4 text-xl font-bold">필터 선택</h2>
 
-        {/* 콘텐츠 영역 */}
-        <div className="flex flex-col">
-          <section className="">
-            <h3>깊이</h3>
-            <div className="flex flex-col justify-start">
+          <div className="mb-4 flex w-full gap-2 overflow-x-auto whitespace-nowrap border-b pb-2"></div>
+
+          {/* 깊이 섹션 */}
+          <section className="mb-6">
+            <h3 className="mb-3 font-medium text-gray-800">깊이</h3>
+            <div className="flex flex-wrap gap-2">
               {lectureDepth.map((depth) => (
-                <label key={depth}>
+                <label
+                  key={depth}
+                  className={`cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors ${
+                    filters.depth.includes(depth)
+                      ? 'bg-gradient-to-r from-gold-start to-gold-end text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={filters.depth.includes(depth)}
                     onChange={() => handleDepthCheck(depth)}
+                    className="sr-only"
                   />
-                  <span>{depth}</span>
+                  {depth}
                 </label>
               ))}
             </div>
           </section>
 
-          <section>
-            <h3>분야</h3>
-            <div className="flex flex-wrap gap-x-2">
-              {fields.map((fields) => (
-                <label key={fields}>
+          {/* 분야 섹션 */}
+          <section className="mb-6">
+            <h3 className="mb-3 font-medium text-gray-800">분야</h3>
+            <div className="flex flex-wrap gap-2">
+              {fields.map((field) => (
+                <label
+                  key={field}
+                  className={`cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors ${
+                    filters.fields.includes(field)
+                      ? 'bg-gradient-to-r from-gold-start to-gold-end text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
                   <input
                     type="checkbox"
-                    checked={filters.fields.includes(fields)}
-                    onChange={() => handleFieldCheck(fields)}
+                    checked={filters.fields.includes(field)}
+                    onChange={() => handleFieldCheck(field)}
+                    className="sr-only"
                   />
-                  <span>{fields}</span>
+                  {field}
                 </label>
               ))}
             </div>
           </section>
 
-          <section>
-            <h3>모임 형태</h3>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={filters.hasGroup}
-                onChange={handleGroupToggle}
-                className="peer sr-only"
-              />
-              <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-gold-start peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300"></div>
-              <span>오프라인</span>
+          {/* 모임 형태 섹션 */}
+          <section className="mb-4">
+            <h3 className="mb-3 font-medium text-gray-800">모임 형태</h3>
+            <label className="relative flex items-center justify-between rounded-lg border border-gray-200 p-3">
+              <span className="text-sm">오프라인 모임만 보기</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={filters.hasGroup}
+                  onChange={handleGroupToggle}
+                  className="peer sr-only"
+                />
+                <div className="h-5 w-10 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-gold-start peer-checked:after:translate-x-5"></div>
+              </div>
             </label>
           </section>
-        </div>
 
-        {/* 하단 버튼 */}
-        <div className="flex justify-center">
-          {/* TODO: reset 버튼 확장 */}
-          <div className="flex">
-            <RefreshCw />
-            <button onClick={handleReset}>초기화</button>
+          {/* 하단 버튼 */}
+          <div className="mt-6 flex justify-between gap-2">
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1 rounded-lg border border-gray-200 px-4 py-2 text-gray-600 hover:bg-gray-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>초기화</span>
+            </button>
+            <Button onClick={handleApply} className="px-6">
+              적용하기
+            </Button>
           </div>
-          <Button onClick={handleApply}>완료</Button>
         </div>
-      </div>
+      </Modal.Content>
     </Modal.Root>
   );
 };

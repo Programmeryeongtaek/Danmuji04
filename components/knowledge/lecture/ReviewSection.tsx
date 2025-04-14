@@ -109,17 +109,17 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
   };
 
   return (
-    <div className="flex flex-col border border-black p-4">
-      <div className="flex justify-between">
-        <h3 className="text-xl font-bold">수강평</h3>
-        <div className="">
+    <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold text-gray-800">수강평</h3>
+        <div className="flex items-center gap-2">
           <StarRating rating={averageRating} readonly size={20} />
-          <span>({averageRating.toFixed(1)})</span>
-          <span>{reviews.length}개</span>
+          <span className="font-medium">({averageRating.toFixed(1)})</span>
+          <span className="text-gray-600">{reviews.length}개</span>
         </div>
       </div>
-      <div className="mt-4 flex justify-between border-b border-t py-4">
-        <span>수강평을 남겨주세요.</span>
+      <div className="mt-4 flex items-center justify-between border-b border-t border-gray-200 py-4">
+        <span className="text-gray-600">수강평을 남겨주세요.</span>
         <Button onClick={handleReviewButtonClick}>
           <span>수강평 남기기</span>
         </Button>
@@ -127,8 +127,8 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
 
       {/* 수강평 목록 */}
       {isLoading ? (
-        <div>
-          <span>로딩 중...</span>
+        <div className="flex h-32 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-purple-600"></div>
         </div>
       ) : reviews.length > 0 ? (
         <ReviewList
