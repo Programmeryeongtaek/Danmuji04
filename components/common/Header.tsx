@@ -61,7 +61,6 @@ const Header = () => {
     // 지식 카테고리는 서버에서 가져오거나 동적으로 생성
     // Category.tsx에서 사용하는 카테고리 정보 활용
     const knowledgeDropdownItems = [
-      { id: 'all', label: '전체', href: '/knowledge?category=all' },
       {
         id: 'humanities',
         label: '인문학',
@@ -97,13 +96,22 @@ const Header = () => {
     setKnowledgeItems(knowledgeDropdownItems);
   }, []);
 
+  // 스터디 카테고리 로드
+  useEffect(() => {
+    const studyDropdownItems = [
+      { id: 'square', label: '광장', href: '/study?category=square' },
+      { id: 'book', label: '도서', href: '/study?category=book' },
+    ];
+
+    setStudyItems(studyDropdownItems);
+  }, []);
+
   // 커뮤니티 카테고리 로드
   useEffect(() => {
     const communityDropdownItems = [
-      { id: 'notice', label: '공지사항', href: '/community/notice' },
-      { id: 'chats', label: '자유게시판', href: '/community/chats' },
-      { id: 'faq', label: '질문 게시판', href: '/community/faq' },
-      { id: 'study', label: '스터디', href: '/community/study' },
+      { id: 'notice', label: '공지사항', href: '/community?category=notice' },
+      { id: 'chats', label: '자유게시판', href: '/community?category=chats' },
+      { id: 'faq', label: '질문 게시판', href: '/community?category=faq' },
     ];
 
     setCommunityItems(communityDropdownItems);
