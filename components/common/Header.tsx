@@ -331,10 +331,12 @@ const Header = () => {
               대시보드
             </Link>
 
-            {/* 알림 드롭다운 추가 */}
-            <div className="hidden md:block">
-              <NotificationDropdown />
-            </div>
+            {/* 알림 드롭다운 - 데스크톱과 모바일 모두 표시 */}
+            {user && (
+              <div className="flex items-center">
+                <NotificationDropdown />
+              </div>
+            )}
 
             {isLoading ? (
               <span>로딩중...</span>
