@@ -1,6 +1,6 @@
 'use client';
 
-import { User } from 'lucide-react';
+import { SearchIcon, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
@@ -167,11 +167,15 @@ const Header = () => {
                 <span>단무지</span>
               </Link>
             </li>
-            <li>임시1</li>
+            <span>｜</span>
+            <li>
+              <Link href={'/introduce'}>소개</Link>
+            </li>
           </ul>
           <ul className="flex items-center gap-1">
-            <li>임시2</li>
-            <li>임시3</li>
+            <li>강사등록</li>
+            <span>｜</span>
+            <li>문의하기</li>
           </ul>
         </header>
       </section>
@@ -226,9 +230,10 @@ const Header = () => {
             <div className="relative w-full">
               <input
                 type="text"
-                placeholder="배우고 싶은 지식을 검색해보세요"
-                className="w-full rounded-full bg-gray-100 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-gold-start"
+                placeholder="배우고 싶은 지식을 검색해보세요."
+                className="w-full rounded-full bg-gray-100 py-2 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-start"
               />
+              <SearchIcon className="absolute right-4 top-2" />
               <search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             </div>
           </div>
