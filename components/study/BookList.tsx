@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { MouseEvent, useState } from 'react';
 import { useToast } from '../common/Toast/Context';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
@@ -74,7 +74,12 @@ export default function BookList({
     }
   };
 
-  const handleRecommend = async (bookId: string) => {
+  const handleRecommend = async (
+    bookId: string,
+    e: MouseEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!user) {
       showToast('로그인이 필요합니다.', 'error');
       return;
@@ -193,8 +198,9 @@ export default function BookList({
       {books.length > 0 ? (
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {books.map((book) => (
-            <div
+            <Link
               key={book.id}
+              href={`/study/book/${book.id}`}
               className="flex flex-col rounded-lg border bg-white p-5 shadow-sm transition hover:shadow-md"
             >
               <div className="mb-4 flex justify-center">
@@ -214,12 +220,9 @@ export default function BookList({
                 )}
               </div>
 
-              <Link
-                href={`/study/book/${book.id}`}
-                className="mb-1 line-clamp-2 text-lg font-semibold hover:text-gold-start"
-              >
+              <div className="mb-1 line-clamp-2 text-lg font-semibold">
                 {book.title}
-              </Link>
+              </div>
 
               <p className="mb-2 text-gray-600">{book.author}</p>
 
@@ -236,7 +239,7 @@ export default function BookList({
                 </div>
 
                 <button
-                  onClick={() => handleRecommend(book.id)}
+                  onClick={(e) => handleRecommend(book.id, e)}
                   className={`flex items-center gap-1 rounded-full px-3 py-1 ${
                     book.user_has_recommended
                       ? 'bg-gold-start text-white'
@@ -249,7 +252,7 @@ export default function BookList({
                   <span>{book.recommendation_count}</span>
                 </button>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       ) : (
