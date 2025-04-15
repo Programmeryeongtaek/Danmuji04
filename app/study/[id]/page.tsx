@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface Study {
@@ -43,24 +43,24 @@ interface Participant {
   avatar_url?: string | null;
 }
 
-export default function StudyDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function StudyDetailPage() {
   const [study, setStudy] = useState<Study | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isParticipant, setIsParticipant] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const params = useParams();
+  const id = params.id as string;
   const router = useRouter();
-  const { showToast } = useToast();
   const user = useAtomValue(userAtom);
+  const { showToast } = useToast();
 
   useEffect(() => {
-    fetchStudyDetails();
-  }, [params.id]);
+    if (id) {
+      fetchStudyDetails();
+    }
+  }, [id]); // id를 의존성 배열에 포함
 
   const fetchStudyDetails = async () => {
     setIsLoading(true);
@@ -71,7 +71,7 @@ export default function StudyDetailPage({
       const { data: studyData, error: studyError } = await supabase
         .from('studies')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .single();
 
       if (studyError) throw studyError;
