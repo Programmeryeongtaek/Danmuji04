@@ -1,6 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
+import ShareButton from '@/components/study/ShareButton';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
@@ -12,6 +13,7 @@ import {
   User,
   Users,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -277,15 +279,26 @@ export default function StudyDetailPage() {
                 </span>
               </div>
 
-              {isOwner && (
-                <Link
-                  href={`/study/${study.id}/edit`}
-                  className="flex items-center text-sm text-gray-500 hover:text-gold-start"
-                >
-                  <Edit className="mr-1 h-4 w-4" />
-                  관리
-                </Link>
-              )}
+              {/* 이 부분에 공유하기 버튼과 관리 버튼을 함께 배치 */}
+              <div className="flex items-center gap-2">
+                <ShareButton
+                  title={`[단무지 스터디] ${study.title}`}
+                  description={study.description?.substring(0, 100)}
+                  url={
+                    typeof window !== 'undefined' ? window.location.href : ''
+                  }
+                />
+                <span>|</span>
+                {isOwner && (
+                  <Link
+                    href={`/study/${study.id}/edit`}
+                    className="flex items-center text-lg text-gray-500 hover:text-gold-start"
+                  >
+                    <Edit className="mr-1 h-4 w-4" />
+                    관리
+                  </Link>
+                )}
+              </div>
             </div>
 
             <h1 className="mb-4 text-2xl font-bold">{study.title}</h1>
@@ -356,10 +369,12 @@ export default function StudyDetailPage() {
                 <div key={participant.id} className="flex items-center">
                   <div className="mr-3 h-10 w-10 overflow-hidden rounded-full bg-gray-200">
                     {participant.avatar_url ? (
-                      <img
+                      <Image
                         src={participant.avatar_url}
                         alt={participant.user_name}
-                        className="h-full w-full object-cover"
+                        width={40}
+                        height={40}
+                        objectFit="cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
