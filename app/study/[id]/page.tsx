@@ -1,17 +1,21 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
+import ChatRoom from '@/components/study/ChatRoom';
 import ShareButton from '@/components/study/ShareButton';
+import VideoMeeting from '@/components/study/VideoMeeting';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
 import {
   ArrowLeft,
+  Book,
   CalendarClock,
-  Edit,
+  MapPin,
   MessageCircle,
   User,
   Users,
+  Video,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,6 +37,14 @@ interface Study {
   is_online: boolean;
   status: 'recruiting' | 'in_progress' | 'completed';
   created_at: string;
+  book_id?: string | null;
+}
+
+interface BookInfo {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
 }
 
 interface Participant {
@@ -43,6 +55,7 @@ interface Participant {
   role: 'owner' | 'participant';
   joined_at: string;
   avatar_url?: string | null;
+  last_active_at?: string | null;
 }
 
 export default function StudyDetailPage() {
@@ -51,18 +64,19 @@ export default function StudyDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isParticipant, setIsParticipant] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
   const [isJoining, setIsJoining] = useState(false);
-  const params = useParams();
-  const id = params.id as string;
+  const [activeTab, setActiveTab] = useState<'chat' | 'meeting'>('chat');
+
   const router = useRouter();
-  const user = useAtomValue(userAtom);
   const { showToast } = useToast();
+  const user = useAtomValue(userAtom);
+  const params = useParams();
+  const studyId = params.id as string;
 
   useEffect(() => {
-    if (id) {
-      fetchStudyDetails();
-    }
-  }, [id]); // id를 의존성 배열에 포함
+    fetchStudyDetails();
+  }, []);
 
   const fetchStudyDetails = async () => {
     setIsLoading(true);
@@ -73,17 +87,28 @@ export default function StudyDetailPage() {
       const { data: studyData, error: studyError } = await supabase
         .from('studies')
         .select('*')
-        .eq('id', id)
+        .eq('id', studyId)
         .single();
 
       if (studyError) throw studyError;
       setStudy(studyData);
 
+      // 연결된 도서 정보 가져오기 (있는 경우)
+      if (studyData.book_id) {
+        const { data: bookData } = await supabase
+          .from('books')
+          .select('id, title, author, cover_url')
+          .eq('id', studyData.book_id)
+          .single();
+
+        setBookInfo(bookData);
+      }
+
       // 참여자 정보 가져오기
       const { data: participantData, error: participantError } = await supabase
         .from('study_participants')
         .select('*')
-        .eq('study_id', params.id)
+        .eq('study_id', studyId)
         .order('joined_at', { ascending: true });
 
       if (participantError) throw participantError;
@@ -182,6 +207,7 @@ export default function StudyDetailPage() {
           user_name: userName,
           role: 'participant',
           joined_at: new Date().toISOString(),
+          last_active_at: new Date().toISOString(),
         });
 
       if (participantError) throw participantError;
@@ -201,6 +227,7 @@ export default function StudyDetailPage() {
       if (updateError) throw updateError;
 
       showToast('스터디에 참여했습니다.', 'success');
+      setIsParticipant(true);
       fetchStudyDetails(); // 정보 다시 불러오기
     } catch (error) {
       console.error('Error joining study:', error);
@@ -279,26 +306,11 @@ export default function StudyDetailPage() {
                 </span>
               </div>
 
-              {/* 이 부분에 공유하기 버튼과 관리 버튼을 함께 배치 */}
-              <div className="flex items-center gap-2">
-                <ShareButton
-                  title={`[단무지 스터디] ${study.title}`}
-                  description={study.description?.substring(0, 100)}
-                  url={
-                    typeof window !== 'undefined' ? window.location.href : ''
-                  }
-                />
-                <span>|</span>
-                {isOwner && (
-                  <Link
-                    href={`/study/${study.id}/edit`}
-                    className="flex items-center text-lg text-gray-500 hover:text-gold-start"
-                  >
-                    <Edit className="mr-1 h-4 w-4" />
-                    관리
-                  </Link>
-                )}
-              </div>
+              {/* 공유 버튼 */}
+              <ShareButton
+                title={study.title}
+                description={`${study.category} 스터디 - ${study.current_participants}/${study.max_participants}명 참여 중`}
+              />
             </div>
 
             <h1 className="mb-4 text-2xl font-bold">{study.title}</h1>
@@ -322,10 +334,45 @@ export default function StudyDetailPage() {
                 </span>
               </div>
               <div className="flex items-center">
-                <MessageCircle className="mr-2 h-4 w-4 text-gray-400" />
+                <MapPin className="mr-2 h-4 w-4 text-gray-400" />
                 <span>{study.is_online ? '온라인' : study.location}</span>
               </div>
             </div>
+
+            {/* 연결된 도서 정보 표시 */}
+            {bookInfo && (
+              <div className="mb-6 flex rounded-lg bg-blue-50 p-4">
+                <div className="mr-4 h-20 w-14 overflow-hidden rounded bg-white shadow">
+                  {bookInfo.cover_url ? (
+                    <Image
+                      src={bookInfo.cover_url}
+                      alt={bookInfo.title}
+                      width={56}
+                      height={80}
+                      className="h-full w-full object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Book className="h-6 w-6 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-blue-800">
+                    스터디 도서
+                  </div>
+                  <div className="font-medium">{bookInfo.title}</div>
+                  <div className="text-sm text-gray-600">{bookInfo.author}</div>
+                  <Link
+                    href={`/study/book/${bookInfo.id}`}
+                    className="mt-2 inline-block text-xs text-blue-500 hover:underline"
+                  >
+                    도서 상세정보 보기
+                  </Link>
+                </div>
+              </div>
+            )}
 
             <div className="border-t pt-4">
               <h2 className="mb-2 text-lg font-medium">스터디 설명</h2>
@@ -335,28 +382,67 @@ export default function StudyDetailPage() {
             </div>
           </div>
 
-          {/* 스터디 토론 영역 */}
-          <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-medium">스터디 토론</h2>
-
-            {isParticipant ? (
-              <div>
-                <p className="text-gray-600">
-                  참여자들과 소통하고 정보를 공유해보세요.
-                </p>
-                <Link
-                  href={`/study/${study.id}/discussion`}
-                  className="mt-4 inline-block rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
+          {/* 참여자만 볼 수 있는 스터디 콘텐츠 영역 */}
+          {isParticipant ? (
+            <div className="mt-8">
+              {/* 탭 네비게이션 */}
+              <div className="mb-4 flex border-b">
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={`flex items-center gap-2 px-4 py-2 ${
+                    activeTab === 'chat'
+                      ? 'border-b-2 border-gold-start text-gold-start'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
                 >
-                  토론방 입장하기
-                </Link>
+                  <MessageCircle className="h-5 w-5" />
+                  <span>토론 채팅</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('meeting')}
+                  className={`flex items-center gap-2 px-4 py-2 ${
+                    activeTab === 'meeting'
+                      ? 'border-b-2 border-gold-start text-gold-start'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Video className="h-5 w-5" />
+                  <span>화상 회의</span>
+                </button>
               </div>
-            ) : (
-              <div className="text-gray-600">
-                스터디에 참여하면 토론에 참여할 수 있습니다.
+
+              {/* 탭 콘텐츠 */}
+              <div className="h-[500px]">
+                {activeTab === 'chat' ? (
+                  <ChatRoom studyId={studyId} />
+                ) : (
+                  <VideoMeeting studyId={studyId} isOwner={isOwner} />
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-medium">스터디 토론</h2>
+
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <MessageCircle className="mb-3 h-10 w-10 text-gray-300" />
+                <p className="mb-4 text-gray-600">
+                  스터디에 참여하면 실시간 토론방과 화상 회의에 참여할 수
+                  있습니다.
+                </p>
+                {study.status === 'recruiting' &&
+                  study.current_participants < study.max_participants && (
+                    <button
+                      onClick={handleJoinStudy}
+                      disabled={isJoining}
+                      className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isJoining ? '참여 신청 중...' : '스터디 참여하기'}
+                    </button>
+                  )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 참여자 정보 및 참여하기 버튼 */}
@@ -369,12 +455,10 @@ export default function StudyDetailPage() {
                 <div key={participant.id} className="flex items-center">
                   <div className="mr-3 h-10 w-10 overflow-hidden rounded-full bg-gray-200">
                     {participant.avatar_url ? (
-                      <Image
+                      <img
                         src={participant.avatar_url}
                         alt={participant.user_name}
-                        width={40}
-                        height={40}
-                        objectFit="cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
