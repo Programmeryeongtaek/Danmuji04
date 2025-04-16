@@ -57,7 +57,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           .from('study_chat_messages')
           .select('*')
           .eq('study_id', studyId)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
           .limit(50);
 
         if (error) throw error;
