@@ -2,7 +2,14 @@
 
 import { userAtom } from '@/store/auth';
 import { useAtomValue } from 'jotai';
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useToast } from '../common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
 import { format } from 'date-fns';
@@ -51,12 +58,17 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
   // 채팅 메시지 후, 포커스
   const messageInputRef = useRef<HTMLInputElement>(null);
 
+  // 메시지 ID 추적을 위한 Set
+  const processedMessageIds = useRef(new Set<string>());
+
   // 메시지 로드
   const loadMessages = async (offset = 0) => {
     if (!studyId) return;
 
     try {
-      setIsLoading(true);
+      if (offset === 0) {
+        setIsLoading(true);
+      }
       const supabase = createClient();
 
       // 최근 메시지 30개씩 로드
@@ -98,6 +110,9 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
             avatarUrl = urlData.publicUrl;
           }
 
+          // 처리된 메시지 ID 추가
+          processedMessageIds.current.add(msg.id);
+
           return {
             ...msg,
             user_name:
@@ -116,7 +131,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           const newMessages = messagesWithProfiles.filter(
             (msg) => !existingIds.has(msg.id)
           );
-          return [...newMessages, ...prev];
+          return [...newMessages, ...prev]; // 새로 로드한 메시지가 먼저 오도록
         });
       }
     } catch (error) {
@@ -191,25 +206,33 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           // 새 메시지가 도착했을 때
           const newMessage = payload.new as Message;
 
-          // 프로필 정보 로드
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('name, nickname, avatar_url')
-            .eq('id', newMessage.user_id)
-            .single();
-
-          let avatarUrl = null;
-          if (profile?.avatar_url) {
-            const { data: urlData } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(profile.avatar_url);
-            avatarUrl = urlData.publicUrl;
+          // 이미 처리된 메시지인지 확인
+          if (processedMessageIds.current.has(newMessage.id)) {
+            return; // 이미 처리된 메시지는 무시
           }
 
-          // 메시지 상태 업데이트
-          setMessages((prev) => [
-            ...prev,
-            {
+          // ID 추적 Set에 추가
+          processedMessageIds.current.add(newMessage.id);
+
+          try {
+            // 프로필 정보 로드
+            const supabase = createClient();
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('name, nickname, avatar_url')
+              .eq('id', newMessage.user_id)
+              .single();
+
+            let avatarUrl = null;
+            if (profile?.avatar_url) {
+              const { data: urlData } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(profile.avatar_url);
+              avatarUrl = urlData.publicUrl;
+            }
+
+            // 강화된 메시지 생성
+            const enhancedMessage = {
               ...newMessage,
               user_name:
                 profile?.nickname ||
@@ -217,8 +240,47 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
                 newMessage.user_name ||
                 '익명',
               avatar_url: avatarUrl,
-            },
-          ]);
+            };
+
+            // 메시지를 기존 목록에 정확한 시간순으로 추가
+            setMessages((prev) => {
+              const messageExists = prev.some(
+                (msg) => msg.id === newMessage.id
+              );
+              if (messageExists) return prev;
+
+              const updatedMessages = [...prev, enhancedMessage];
+              return updatedMessages.sort(
+                (a, b) =>
+                  new Date(a.created_at).getTime() -
+                  new Date(b.created_at).getTime()
+              );
+            });
+          } catch (error) {
+            console.error('메시지 처리 실패:', error);
+
+            // 오류 발생해도 기본 메시지는 추가
+            setMessages((prev) => {
+              const messageExists = prev.some(
+                (msg) => msg.id === newMessage.id
+              );
+              if (messageExists) return prev;
+
+              const updatedMessages = [
+                ...prev,
+                {
+                  ...newMessage,
+                  user_name: newMessage.user_name || '익명',
+                  avatar_url: null,
+                },
+              ];
+              return updatedMessages.sort(
+                (a, b) =>
+                  new Date(a.created_at).getTime() -
+                  new Date(b.created_at).getTime()
+              );
+            });
+          }
         }
       )
       .subscribe();
@@ -310,12 +372,20 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       // 프로필 정보 가져오기
       const { data: profile } = await supabase
         .from('profiles')
-        .select('name, nickname')
+        .select('name, nickname, avatar_url')
         .eq('id', user.id)
         .single();
 
       const userName =
         profile?.nickname || profile?.name || user.email || '익명';
+
+      let avatarUrl = null;
+      if (profile?.avatar_url) {
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(profile.avatar_url);
+        avatarUrl = urlData.publicUrl;
+      }
 
       // 이미지 업로드 (있는 경우)
       let imageUrl = null;
@@ -323,8 +393,11 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         imageUrl = await uploadImage(uploadedImage);
       }
 
+      // 현재 시간 생성
+      const now = new Date().toISOString();
+
       // 메시지 저장
-      const { error } = await supabase
+      const { data: newMessageData, error } = await supabase
         .from('study_chat_messages')
         .insert({
           study_id: studyId,
@@ -332,11 +405,29 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           user_name: userName,
           content: newMessage.trim(),
           image_url: imageUrl,
-          created_at: new Date().toISOString(),
+          created_at: now,
         })
-        .select();
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // 새 메시지 ID를 Set에 추가 (중복 방지)
+      processedMessageIds.current.add(newMessageData.id);
+
+      // 메시지를 UI에 직접 추가 (서버 응답 기다리지 않고)
+      setMessages((prev) => {
+        const enhancedMessage = {
+          ...newMessageData,
+          avatar_url: avatarUrl,
+        };
+
+        const updatedMessages = [...prev, enhancedMessage];
+        return updatedMessages.sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      });
 
       // 입력창 및 이미지 초기화
       setNewMessage('');
@@ -346,7 +437,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       // 스터디 참여자 활동 기록 업데이트
       await supabase
         .from('study_participants')
-        .update({ last_active_at: new Date().toISOString() })
+        .update({ last_active_at: now })
         .eq('study_id', studyId)
         .eq('user_id', user.id);
     } catch (error) {
@@ -354,9 +445,11 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       showToast('메시지 전송에 실패했습니다.', 'error');
     } finally {
       setIsSending(false);
-      // 전송 완료 후 입력창에 포커스
+      // 전송 완료 후 입력창에 포커스 - 시간차를 두고 실행
       setTimeout(() => {
-        messageInputRef.current?.focus();
+        if (messageInputRef.current) {
+          messageInputRef.current.focus();
+        }
       }, 100);
     }
   };
@@ -380,6 +473,14 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       return format(date, 'yyyy.MM.dd a h:mm', { locale: ko });
     }
   };
+
+  // 메시지 렌더링 최적화 - useMemo로 메시지 정렬
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }, [messages]);
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-white shadow-sm">
@@ -409,9 +510,9 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           <div className="flex h-full items-center justify-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"></div>
           </div>
-        ) : messages.length > 0 ? (
+        ) : sortedMessages.length > 0 ? (
           <div className="space-y-4">
-            {messages.map((message) => (
+            {sortedMessages.map((message) => (
               <div key={message.id} className="flex gap-3">
                 <div className="flex-shrink-0">
                   <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
