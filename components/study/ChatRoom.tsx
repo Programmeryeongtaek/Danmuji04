@@ -48,6 +48,9 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // 채팅 메시지 후, 포커스
+  const messageInputRef = useRef<HTMLInputElement>(null);
+
   // 메시지 로드
   const loadMessages = async (offset = 0) => {
     if (!studyId) return;
@@ -351,6 +354,10 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       showToast('메시지 전송에 실패했습니다.', 'error');
     } finally {
       setIsSending(false);
+      // 전송 완료 후 입력창에 포커스
+      setTimeout(() => {
+        messageInputRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -498,6 +505,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
             className="hidden"
           />
           <input
+            ref={messageInputRef}
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
