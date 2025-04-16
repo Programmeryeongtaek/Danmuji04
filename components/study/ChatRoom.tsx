@@ -43,70 +43,129 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
 
+  // 채팅 내용 무한 스크롤
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
   // 메시지 로드
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!studyId) return;
+  const loadMessages = async (offset = 0) => {
+    if (!studyId) return;
 
-      try {
-        setIsLoading(true);
-        const supabase = createClient();
+    try {
+      setIsLoading(true);
+      const supabase = createClient();
 
-        // 최근 50개 메시지 로드
-        const { data, error } = await supabase
-          .from('study_chat_messages')
-          .select('*')
-          .eq('study_id', studyId)
-          .order('created_at', { ascending: true })
-          .limit(50);
+      // 최근 메시지 30개씩 로드
+      const { data, error } = await supabase
+        .from('study_chat_messages')
+        .select('*')
+        .eq('study_id', studyId)
+        .order('created_at', { ascending: true })
+        .range(offset, offset + 29); // 페이지네이션 적용
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // 프로필 정보 로드
-        const userIds = [...new Set(data?.map((msg) => msg.user_id) || [])];
+      // 더 로드할 메시지가 있는지 확인
+      setHasMoreMessages(data.length === 30);
 
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, name, nickname, avatar_url')
-          .in('id', userIds);
+      // 프로필 정보 로드
+      const userIds = [...new Set(data?.map((msg) => msg.user_id) || [])];
 
-        const profileMap = new Map<string, Profile>();
-        profiles?.forEach((profile) => {
-          profileMap.set(profile.id, profile);
-        });
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, nickname, avatar_url')
+        .in('id', userIds);
 
-        // 메시지에 프로필 정보 추가
-        const messagesWithProfiles =
-          data?.map((msg) => {
-            const profile = profileMap.get(msg.user_id);
+      const profileMap = new Map<string, Profile>();
+      profiles?.forEach((profile) => {
+        profileMap.set(profile.id, profile);
+      });
 
-            let avatarUrl = null;
-            if (profile?.avatar_url) {
-              const { data: urlData } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(profile.avatar_url);
-              avatarUrl = urlData.publicUrl;
-            }
+      // 메시지에 프로필 정보 추가
+      const messagesWithProfiles =
+        data?.map((msg) => {
+          const profile = profileMap.get(msg.user_id);
 
-            return {
-              ...msg,
-              user_name:
-                profile?.nickname || profile?.name || msg.user_name || '익명',
-              avatar_url: avatarUrl,
-            };
-          }) || [];
+          let avatarUrl = null;
+          if (profile?.avatar_url) {
+            const { data: urlData } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(profile.avatar_url);
+            avatarUrl = urlData.publicUrl;
+          }
 
+          return {
+            ...msg,
+            user_name:
+              profile?.nickname || profile?.name || msg.user_name || '익명',
+            avatar_url: avatarUrl,
+          };
+        }) || [];
+
+      // 초기 로드인지 추가 로드인지에 따라 처리
+      if (offset === 0) {
         setMessages(messagesWithProfiles);
-      } catch (error) {
-        console.error('채팅 메시지 로드 실패:', error);
-        showToast('메시지를 불러오는데 실패했습니다.', 'error');
-      } finally {
-        setIsLoading(false);
+      } else {
+        // 중복 메시지 제거하며 병합
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((msg) => msg.id));
+          const newMessages = messagesWithProfiles.filter(
+            (msg) => !existingIds.has(msg.id)
+          );
+          return [...newMessages, ...prev];
+        });
+      }
+    } catch (error) {
+      console.error('채팅 메시지 로드 실패:', error);
+      showToast('메시지를 불러오는데 실패했습니다.', 'error');
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  // 초기 메시지 로드
+  useEffect(() => {
+    loadMessages();
+  }, [studyId]);
+
+  // 더 많은 메시지 로드 함수
+  const loadMoreMessages = () => {
+    if (isLoadingMore || !hasMoreMessages) return;
+
+    setIsLoadingMore(true);
+    loadMessages(messages.length);
+  };
+
+  // 스크롤 이벤트 감지
+  useEffect(() => {
+    const messagesContainer = messagesContainerRef.current;
+    if (!messagesContainer) return;
+
+    const handleScroll = () => {
+      // 스크롤이 상단에 도달했는지 확인
+      if (
+        messagesContainer.scrollTop <= 50 &&
+        hasMoreMessages &&
+        !isLoadingMore
+      ) {
+        // 스크롤 위치 기억
+        const scrollHeight = messagesContainer.scrollHeight;
+
+        loadMoreMessages();
+
+        // 스크롤 위치 복원 (새 메시지가 로드되면 스크롤 위치가 변경되는 것 방지)
+        setTimeout(() => {
+          const newScrollHeight = messagesContainer.scrollHeight;
+          messagesContainer.scrollTop = newScrollHeight - scrollHeight;
+        }, 100);
       }
     };
 
-    loadMessages();
-  }, [studyId, showToast]);
+    messagesContainer.addEventListener('scroll', handleScroll);
+    return () => messagesContainer.removeEventListener('scroll', handleScroll);
+  }, [messages.length, hasMoreMessages, isLoadingMore]);
 
   // 실시간 메시지 구독
   useEffect(() => {
@@ -331,8 +390,15 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       </div>
 
       {/* 메시지 목록 */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {isLoading ? (
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4">
+        {/* 로딩 인디케이터 */}
+        {isLoadingMore && (
+          <div className="flex justify-center py-2">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"></div>
+          </div>
+        )}
+
+        {isLoading && messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"></div>
           </div>
