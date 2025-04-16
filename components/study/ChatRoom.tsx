@@ -116,7 +116,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
 
     // 채널 구독
     const channel = supabase
-      .channel(`study_chat_${studyId}`)
+      .channel('public:study_chat_messages')
       .on(
         'postgres_changes',
         {
@@ -263,7 +263,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
 
       // 메시지 저장
       const { error } = await supabase
-        .from('study_chat_message')
+        .from('study_chat_messages')
         .insert({
           study_id: studyId,
           user_id: user.id,
