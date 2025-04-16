@@ -3,7 +3,6 @@
 import { useToast } from '@/components/common/Toast/Context';
 import ChatRoom from '@/components/study/ChatRoom';
 import ShareButton from '@/components/study/ShareButton';
-import VideoMeeting from '@/components/study/VideoMeeting';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
@@ -66,34 +65,16 @@ export default function StudyDetailPage() {
   const [isOwner, setIsOwner] = useState(false);
   const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat'>('chat');
 
   const router = useRouter();
   const { showToast } = useToast();
   const user = useAtomValue(userAtom);
   const params = useParams();
   const studyId = params.id as string;
-  const searchParams = useSearchParams();
-
-  // URL에서 tab 매개변수를 읽어 초기 상태 설정
-  const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState<'chat' | 'meeting'>(
-    tabParam === 'meeting' ? 'meeting' : 'chat' // 기본값은 'chat'
-  );
 
   useEffect(() => {
-    if (user) {
-      // 사용자 정보가 있을 때만 실행
-      fetchStudyDetails();
-    }
-  }, [user, studyId]);
-
-  useEffect(() => {
-    // URL 파라미터에서 탭 상태 가져오기
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
-    if (tabParam === 'chat' || tabParam === 'meeting') {
-      setActiveTab(tabParam);
-    }
+    fetchStudyDetails();
   }, []);
 
   const fetchStudyDetails = async () => {
@@ -111,6 +92,17 @@ export default function StudyDetailPage() {
       if (studyError) throw studyError;
       setStudy(studyData);
 
+      // 연결된 도서 정보 가져오기 (있는 경우)
+      if (studyData.book_id) {
+        const { data: bookData } = await supabase
+          .from('books')
+          .select('id, title, author, cover_url')
+          .eq('id', studyData.book_id)
+          .single();
+
+        setBookInfo(bookData);
+      }
+
       // 참여자 정보 가져오기
       const { data: participantData, error: participantError } = await supabase
         .from('study_participants')
@@ -120,12 +112,11 @@ export default function StudyDetailPage() {
 
       if (participantError) throw participantError;
 
-      // 현재 로그인한 사용자가 참여자인지 명확하게 체크
+      // 현재 로그인한 사용자가 참여자인지 체크
       if (user) {
         const isParticipating = participantData.some(
           (p) => p.user_id === user.id
         );
-        console.log('사용자 참여 상태:', isParticipating);
         setIsParticipant(isParticipating);
 
         // 스터디 방장인지 체크
@@ -196,21 +187,6 @@ export default function StudyDetailPage() {
     try {
       const supabase = createClient();
 
-      // 이미 참여 중인지 확인
-      const { data: existingParticipant } = await supabase
-        .from('study_participants')
-        .select('id')
-        .eq('study_id', studyId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (existingParticipant) {
-        // 이미 참여 중인 경우 - 참여자 상태만 업데이트
-        setIsParticipant(true);
-        fetchStudyDetails(); // 정보 다시 불러오기
-        return;
-      }
-
       // 사용자 정보 가져오기
       const { data: profile } = await supabase
         .from('profiles')
@@ -258,16 +234,6 @@ export default function StudyDetailPage() {
     } finally {
       setIsJoining(false);
     }
-  };
-
-  // 탭 변경 함수
-  const handleTabChange = (tab: 'chat' | 'meeting') => {
-    setActiveTab(tab);
-
-    // URL 업데이트
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tab);
-    router.push(`/study/${studyId}?${params.toString()}`, { scroll: false });
   };
 
   // 날짜 포맷 함수
@@ -418,39 +384,20 @@ export default function StudyDetailPage() {
           {/* 참여자만 볼 수 있는 스터디 콘텐츠 영역 */}
           {isParticipant ? (
             <div className="mt-8">
-              {/* 탭 네비게이션 */}
+              {/* 탭 네비게이션 - 화상회의 탭 제거 */}
               <div className="mb-4 flex border-b">
                 <button
-                  onClick={() => handleTabChange('chat')}
-                  className={`flex items-center gap-2 px-4 py-2 ${
-                    activeTab === 'chat'
-                      ? 'border-b-2 border-gold-start text-gold-start'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  onClick={() => setActiveTab('chat')}
+                  className="flex items-center gap-2 border-b-2 border-gold-start px-4 py-2 text-gold-start"
                 >
                   <MessageCircle className="h-5 w-5" />
                   <span>토론 채팅</span>
                 </button>
-                <button
-                  onClick={() => handleTabChange('meeting')}
-                  className={`flex items-center gap-2 px-4 py-2 ${
-                    activeTab === 'meeting'
-                      ? 'border-b-2 border-gold-start text-gold-start'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <Video className="h-5 w-5" />
-                  <span>화상 회의</span>
-                </button>
               </div>
 
-              {/* 탭 콘텐츠 */}
+              {/* 채팅 영역 */}
               <div className="h-[500px]">
-                {activeTab === 'chat' ? (
-                  <ChatRoom studyId={studyId} />
-                ) : (
-                  <VideoMeeting studyId={studyId} isOwner={isOwner} />
-                )}
+                <ChatRoom studyId={studyId} />
               </div>
             </div>
           ) : (
@@ -460,8 +407,7 @@ export default function StudyDetailPage() {
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <MessageCircle className="mb-3 h-10 w-10 text-gray-300" />
                 <p className="mb-4 text-gray-600">
-                  스터디에 참여하면 실시간 토론방과 화상 회의에 참여할 수
-                  있습니다.
+                  스터디에 참여하면 실시간 토론방에 참여할 수 있습니다.
                 </p>
                 {study.status === 'recruiting' &&
                   study.current_participants < study.max_participants && (
