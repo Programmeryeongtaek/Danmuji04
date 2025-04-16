@@ -14,11 +14,10 @@ import {
   MessageCircle,
   User,
   Users,
-  Video,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface Study {
@@ -62,10 +61,8 @@ export default function StudyDetailPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isParticipant, setIsParticipant] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
   const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
   const [isJoining, setIsJoining] = useState(false);
-  const [activeTab, setActiveTab] = useState<'chat'>('chat');
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -74,8 +71,10 @@ export default function StudyDetailPage() {
   const studyId = params.id as string;
 
   useEffect(() => {
-    fetchStudyDetails();
-  }, []);
+    if (studyId) {
+      fetchStudyDetails();
+    }
+  }, [studyId]);
 
   const fetchStudyDetails = async () => {
     setIsLoading(true);
@@ -89,18 +88,26 @@ export default function StudyDetailPage() {
         .eq('id', studyId)
         .single();
 
-      if (studyError) throw studyError;
+      if (studyError) {
+        console.error('스터디 정보 조회 오류:', studyError);
+        throw studyError;
+      }
+
       setStudy(studyData);
 
       // 연결된 도서 정보 가져오기 (있는 경우)
       if (studyData.book_id) {
-        const { data: bookData } = await supabase
+        const { data: bookData, error: bookError } = await supabase
           .from('books')
           .select('id, title, author, cover_url')
           .eq('id', studyData.book_id)
           .single();
 
-        setBookInfo(bookData);
+        if (bookError) {
+          console.error('도서 정보 조회 오류:', bookError);
+        } else {
+          setBookInfo(bookData);
+        }
       }
 
       // 참여자 정보 가져오기
@@ -110,49 +117,61 @@ export default function StudyDetailPage() {
         .eq('study_id', studyId)
         .order('joined_at', { ascending: true });
 
-      if (participantError) throw participantError;
+      if (participantError) {
+        console.error('참여자 정보 조회 오류:', participantError);
+        throw participantError;
+      }
 
       // 현재 로그인한 사용자가 참여자인지 체크
       if (user) {
-        const isParticipating = participantData.some(
+        const isUserParticipating = participantData.some(
           (p) => p.user_id === user.id
         );
-        setIsParticipant(isParticipating);
-
-        // 스터디 방장인지 체크
-        const isOwn = studyData.owner_id === user.id;
-        setIsOwner(isOwn);
+        console.log('사용자 참여 상태:', isUserParticipating);
+        setIsParticipant(isUserParticipating);
       }
 
       // 참여자 프로필 이미지 가져오기
       const enhancedParticipants = await Promise.all(
         participantData.map(async (participant) => {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('avatar_url')
-            .eq('id', participant.user_id)
-            .single();
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('avatar_url')
+              .eq('id', participant.user_id)
+              .single();
 
-          let avatarUrl = null;
-          if (profileData?.avatar_url) {
-            const {
-              data: { publicUrl },
-            } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(profileData.avatar_url);
-            avatarUrl = publicUrl;
+            if (profileError && profileError.code !== 'PGRST116') {
+              console.error('프로필 정보 조회 오류:', profileError);
+            }
+
+            let avatarUrl = null;
+            if (profileData?.avatar_url) {
+              const {
+                data: { publicUrl },
+              } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(profileData.avatar_url);
+              avatarUrl = publicUrl;
+            }
+
+            return {
+              ...participant,
+              avatar_url: avatarUrl,
+            };
+          } catch (error) {
+            console.error('참여자 프로필 처리 오류:', error);
+            return {
+              ...participant,
+              avatar_url: null,
+            };
           }
-
-          return {
-            ...participant,
-            avatar_url: avatarUrl,
-          };
         })
       );
 
       setParticipants(enhancedParticipants);
     } catch (error) {
-      console.error('Error fetching study details:', error);
+      console.error('스터디 정보 로딩 중 오류:', error);
       showToast('스터디 정보를 불러오는데 실패했습니다.', 'error');
     } finally {
       setIsLoading(false);
@@ -171,7 +190,10 @@ export default function StudyDetailPage() {
       return;
     }
 
-    if (!study) return;
+    if (!study) {
+      showToast('스터디 정보를 불러올 수 없습니다.', 'error');
+      return;
+    }
 
     if (study.status !== 'recruiting') {
       showToast('모집이 마감된 스터디입니다.', 'error');
@@ -184,24 +206,50 @@ export default function StudyDetailPage() {
     }
 
     setIsJoining(true);
+
     try {
+      console.log('스터디 참여 시도:', { studyId, userId: user.id });
       const supabase = createClient();
 
-      // 사용자 정보 가져오기
-      const { data: profile } = await supabase
+      // 1. 중복 참여 검사
+      const { data: existingParticipant, error: checkError } = await supabase
+        .from('study_participants')
+        .select('id')
+        .eq('study_id', studyId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('참여자 확인 중 오류:', checkError);
+      }
+
+      if (existingParticipant) {
+        console.log('이미 참여 중인 스터디입니다:', existingParticipant);
+        setIsParticipant(true);
+        showToast('이미 참여 중인 스터디입니다.', 'info');
+        setIsJoining(false);
+        return;
+      }
+
+      // 2. 사용자 정보 가져오기
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('name, nickname')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('프로필 정보 조회 중 오류:', profileError);
+      }
 
       const userName =
         profile?.nickname || profile?.name || user.email || '익명';
 
-      // 참여자로 추가
+      // 3. 참여자로 추가
       const { error: participantError } = await supabase
         .from('study_participants')
         .insert({
-          study_id: study.id,
+          study_id: studyId,
           user_id: user.id,
           user_name: userName,
           role: 'participant',
@@ -209,27 +257,37 @@ export default function StudyDetailPage() {
           last_active_at: new Date().toISOString(),
         });
 
-      if (participantError) throw participantError;
+      if (participantError) {
+        console.error('참여자 등록 중 오류:', participantError);
+        throw participantError;
+      }
 
-      // 현재 참여자 수 업데이트
+      // 4. 현재 참여자 수 업데이트
+      const newParticipantCount = study.current_participants + 1;
+      const newStatus =
+        newParticipantCount >= study.max_participants
+          ? 'in_progress'
+          : 'recruiting';
+
       const { error: updateError } = await supabase
         .from('studies')
         .update({
-          current_participants: study.current_participants + 1,
-          status:
-            study.current_participants + 1 >= study.max_participants
-              ? 'in_progress'
-              : 'recruiting',
+          current_participants: newParticipantCount,
+          status: newStatus,
         })
-        .eq('id', study.id);
+        .eq('id', studyId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('스터디 정보 업데이트 중 오류:', updateError);
+        throw updateError;
+      }
 
+      console.log('스터디 참여 성공');
       showToast('스터디에 참여했습니다.', 'success');
       setIsParticipant(true);
       fetchStudyDetails(); // 정보 다시 불러오기
     } catch (error) {
-      console.error('Error joining study:', error);
+      console.error('스터디 참여 중 오류 발생:', error);
       showToast('스터디 참여에 실패했습니다.', 'error');
     } finally {
       setIsJoining(false);
@@ -384,15 +442,10 @@ export default function StudyDetailPage() {
           {/* 참여자만 볼 수 있는 스터디 콘텐츠 영역 */}
           {isParticipant ? (
             <div className="mt-8">
-              {/* 탭 네비게이션 - 화상회의 탭 제거 */}
-              <div className="mb-4 flex border-b">
-                <button
-                  onClick={() => setActiveTab('chat')}
-                  className="flex items-center gap-2 border-b-2 border-gold-start px-4 py-2 text-gold-start"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  <span>토론 채팅</span>
-                </button>
+              {/* 토론 채팅 헤더 - 탭 네비게이션 대신 일반 헤더로 변경 */}
+              <div className="mb-4 flex items-center border-b pb-2">
+                <MessageCircle className="mr-2 h-5 w-5 text-gray-700" />
+                <h2 className="text-lg font-medium">실시간 토론</h2>
               </div>
 
               {/* 채팅 영역 */}
