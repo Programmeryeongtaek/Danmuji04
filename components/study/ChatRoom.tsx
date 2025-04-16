@@ -51,6 +51,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
   const { showToast } = useToast();
 
   // 채팅 내용 무한 스크롤
+  const [isNewMessageAdded, setIsNewMessageAdded] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -76,8 +77,10 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         .from('study_chat_messages')
         .select('*')
         .eq('study_id', studyId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .range(offset, offset + 29); // 페이지네이션 적용
+
+      if (data) data.reverse();
 
       if (error) throw error;
 
@@ -153,7 +156,23 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
     if (isLoadingMore || !hasMoreMessages) return;
 
     setIsLoadingMore(true);
-    loadMessages(messages.length);
+
+    // 현재 스크롤 위치 및 높이 저장
+    const messagesContainer = messagesContainerRef.current;
+    const scrollHeight = messagesContainer ? messagesContainer.scrollHeight : 0;
+    const scrollPosition = messagesContainer ? messagesContainer.scrollTop : 0;
+
+    loadMessages(messages.length).then(() => {
+      // 메시지 로드 완료 후, 새로 추가된 높이만큼 스크롤 조정
+      setTimeout(() => {
+        if (messagesContainer) {
+          const newScrollHeight = messagesContainer.scrollHeight;
+          const heightDifference = newScrollHeight - scrollHeight;
+          messagesContainer.scrollTop = scrollPosition + heightDifference;
+        }
+        setIsLoadingMore(false);
+      }, 100);
+    });
   };
 
   // 스크롤 이벤트 감지
@@ -161,29 +180,28 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
     const messagesContainer = messagesContainerRef.current;
     if (!messagesContainer) return;
 
-    const handleScroll = () => {
-      // 스크롤이 상단에 도달했는지 확인
-      if (
-        messagesContainer.scrollTop <= 50 &&
-        hasMoreMessages &&
-        !isLoadingMore
-      ) {
-        // 스크롤 위치 기억
-        const scrollHeight = messagesContainer.scrollHeight;
+    // 초기 로드 시에만 스크롤을 아래로 이동 (이전 메시지 로딩 시에는 스크롤 유지)
+    if (
+      messages.length > 0 &&
+      !isLoadingMore &&
+      !isLoading &&
+      !hasMoreMessages
+    ) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 
-        loadMoreMessages();
-
-        // 스크롤 위치 복원 (새 메시지가 로드되면 스크롤 위치가 변경되는 것 방지)
-        setTimeout(() => {
-          const newScrollHeight = messagesContainer.scrollHeight;
-          messagesContainer.scrollTop = newScrollHeight - scrollHeight;
-        }, 100);
-      }
-    };
-
-    messagesContainer.addEventListener('scroll', handleScroll);
-    return () => messagesContainer.removeEventListener('scroll', handleScroll);
-  }, [messages.length, hasMoreMessages, isLoadingMore]);
+    // 새 메시지가 추가된 경우에만 스크롤 아래로
+    if (isNewMessageAdded) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      setIsNewMessageAdded(false);
+    }
+  }, [
+    messages.length,
+    isLoadingMore,
+    isLoading,
+    isNewMessageAdded,
+    hasMoreMessages,
+  ]);
 
   // 실시간 메시지 구독
   useEffect(() => {
@@ -293,8 +311,15 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
 
   // 메시지 입력창 자동 스크롤
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // 최초 로딩 또는 새 메시지가 추가된 경우에만 스크롤
+    if (
+      messagesEndRef.current &&
+      (isNewMessageAdded || (!isLoading && messages.length > 0))
+    ) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+      setIsNewMessageAdded(false); // 스크롤 후 플래그 초기화
+    }
+  }, [messages, isNewMessageAdded, isLoading]);
 
   // 이미지 선택 처리
   const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
@@ -429,6 +454,9 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         );
       });
 
+      // 새 메시지 전송 시 스크롤 플래그 활성화
+      setIsNewMessageAdded(true);
+
       // 입력창 및 이미지 초기화
       setNewMessage('');
       setUploadedImage(null);
@@ -506,6 +534,36 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           </div>
         )}
 
+        {/* 이전 메시지 보기 버튼 */}
+        {hasMoreMessages && (
+          <div className="mb-4 flex justify-center">
+            <button
+              onClick={loadMoreMessages}
+              disabled={isLoadingMore}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {isLoadingMore ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"></div>
+              ) : (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 10l7-7m0 0l7 7m-7-7v18"
+                  />
+                </svg>
+              )}
+              {isLoadingMore ? '로딩 중...' : '이전 메시지 보기'}
+            </button>
+          </div>
+        )}
+
         {isLoading && messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"></div>
@@ -513,7 +571,11 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         ) : sortedMessages.length > 0 ? (
           <div className="space-y-4">
             {sortedMessages.map((message) => (
-              <div key={message.id} className="flex gap-3">
+              <div
+                key={message.id}
+                id={`message-${message.id}`}
+                className="flex gap-3"
+              >
                 <div className="flex-shrink-0">
                   <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
                     {message.avatar_url ? (
