@@ -145,15 +145,16 @@ export default function ShareButton({
               <Mail className="h-5 w-5 text-gray-600" />
               <span>이메일로 공유</span>
             </button>
-            {navigator.share && (
-              <button
-                onClick={useNativeShare}
-                className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-gray-100"
-              >
-                <Share2 className="h-5 w-5 text-green-600" />
-                <span>기기 공유 기능 사용</span>
-              </button>
-            )}
+            {typeof navigator !== 'undefined' &&
+              typeof navigator.share === 'function' && (
+                <button
+                  onClick={useNativeShare}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-gray-100"
+                >
+                  <Share2 className="h-5 w-5 text-green-600" />
+                  <span>기기 공유 기능 사용</span>
+                </button>
+              )}
           </div>
         </div>
       )}
