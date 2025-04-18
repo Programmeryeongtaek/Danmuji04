@@ -3,6 +3,7 @@
 import { useToast } from '@/components/common/Toast/Context';
 import ChatRoom from '@/components/study/ChatRoom';
 import ShareButton from '@/components/study/ShareButton';
+import StudyEditForm from '@/components/study/StudyEditForm';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -11,6 +12,7 @@ import {
   ArrowLeft,
   Book,
   CalendarClock,
+  Edit2,
   MapPin,
   MessageCircle,
   User,
@@ -19,8 +21,9 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
+// 스터디 상세 정보 타입
 interface Study {
   id: string;
   title: string;
@@ -39,6 +42,7 @@ interface Study {
   book_id?: string | null;
 }
 
+// 도서 정보 타입
 interface BookInfo {
   id: string;
   title: string;
@@ -46,6 +50,7 @@ interface BookInfo {
   cover_url: string | null;
 }
 
+// 참여자 정보 타입
 interface Participant {
   id: string;
   study_id: string;
@@ -57,6 +62,17 @@ interface Participant {
   last_active_at?: string | null;
 }
 
+// 스터디 수정 폼 데이터 타입
+interface StudyFormData {
+  title: string;
+  description: string;
+  max_participants: number;
+  start_date: string;
+  end_date: string;
+  location: string;
+  is_online: boolean;
+}
+
 export default function StudyDetailPage() {
   const [study, setStudy] = useState<Study | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -65,6 +81,7 @@ export default function StudyDetailPage() {
   const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -73,7 +90,7 @@ export default function StudyDetailPage() {
   const studyId = params.id as string;
 
   // 참여 상태만 빠르게 확인하는 별도 함수
-  const checkParticipationStatus = async () => {
+  const checkParticipationStatus = useCallback(async () => {
     if (!user || !studyId) return;
 
     try {
@@ -97,22 +114,10 @@ export default function StudyDetailPage() {
     } catch (error) {
       console.error('참여 상태 확인 중 오류:', error);
     }
-  };
-
-  useEffect(() => {
-    if (studyId && user) {
-      // 페이지 로드 시 즉시 참여 여부 확인
-      checkParticipationStatus();
-      // 전체 스터디 정보 로드
-      fetchStudyDetails();
-    } else {
-      // 로그인하지 않은 경우에는 스터디 정보만 로드
-      fetchStudyDetails();
-    }
   }, [studyId, user]);
 
-  // 스터디 정보 및 참여자 정보 가져오기 - 여러 함수로 분리
-  const fetchStudyDetails = async () => {
+  // 스터디 정보 및 참여자 정보 가져오기
+  const fetchStudyDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       const supabase = createClient();
@@ -133,7 +138,19 @@ export default function StudyDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [study?.book_id, showToast]);
+
+  useEffect(() => {
+    if (studyId && user) {
+      // 페이지 로드 시 즉시 참여 여부 확인
+      checkParticipationStatus();
+      // 전체 스터디 정보 로드
+      fetchStudyDetails();
+    } else {
+      // 로그인하지 않은 경우에는 스터디 정보만 로드
+      fetchStudyDetails();
+    }
+  }, [studyId, user, checkParticipationStatus, fetchStudyDetails]);
 
   // 스터디 기본 정보 가져오기 및 참여자 수 동기화
   const fetchAndSyncStudyData = async (supabase: SupabaseClient) => {
@@ -601,6 +618,36 @@ export default function StudyDetailPage() {
     }
   };
 
+  // 수정 성공 시 로컬 상태 업데이트하는 함수
+  const handleStudyUpdateSuccess = (updatedData: StudyFormData) => {
+    // 기존 스터디 객체가 없으면 종료
+    if (!study) return;
+
+    // 날짜 형식 유지를 위한 처리
+    const formattedStartDate = updatedData.start_date.includes('T')
+      ? updatedData.start_date
+      : `${updatedData.start_date}T00:00:00`;
+
+    const formattedEndDate = updatedData.end_date.includes('T')
+      ? updatedData.end_date
+      : `${updatedData.end_date}T00:00:00`;
+
+    // 스터디 객체 업데이트
+    const updatedStudy = {
+      ...study,
+      title: updatedData.title,
+      description: updatedData.description,
+      max_participants: updatedData.max_participants,
+      start_date: formattedStartDate,
+      end_date: formattedEndDate,
+      location: updatedData.location,
+      is_online: updatedData.is_online,
+    };
+
+    // 상태 업데이트
+    setStudy(updatedStudy);
+  };
+
   // 날짜 포맷 함수
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -670,38 +717,78 @@ export default function StudyDetailPage() {
                 </span>
               </div>
 
-              {/* 공유 버튼 */}
-              <ShareButton
-                title={study.title}
-                description={`${study.category} 스터디 - ${study.current_participants}/${study.max_participants}명 참여 중`}
+              <div className="flex items-center gap-2">
+                {/* 방장만 볼 수 있는 편집 버튼 */}
+                {user && study.owner_id === user.id && (
+                  <button
+                    onClick={() => setIsEditMode(true)}
+                    className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 hover:bg-gray-50"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    수정
+                  </button>
+                )}
+
+                {/* 공유 버튼 */}
+                <ShareButton
+                  title={study.title}
+                  description={`${study.category} 스터디 - ${study.current_participants}/${study.max_participants}명 참여 중`}
+                />
+              </div>
+            </div>
+
+            {/* 수정 모드일 때는 폼 표시, 아니면 기존 내용 표시 */}
+            {isEditMode ? (
+              <StudyEditForm
+                studyId={studyId}
+                initialData={{
+                  title: study.title,
+                  description: study.description,
+                  max_participants: study.max_participants,
+                  start_date: study.start_date.split('T')[0], // 날짜 부분만 사용
+                  end_date: study.end_date.split('T')[0], // 날짜 부분만 사용
+                  location: study.location,
+                  is_online: study.is_online,
+                }}
+                onCancel={() => setIsEditMode(false)}
+                onSuccess={handleStudyUpdateSuccess}
               />
-            </div>
+            ) : (
+              <>
+                <h1 className="mb-4 text-2xl font-bold">{study.title}</h1>
 
-            <h1 className="mb-4 text-2xl font-bold">{study.title}</h1>
-
-            <div className="mb-6 grid gap-2 text-sm md:grid-cols-2">
-              <div className="flex items-center">
-                <User className="mr-2 h-4 w-4 text-gray-400" />
-                <span>주최자: {study.owner_name}</span>
-              </div>
-              <div className="flex items-center">
-                <Users className="mr-2 h-4 w-4 text-gray-400" />
-                <span>
-                  {study.current_participants}/{study.max_participants}명 참여
-                  중
-                </span>
-              </div>
-              <div className="flex items-center">
-                <CalendarClock className="mr-2 h-4 w-4 text-gray-400" />
-                <span>
-                  {formatDate(study.start_date)} ~ {formatDate(study.end_date)}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <MapPin className="mr-2 h-4 w-4 text-gray-400" />
-                <span>{study.is_online ? '온라인' : study.location}</span>
-              </div>
-            </div>
+                <div className="mb-6 grid gap-2 text-sm md:grid-cols-2">
+                  <div className="flex items-center">
+                    <User className="mr-2 h-4 w-4 text-gray-400" />
+                    <span>주최자: {study.owner_name}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Users className="mr-2 h-4 w-4 text-gray-400" />
+                    <span>
+                      {study.current_participants}/{study.max_participants}명
+                      참여 중
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <CalendarClock className="mr-2 h-4 w-4 text-gray-400" />
+                    <span>
+                      {formatDate(study.start_date)} ~{' '}
+                      {formatDate(study.end_date)}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                    <span>{study.is_online ? '온라인' : study.location}</span>
+                  </div>
+                </div>
+                <div className="border-t pt-4">
+                  <h2 className="mb-2 text-lg font-medium">스터디 설명</h2>
+                  <div className="whitespace-pre-wrap text-gray-700">
+                    {study.description}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* 연결된 도서 정보 표시 */}
             {bookInfo && (
@@ -737,13 +824,6 @@ export default function StudyDetailPage() {
                 </div>
               </div>
             )}
-
-            <div className="border-t pt-4">
-              <h2 className="mb-2 text-lg font-medium">스터디 설명</h2>
-              <div className="whitespace-pre-wrap text-gray-700">
-                {study.description}
-              </div>
-            </div>
           </div>
 
           {/* 참여자만 볼 수 있는 스터디 콘텐츠 영역 */}
