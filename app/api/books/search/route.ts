@@ -1,20 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// 도서 API 응답 타입
-export interface AladinBookItem {
-  isbn: string;
-  title: string;
-  author: string;
-  publisher: string;
-  pubDate: string;
-  cover: string;
-  description?: string;
-  link?: string;
-  categoryName?: string;
-  priceSales?: number;
-  priceStandard?: number;
-}
-
 export interface AladinResponse {
   version: string;
   logo: string;
@@ -31,10 +15,24 @@ export interface AladinResponse {
   error?: string;
 }
 
+export interface AladinBookItem {
+  isbn: string;
+  title: string;
+  author: string;
+  publisher: string;
+  pubDate: string;
+  cover: string;
+  description?: string;
+  link?: string;
+  categoryName?: string;
+  priceSales?: number;
+  priceStandard?: number;
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get('query');
-  const ttbKey = process.env.ALADIN_TTB_KEY; // .env 파일에 API 키 설정 필요
+  const ttbKey = process.env.ALADIN_TTB_KEY;
 
   if (!query) {
     return NextResponse.json({ error: '검색어를 입력해주세요' }, { status: 400 });
