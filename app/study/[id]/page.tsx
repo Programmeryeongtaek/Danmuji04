@@ -15,6 +15,7 @@ import {
   Edit2,
   MapPin,
   MessageCircle,
+  Trash2,
   User,
   Users,
 } from 'lucide-react';
@@ -123,6 +124,62 @@ export default function StudyDetailPage() {
       console.error('참여 상태 확인 중 오류:', error);
     }
   }, [studyId, user]);
+
+  // 스터디 상태 변경
+  const handleChangeStudyStatus = async (
+    newStatus: 'recruiting' | 'in_progress' | 'completed'
+  ) => {
+    if (!user || !study) return;
+
+    // 방장 권한 확인
+    if (study.owner_id !== user.id) {
+      showToast('스터디 방장만 상태를 변경할 수 있습니다.', 'error');
+      return;
+    }
+
+    // 완료 상태에서는 변경 불가
+    if (study.status === 'completed') {
+      showToast('완료된 스터디의 상태는 변경할 수 없습니다.', 'error');
+      return;
+    }
+
+    // 완료로 변경시 최종 확인
+    if (
+      newStatus === 'completed' &&
+      !confirm(
+        '완료 상태를 선택하면, 스터디 상태를 변경할 수 없습니다. 계속하시겠습니까?'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from('studies')
+        .update({ ststus: newStatus })
+        .eq('id', studyId);
+
+      if (error) throw error;
+
+      setStudy({
+        ...study,
+        status: newStatus,
+      });
+
+      showToast(
+        `스터디 상태가 ${newStatus === 'recruiting' ? '모집 중' : newStatus === 'in_progress' ? '진행 중' : '완료'}(으)로 변경되었습니다.`,
+        'success'
+      );
+    } catch (error) {
+      console.error('스터디 상태 변경 중 오류:', error);
+      showToast('상태 변경에 실패했습니다.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 스터디 정보 및 참여자 정보 가져오기
   const fetchStudyDetails = useCallback(async () => {
@@ -667,6 +724,18 @@ export default function StudyDetailPage() {
     const isOwner = study.owner_id === user.id;
     const actionText = isOwner ? '해체' : '나가기';
 
+    // 방장 권한 확인
+    if (study.owner_id !== user.id) {
+      showToast('스터디 방장만 해체할 수 있습니다.', 'error');
+      return;
+    }
+
+    // 모집중 상태만 해체 가능
+    if (study.status !== 'recruiting') {
+      showToast('진행 중이거나 완료된 스터디는 해체할 수 없습니다.', 'error');
+      return;
+    }
+
     // 확인 메시지 표시
     if (!confirm(`정말로 스터디를 ${actionText}하시겠습니까?`)) return;
 
@@ -704,6 +773,24 @@ export default function StudyDetailPage() {
           if (deleteParticipantsError) {
             console.error('참여자 삭제 오류:', deleteParticipantsError);
           }
+
+          // 2. 채팅 메시지 삭제
+          const { error: deleteChatError } = await supabase
+            .from('study_chat_messages')
+            .delete()
+            .eq('study_id', studyId);
+
+          if (deleteChatError) {
+            console.error('채팅 메시지 삭제 오류:', deleteChatError);
+          }
+
+          // 3. 스터디 삭제
+          const { error: deleteStudyError } = await supabase
+            .from('studies')
+            .delete()
+            .eq('id', studyId);
+
+          if (deleteStudyError) throw deleteStudyError;
 
           showToast('스터디가 해체되었습니다.', 'success');
 
@@ -894,6 +981,54 @@ export default function StudyDetailPage() {
       </Link>
 
       <div className="grid gap-8 md:grid-cols-3">
+        {/* 방장 전용 관리 버튼들 */}
+        {user && study.owner_id === user.id && (
+          <div className="mb-6 rounded-lg border bg-white p-4 shadow-sm">
+            <h3 className="mb-3 font-medium">스터디 관리</h3>
+
+            {/* 상태 변경 */}
+            <div className="mb-4 flex items-center">
+              <span className="mr-2">스터디 상태:</span>
+              <select
+                value={study.status}
+                onChange={(e) =>
+                  handleChangeStudyStatus(
+                    e.target.value as 'recruiting' | 'in_progress' | 'completed'
+                  )
+                }
+                disabled={study.status === 'completed' || isLoading}
+                className="rounded border p-1"
+              >
+                <option value="recruiting">모집중</option>
+                <option value="in_progress">진행중</option>
+                <option value="completed">완료</option>
+              </select>
+            </div>
+
+            {/* 관리 버튼 */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditMode(true)}
+                disabled={isLoading}
+                className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Edit2 className="h-4 w-4" />
+                수정
+              </button>
+
+              {study.status === 'recruiting' && (
+                <button
+                  onClick={handleLeaveStudy}
+                  disabled={isLoading}
+                  className="flex items-center gap-1 rounded-lg border border-red-500 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  해체하기
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {/* 스터디 정보 */}
         <div className="md:col-span-2">
           <div className="rounded-lg border bg-white p-6 shadow-sm">
