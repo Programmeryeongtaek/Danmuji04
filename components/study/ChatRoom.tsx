@@ -45,6 +45,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
   const [isSending, setIsSending] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [totalMessageCount, setTotalMessageCount] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const user = useAtomValue(userAtom);
@@ -71,6 +72,11 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         setIsLoading(true);
       }
       const supabase = createClient();
+
+      // 총 메시지 수 조회 (페이지 첫 로드 시)
+      if (offset === 0) {
+        await fetchTotalMessageCount();
+      }
 
       // 최근 메시지 30개씩 로드
       const { data, error } = await supabase
@@ -252,6 +258,9 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
 
           // ID 추적 Set에 추가
           processedMessageIds.current.add(newMessage.id);
+
+          // 새 메시지가 추가되면 총 메시지 수 증가
+          setTotalMessageCount((prev) => prev + 1);
 
           try {
             // 프로필 정보 로드
@@ -461,6 +470,9 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       // 새 메시지 ID를 Set에 추가 (중복 방지)
       processedMessageIds.current.add(newMessageData.id);
 
+      // 메시지가 성공적으로 전송되면 totalMessageCount 증가
+      setTotalMessageCount((prev) => prev + 1);
+
       // 메시지를 UI에 직접 추가 (서버 응답 기다리지 않고)
       setMessages((prev) => {
         const enhancedMessage = {
@@ -500,6 +512,26 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           messageInputRef.current.focus();
         }
       }, 100);
+    }
+  };
+
+  // 총 메시지 수를 가져오는 함수
+  const fetchTotalMessageCount = async () => {
+    const supabase = createClient();
+    try {
+      const { count, error } = await supabase
+        .from('study_chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('study_id', studyId);
+
+      if (error) {
+        console.error('총 메시지 수 조회 실패:', error);
+        return;
+      }
+
+      setTotalMessageCount(count || 0);
+    } catch (error) {
+      console.error('메시지 수 조회 중 오류:', error);
     }
   };
 
@@ -543,9 +575,11 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
           <span>실시간 토론</span>
         </h3>
         <div className="text-sm text-gray-500">
-          {messages.length > 0
-            ? `${messages.length}개의 메시지`
-            : '메시지 없음'}
+          {isLoading
+            ? '로딩 중...'
+            : totalMessageCount > 0
+              ? `총 ${totalMessageCount}개의 메시지`
+              : '메시지 없음'}
         </div>
       </div>
 

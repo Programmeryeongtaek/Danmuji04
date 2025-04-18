@@ -165,7 +165,7 @@ export default function StudyDetailPage() {
 
   // 참여자 정보 가져오기 및 처리
   const fetchParticipantsData = async (supabase: SupabaseClient) => {
-    // 참여자 목록 조회 - 아래 쿼리 수정 (탈퇴한 사용자 제외)
+    // 참여자 목록 조회
     const { data: participantsData, error: participantsError } = await supabase
       .from('study_participants')
       .select('*')
