@@ -72,11 +72,44 @@ export default function StudyDetailPage() {
   const params = useParams();
   const studyId = params.id as string;
 
+  // 참여 상태만 빠르게 확인하는 별도 함수
+  const checkParticipationStatus = async () => {
+    if (!user || !studyId) return;
+
+    try {
+      const supabase = createClient();
+
+      // 사용자의 참여 여부만 빠르게 확인
+      const { data, error } = await supabase
+        .from('study_participants')
+        .select('id')
+        .eq('study_id', studyId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('참여 상태 확인 오류:', error);
+        return;
+      }
+
+      // 참여 상태 설정 (null이 아니면 참여 중)
+      setIsParticipant(!!data);
+    } catch (error) {
+      console.error('참여 상태 확인 중 오류:', error);
+    }
+  };
+
   useEffect(() => {
-    if (studyId) {
+    if (studyId && user) {
+      // 페이지 로드 시 즉시 참여 여부 확인
+      checkParticipationStatus();
+      // 전체 스터디 정보 로드
+      fetchStudyDetails();
+    } else {
+      // 로그인하지 않은 경우에는 스터디 정보만 로드
       fetchStudyDetails();
     }
-  }, [studyId]);
+  }, [studyId, user]);
 
   // 스터디 정보 및 참여자 정보 가져오기 - 여러 함수로 분리
   const fetchStudyDetails = async () => {
@@ -714,15 +747,13 @@ export default function StudyDetailPage() {
           </div>
 
           {/* 참여자만 볼 수 있는 스터디 콘텐츠 영역 */}
-          {isParticipant ? (
+          {isParticipant === true ? (
             <div className="mt-8">
-              {/* 토론 채팅 헤더 - 탭 네비게이션 대신 일반 헤더로 변경 */}
+              {/* 채팅방 표시 */}
               <div className="mb-4 flex items-center border-b pb-2">
                 <MessageCircle className="mr-2 h-5 w-5 text-gray-700" />
                 <h2 className="text-lg font-medium">실시간 토론</h2>
               </div>
-
-              {/* 채팅 영역 */}
               <div className="h-[500px]">
                 <ChatRoom studyId={studyId} />
               </div>
@@ -730,13 +761,13 @@ export default function StudyDetailPage() {
           ) : (
             <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-medium">스터디 토론</h2>
-
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <MessageCircle className="mb-3 h-10 w-10 text-gray-300" />
                 <p className="mb-4 text-gray-600">
                   스터디에 참여하면 실시간 토론방에 참여할 수 있습니다.
                 </p>
-                {study.status === 'recruiting' &&
+                {!isLoading &&
+                  study?.status === 'recruiting' &&
                   study.current_participants < study.max_participants && (
                     <button
                       onClick={handleJoinStudy}
