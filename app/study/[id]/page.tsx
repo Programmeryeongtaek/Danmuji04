@@ -5,6 +5,7 @@ import ChatRoom from '@/components/study/ChatRoom';
 import ShareButton from '@/components/study/ShareButton';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { useAtomValue } from 'jotai';
 import {
   ArrowLeft,
@@ -63,6 +64,7 @@ export default function StudyDetailPage() {
   const [isParticipant, setIsParticipant] = useState(false);
   const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -76,106 +78,153 @@ export default function StudyDetailPage() {
     }
   }, [studyId]);
 
+  // 스터디 정보 및 참여자 정보 가져오기 - 여러 함수로 분리
   const fetchStudyDetails = async () => {
     setIsLoading(true);
     try {
       const supabase = createClient();
 
-      // 스터디 정보 가져오기
-      const { data: studyData, error: studyError } = await supabase
-        .from('studies')
-        .select('*')
-        .eq('id', studyId)
-        .single();
+      // 스터디 기본 정보 및 참여자 수 동기화
+      await fetchAndSyncStudyData(supabase);
 
-      if (studyError) {
-        console.error('스터디 정보 조회 오류:', studyError);
-        throw studyError;
+      // 연결된 도서 정보 가져오기
+      if (study?.book_id) {
+        await fetchBookInfo(supabase, study.book_id);
       }
 
-      setStudy(studyData);
-
-      // 연결된 도서 정보 가져오기 (있는 경우)
-      if (studyData.book_id) {
-        const { data: bookData, error: bookError } = await supabase
-          .from('books')
-          .select('id, title, author, cover_url')
-          .eq('id', studyData.book_id)
-          .single();
-
-        if (bookError) {
-          console.error('도서 정보 조회 오류:', bookError);
-        } else {
-          setBookInfo(bookData);
-        }
-      }
-
-      // 참여자 정보 가져오기
-      const { data: participantData, error: participantError } = await supabase
-        .from('study_participants')
-        .select('*')
-        .eq('study_id', studyId)
-        .order('joined_at', { ascending: true });
-
-      if (participantError) {
-        console.error('참여자 정보 조회 오류:', participantError);
-        throw participantError;
-      }
-
-      // 현재 로그인한 사용자가 참여자인지 체크
-      if (user) {
-        const isUserParticipating = participantData.some(
-          (p) => p.user_id === user.id
-        );
-        console.log('사용자 참여 상태:', isUserParticipating);
-        setIsParticipant(isUserParticipating);
-      }
-
-      // 참여자 프로필 이미지 가져오기
-      const enhancedParticipants = await Promise.all(
-        participantData.map(async (participant) => {
-          try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('avatar_url')
-              .eq('id', participant.user_id)
-              .single();
-
-            if (profileError && profileError.code !== 'PGRST116') {
-              console.error('프로필 정보 조회 오류:', profileError);
-            }
-
-            let avatarUrl = null;
-            if (profileData?.avatar_url) {
-              const {
-                data: { publicUrl },
-              } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(profileData.avatar_url);
-              avatarUrl = publicUrl;
-            }
-
-            return {
-              ...participant,
-              avatar_url: avatarUrl,
-            };
-          } catch (error) {
-            console.error('참여자 프로필 처리 오류:', error);
-            return {
-              ...participant,
-              avatar_url: null,
-            };
-          }
-        })
-      );
-
-      setParticipants(enhancedParticipants);
+      // 참여자 정보 가져오기 및 프로필 정보 처리
+      await fetchParticipantsData(supabase);
     } catch (error) {
       console.error('스터디 정보 로딩 중 오류:', error);
       showToast('스터디 정보를 불러오는데 실패했습니다.', 'error');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 스터디 기본 정보 가져오기 및 참여자 수 동기화
+  const fetchAndSyncStudyData = async (supabase: SupabaseClient) => {
+    // 스터디 정보 가져오기
+    const { data: studyData, error: studyError } = await supabase
+      .from('studies')
+      .select('*')
+      .eq('id', studyId)
+      .single();
+
+    if (studyError) {
+      console.error('스터디 정보 조회 오류:', studyError);
+      throw studyError;
+    }
+
+    // 참여자 수 동기화를 위한 참여자 정보 조회
+    const { data: participantCount, error: participantCountError } =
+      await supabase
+        .from('study_participants')
+        .select('id', { count: 'exact' })
+        .eq('study_id', studyId);
+
+    const actualParticipantCount = participantCount?.length || 0;
+
+    if (!participantCountError) {
+      // 실제 참여자 수와 DB의 값이 다른 경우 업데이트
+      if (actualParticipantCount !== studyData.current_participants) {
+        const updatedStudyData = {
+          ...studyData,
+          current_participants: actualParticipantCount,
+        };
+
+        // DB 업데이트
+        await supabase
+          .from('studies')
+          .update({ current_participants: actualParticipantCount })
+          .eq('id', studyId);
+
+        setStudy(updatedStudyData);
+      } else {
+        setStudy(studyData);
+      }
+    } else {
+      setStudy(studyData);
+    }
+  };
+
+  // 도서 정보 가져오기
+  const fetchBookInfo = async (supabase: SupabaseClient, bookId: string) => {
+    const { data: bookData, error: bookError } = await supabase
+      .from('books')
+      .select('id, title, author, cover_url')
+      .eq('id', bookId)
+      .single();
+
+    if (bookError) {
+      console.error('도서 정보 조회 오류:', bookError);
+    } else {
+      setBookInfo(bookData);
+    }
+  };
+
+  // 참여자 정보 가져오기 및 처리
+  const fetchParticipantsData = async (supabase: SupabaseClient) => {
+    // 참여자 목록 조회 - 아래 쿼리 수정 (탈퇴한 사용자 제외)
+    const { data: participantsData, error: participantsError } = await supabase
+      .from('study_participants')
+      .select('*')
+      .eq('study_id', studyId)
+      .order('joined_at', { ascending: true });
+
+    if (participantsError) {
+      console.error('참여자 정보 조회 오류:', participantsError);
+      throw participantsError;
+    }
+
+    // 현재 로그인한 사용자가 참여자인지 체크
+    if (user) {
+      const isUserParticipating = participantsData.some(
+        (p) => p.user_id === user.id
+      );
+      console.log('사용자 참여 상태:', isUserParticipating);
+      setIsParticipant(isUserParticipating);
+    }
+
+    // 참여자 프로필 이미지 가져오기
+    const enhancedParticipants = await Promise.all(
+      participantsData.map(async (participant) => {
+        try {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', participant.user_id)
+            .single();
+
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('프로필 정보 조회 오류:', profileError);
+          }
+
+          let avatarUrl = null;
+          if (profileData?.avatar_url) {
+            const {
+              data: { publicUrl },
+            } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(profileData.avatar_url);
+            avatarUrl = publicUrl;
+          }
+
+          return {
+            ...participant,
+            avatar_url: avatarUrl,
+          };
+        } catch (error) {
+          console.error('참여자 프로필 처리 오류:', error);
+          return {
+            ...participant,
+            avatar_url: null,
+          };
+        }
+      })
+    );
+
+    setParticipants(enhancedParticipants);
   };
 
   const handleJoinStudy = async () => {
@@ -262,8 +311,20 @@ export default function StudyDetailPage() {
         throw participantError;
       }
 
-      // 4. 현재 참여자 수 업데이트
-      const newParticipantCount = study.current_participants + 1;
+      // 4. 현재 스터디 정보 가져오기
+      const { data: studyData, error: fetchError } = await supabase
+        .from('studies')
+        .select('current_participants')
+        .eq('id', studyId)
+        .single();
+
+      if (fetchError) {
+        console.error('스터디 정보 조회 오루:', fetchError);
+        throw fetchError;
+      }
+
+      // 5. 현재 참여자 수 업데이트
+      const newParticipantCount = (studyData?.current_participants || 0) + 1;
       const newStatus =
         newParticipantCount >= study.max_participants
           ? 'in_progress'
@@ -285,12 +346,162 @@ export default function StudyDetailPage() {
       console.log('스터디 참여 성공');
       showToast('스터디에 참여했습니다.', 'success');
       setIsParticipant(true);
-      fetchStudyDetails(); // 정보 다시 불러오기
+
+      // study 상태 즉시 업데이트
+      setStudy({
+        ...study,
+        current_participants: newParticipantCount,
+        status: newStatus,
+      });
+
+      // 페이지 새로고침하여 최신 데이터 가져오기
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error('스터디 참여 중 오류 발생:', error);
       showToast('스터디 참여에 실패했습니다.', 'error');
     } finally {
       setIsJoining(false);
+    }
+  };
+
+  // 스터디 나가기 및 해체 함수 개선
+  const handleLeaveStudy = async () => {
+    if (!user || !study) return;
+
+    const isOwner = study.owner_id === user.id;
+    const actionText = isOwner ? '해체' : '나가기';
+
+    // 확인 메시지 표시
+    if (!confirm(`정말로 스터디를 ${actionText}하시겠습니까?`)) return;
+
+    // 중복 실행 방지
+    if (isLeaving) return;
+    setIsLeaving(true);
+
+    try {
+      setIsLoading(true);
+      const supabase = createClient();
+
+      if (isOwner) {
+        // 방장인 경우: 스터디 해체 (모든 참여자 제거 + 상태 변경)
+        try {
+          // 1. 스터디 상태 변경 (먼저 수행)
+          const { error: updateStudyError } = await supabase
+            .from('studies')
+            .update({
+              status: 'completed',
+              current_participants: 0,
+            })
+            .eq('id', studyId);
+
+          if (updateStudyError) {
+            console.error('스터디 상태 업데이트 오류:', updateStudyError);
+          }
+
+          // 2. 모든 참여자 제거 (hard delete 시도)
+          const { error: deleteParticipantsError } = await supabase
+            .from('study_participants')
+            .delete()
+            .eq('study_id', studyId);
+
+          if (deleteParticipantsError) {
+            console.error('참여자 삭제 오류:', deleteParticipantsError);
+          }
+
+          showToast('스터디가 해체되었습니다.', 'success');
+
+          // 지연 후 리다이렉트
+          setTimeout(() => {
+            router.push('/study');
+          }, 1000);
+        } catch (innerError) {
+          console.error('스터디 해체 과정 중 오류:', innerError);
+          showToast('스터디 해체 과정에서 문제가 발생했습니다.', 'error');
+        }
+      } else {
+        // 일반 참여자인 경우: 참여자 삭제에 여러 번 시도
+        try {
+          // 1. 먼저 hard delete 시도
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const { error: deleteError } = await supabase
+              .from('study_participants')
+              .delete()
+              .eq('study_id', studyId)
+              .eq('user_id', user.id);
+
+            if (!deleteError) {
+              console.log(`나가기 성공: ${attempt + 1}번째 시도`);
+              break; // 성공하면 반복 중단
+            } else {
+              console.error(`나가기 시도 ${attempt + 1} 실패:`, deleteError);
+              // 실패하면 잠시 대기 후 재시도
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+          }
+
+          // 2. 참여자 수 업데이트
+          const { data: currentStudy } = await supabase
+            .from('studies')
+            .select('current_participants')
+            .eq('id', studyId)
+            .single();
+
+          if (currentStudy) {
+            const newCount = Math.max(0, currentStudy.current_participants - 1);
+            await supabase
+              .from('studies')
+              .update({ current_participants: newCount })
+              .eq('id', studyId);
+          }
+
+          // 3. UI 상태 업데이트 (DB 작업 결과와 무관하게)
+          setParticipants((prev) => prev.filter((p) => p.user_id !== user.id));
+          setIsParticipant(false);
+          setStudy((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              current_participants: Math.max(0, prev.current_participants - 1),
+            };
+          });
+
+          showToast('스터디에서 나갔습니다.', 'success');
+
+          // 4. 페이지 강제 새로고침 또는 리다이렉트
+          setTimeout(() => {
+            // 새로고침 대신 목록 페이지로 리다이렉트
+            router.push('/study');
+          }, 1000);
+        } catch (error) {
+          console.error('스터디 나가기 처리 중 오류:', error);
+
+          // 오류가 발생해도 UI에서 나간 것처럼 처리
+          setParticipants((prev) => prev.filter((p) => p.user_id !== user.id));
+          setIsParticipant(false);
+          showToast('오류가 발생했으나 나가기 처리는 완료되었습니다.', 'error');
+
+          // 오류가 발생해도 리다이렉트
+          setTimeout(() => {
+            router.push('/study');
+          }, 1000);
+        }
+      }
+    } catch (error) {
+      console.error(`스터디 ${isOwner ? '해체' : '나가기'} 오류:`, error);
+      showToast(
+        `스터디 ${isOwner ? '해체' : '나가기'}에 실패했습니다.`,
+        'error'
+      );
+
+      // 심각한 오류 발생 시에도 리다이렉트
+      setTimeout(() => {
+        router.push('/study');
+      }, 1000);
+    } finally {
+      setIsLoading(false);
+      setIsLeaving(false);
     }
   };
 
@@ -550,6 +761,19 @@ export default function StudyDetailPage() {
                 </div>
               )}
           </div>
+
+          {isParticipant && (
+            <div className="mt-6">
+              <button
+                onClick={handleLeaveStudy}
+                className="w-full rounded-lg border border-red-500 bg-white py-2 font-medium text-red-500 transition hover:bg-red-50"
+              >
+                {study.owner_id === user?.id
+                  ? '스터디 해체하기'
+                  : '스터디 나가기'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
