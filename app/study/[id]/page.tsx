@@ -366,6 +366,69 @@ export default function StudyDetailPage() {
     }
   };
 
+  // 강퇴 처리 함수
+  const handleKickParticipant = async (
+    participantId: string,
+    participantName: string
+  ) => {
+    if (!user || !study) return;
+
+    // 방장 권한 확인
+    if (study.owner_id !== user.id) {
+      showToast('방장만 참여자를 강퇴할 수 있습니다.', 'error');
+      return;
+    }
+
+    // 강퇴 확인 메시지
+    if (!confirm(`정말로 ${participantName}님을 강퇴하시겠습니까?`)) return;
+
+    try {
+      setIsLoading(true);
+      const supabase = createClient();
+
+      // RPC 함수 호출
+      const { data: success, error } = await supabase.rpc(
+        'kick_study_participant',
+        {
+          p_study_id: studyId,
+          p_owner_id: user.id,
+          p_participant_id: participantId,
+        }
+      );
+
+      if (error) {
+        console.error('참여자 강퇴 중 오류:', error);
+        throw error;
+      }
+
+      if (!success) {
+        showToast('강퇴 권한이 없거나 처리 중 문제가 발생했습니다.', 'error');
+        return;
+      }
+
+      // UI 상태 업데이트
+      setParticipants((prev) =>
+        prev.filter((p) => p.user_id !== participantId)
+      );
+
+      // 스터디 상태 업데이트 (참여자 수 감소)
+      setStudy((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          current_participants: Math.max(0, prev.current_participants - 1),
+        };
+      });
+
+      showToast(`${participantName} 님을 강퇴했습니다.`, 'success');
+    } catch (error) {
+      console.error('강퇴 처리 중 오류:', error);
+      showToast('강퇴 처리 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 스터디 나가기 및 해체 함수 개선
   const handleLeaveStudy = async () => {
     if (!user || !study) return;
@@ -695,35 +758,56 @@ export default function StudyDetailPage() {
 
             <div className="space-y-4">
               {participants.map((participant) => (
-                <div key={participant.id} className="flex items-center">
-                  <div className="mr-3 h-10 w-10 overflow-hidden rounded-full bg-gray-200">
-                    {participant.avatar_url ? (
-                      <img
-                        src={participant.avatar_url}
-                        alt={participant.user_name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <User className="h-5 w-5 text-gray-500" />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center">
-                      <span className="font-medium">
-                        {participant.user_name}
-                      </span>
-                      {participant.role === 'owner' && (
-                        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                          방장
-                        </span>
+                <div
+                  key={participant.id}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center">
+                    <div className="mr-3 h-10 w-10 overflow-hidden rounded-full bg-gray-200">
+                      {participant.avatar_url ? (
+                        <img
+                          src={participant.avatar_url}
+                          alt={participant.user_name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <User className="h-5 w-5 text-gray-500" />
+                        </div>
                       )}
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(participant.joined_at).toLocaleDateString()}
+                    <div>
+                      <div className="flex items-center">
+                        <span className="font-medium">
+                          {participant.user_name}
+                        </span>
+                        {participant.role === 'owner' && (
+                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                            방장
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(participant.joined_at).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
+
+                  {/* 방장이고, 방장이 아닌 참여자에게만 강퇴 버튼 표시 */}
+                  {study?.owner_id === user?.id &&
+                    participant.user_id !== user?.id && (
+                      <button
+                        onClick={() =>
+                          handleKickParticipant(
+                            participant.user_id,
+                            participant.user_name
+                          )
+                        }
+                        className="rounded-lg border border-red-500 px-3 py-1 text-xs font-medium text-red-500 hover:bg-red-50"
+                      >
+                        강퇴
+                      </button>
+                    )}
                 </div>
               ))}
             </div>
