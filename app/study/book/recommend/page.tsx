@@ -1,6 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
+import BookSearch from '@/components/study/BookSearch';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
@@ -8,17 +9,47 @@ import { ArrowLeft, Book, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 
+interface BookItem {
+  isbn: string;
+  title: string;
+  author: string;
+  publisher: string;
+  pubDate: string;
+  cover: string;
+  description: string;
+}
+
 export default function RecommendBookPage() {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [description, setDescription] = useState('');
+  const [isbn, setIsbn] = useState('');
+  const [publisher, setPublisher] = useState('');
+  const [publicationDate, setPublicationDate] = useState('');
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   const router = useRouter();
   const { showToast } = useToast();
   const user = useAtomValue(userAtom);
+
+  // 검색된 도서 선택 처리
+  const handleBookSelect = (book: BookItem) => {
+    setTitle(book.title);
+    setAuthor(book.author);
+    setDescription(book.description || '');
+    setIsbn(book.isbn);
+    setPublisher(book.publisher);
+    setPublicationDate(book.pubDate);
+    setCoverUrl(book.cover);
+    setCoverPreview(book.cover);
+    setIsSearchMode(false);
+
+    showToast('도서 정보가 자동으로 입력되었습니다.', 'success');
+  };
 
   // 이미지 선택 핸들러
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,6 +69,7 @@ export default function RecommendBookPage() {
     }
 
     setCoverImage(file);
+    setCoverUrl(null); // 외부 URL 초기화
 
     // 미리보기 생성
     const reader = new FileReader();
@@ -67,7 +99,7 @@ export default function RecommendBookPage() {
       const supabase = createClient();
 
       // 1. 이미지 업로드 (있는 경우)
-      let coverUrl = null;
+      let finalCoverUrl = coverUrl; // 기본적으로 검색된 커버 URL 사용
 
       if (coverImage) {
         const fileExt = coverImage.name.split('.').pop();
@@ -84,7 +116,7 @@ export default function RecommendBookPage() {
           .from('books')
           .getPublicUrl(filePath);
 
-        coverUrl = publicUrl.publicUrl;
+        finalCoverUrl = publicUrl.publicUrl;
       }
 
       // 2. 도서 정보 저장
@@ -94,7 +126,10 @@ export default function RecommendBookPage() {
           title,
           author,
           description,
-          cover_url: coverUrl,
+          isbn: isbn || '',
+          publisher: publisher || '',
+          publication_date: publicationDate || '',
+          cover_url: finalCoverUrl,
           rating: 0,
           recommendation_count: 1, // 최초 추천은 작성자
           created_by: user.id,
@@ -133,139 +168,196 @@ export default function RecommendBookPage() {
         <h1 className="text-2xl font-bold">새 도서 추천하기</h1>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6 shadow-sm"
-      >
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <label htmlFor="title" className="mb-1 block font-medium">
-              도서 제목 <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="도서 제목을 입력해주세요"
-              className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="author" className="mb-1 block font-medium">
-              저자 <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="author"
-              type="text"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder="저자명을 입력해주세요"
-              className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
-              required
-            />
+      {isSearchMode ? (
+        // 도서 검색 모드
+        <div className="mx-auto max-w-2xl">
+          <BookSearch onSelect={handleBookSelect} />
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={() => setIsSearchMode(false)}
+              className="rounded-lg border border-gray-300 px-6 py-2 hover:bg-gray-50"
+            >
+              직접 입력하기
+            </button>
           </div>
         </div>
+      ) : (
+        // 직접 입력 모드
+        <form
+          onSubmit={handleSubmit}
+          className="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6 shadow-sm"
+        >
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setIsSearchMode(true)}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              도서 검색으로 정보 가져오기
+            </button>
+          </div>
 
-        <div>
-          <label htmlFor="description" className="mb-1 block font-medium">
-            도서 설명
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="도서에 대한 간략한 설명을 적어주세요"
-            rows={4}
-            className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
-          ></textarea>
-        </div>
-
-        <div>
-          <label className="mb-1 block font-medium">표지 이미지</label>
-          <div className="flex items-start gap-4">
-            {coverPreview ? (
-              <div className="relative h-48 w-32 overflow-hidden rounded-lg border">
-                <img
-                  src={coverPreview}
-                  alt="표지 미리보기"
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCoverImage(null);
-                    setCoverPreview(null);
-                  }}
-                  className="absolute right-1 top-1 rounded-full bg-white p-1 shadow hover:bg-gray-100"
-                >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div className="flex h-48 w-32 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50">
-                <Book className="mb-2 h-8 w-8 text-gray-400" />
-                <p className="text-center text-xs text-gray-500">
-                  표지 이미지를
-                  <br />
-                  업로드 해주세요
-                </p>
-              </div>
-            )}
-
-            <div className="flex-1">
-              <label
-                htmlFor="cover-upload"
-                className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                이미지 선택하기
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <label htmlFor="title" className="mb-1 block font-medium">
+                도서 제목 <span className="text-red-500">*</span>
               </label>
               <input
-                id="cover-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
+                id="title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="도서 제목을 입력해주세요"
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+                required
               />
-              <p className="mt-2 text-xs text-gray-500">
-                * 5MB 이하의 JPG, PNG 파일만 업로드 가능합니다.
-              </p>
+            </div>
+
+            <div>
+              <label htmlFor="author" className="mb-1 block font-medium">
+                저자 <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="author"
+                type="text"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="저자명을 입력해주세요"
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+                required
+              />
             </div>
           </div>
-        </div>
 
-        <div className="flex justify-end space-x-4 pt-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-lg border border-gray-300 px-6 py-2 hover:bg-gray-50"
-          >
-            취소
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-2 text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSubmitting ? '등록 중...' : '도서 추천하기'}
-          </button>
-        </div>
-      </form>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <label htmlFor="isbn" className="mb-1 block font-medium">
+                ISBN
+              </label>
+              <input
+                id="isbn"
+                type="text"
+                value={isbn}
+                onChange={(e) => setIsbn(e.target.value)}
+                placeholder="ISBN을 입력해주세요"
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="publisher" className="mb-1 block font-medium">
+                출판사
+              </label>
+              <input
+                id="publisher"
+                type="text"
+                value={publisher}
+                onChange={(e) => setPublisher(e.target.value)}
+                placeholder="출판사를 입력해주세요"
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="description" className="mb-1 block font-medium">
+              도서 설명
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="도서에 대한 간략한 설명을 적어주세요"
+              rows={4}
+              className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+            ></textarea>
+          </div>
+
+          <div>
+            <label className="mb-1 block font-medium">표지 이미지</label>
+            <div className="flex items-start gap-4">
+              {coverPreview ? (
+                <div className="relative h-48 w-32 overflow-hidden rounded-lg border">
+                  <img
+                    src={coverPreview}
+                    alt="표지 미리보기"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCoverImage(null);
+                      setCoverUrl(null);
+                      setCoverPreview(null);
+                    }}
+                    className="absolute right-1 top-1 rounded-full bg-white p-1 shadow hover:bg-gray-100"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex h-48 w-32 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50">
+                  <Book className="mb-2 h-8 w-8 text-gray-400" />
+                  <p className="text-center text-xs text-gray-500">
+                    표지 이미지를
+                    <br />
+                    업로드 해주세요
+                  </p>
+                </div>
+              )}
+
+              <div className="flex-1">
+                <label
+                  htmlFor="cover-upload"
+                  className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  이미지 선택하기
+                </label>
+                <input
+                  id="cover-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  * 5MB 이하의 JPG, PNG 파일만 업로드 가능합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="rounded-lg border border-gray-300 px-6 py-2 hover:bg-gray-50"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-2 text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? '등록 중...' : '도서 추천하기'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

@@ -209,3 +209,87 @@ export async function fetchUserRecommendedBooks(userId: string): Promise<Book[]>
   if (booksError) throw booksError;
   return books || [];
 }
+
+// 알라딘 API로부터 가져온 도서 정보 저장
+export async function createBookFromAladin(
+  bookData: {
+    title: string;
+    author: string;
+    description: string;
+    isbn: string;
+    publisher: string;
+    publication_date: string;
+    cover_url: string | null;
+  },
+  userId: string
+): Promise<Book> {
+  const supabase = createClient();
+
+  // 이미 등록된 도서인지 확인
+  const existingBook = await fetchBookByISBN(bookData.isbn);
+
+  if (existingBook) {
+    // 기존 도서 정보만 반환
+    return existingBook;
+  } else {
+    // 새 도서 등록
+    const { data, error } = await supabase
+      .from('books')
+      .insert({
+        title: bookData.title,
+        author: bookData.author,
+        description: bookData.description,
+        isbn: bookData.isbn,
+        publisher: bookData.publisher,
+        publication_date: bookData.publication_date,
+        cover_url: bookData.cover_url,
+        rating: 0, // 초기 평점
+        recommendation_count: 0, // 초기 추천 수
+        created_by: userId
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+}
+
+// 비슷한 도서 추천 (ISBN 기준)
+export async function fetchSimilarBooks(isbn: string, limit: number = 5): Promise<Book[]> {
+  try {
+    const book = await fetchBookByISBN(isbn);
+    if (!book) return [];
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('books')
+      .select('*')
+      .neq('id', book.id)
+      .eq('author', book.author)
+      .limit(limit);
+    
+    if (error) throw error;
+
+    // 같은 저자의 책이 부족하면 다른 기준으로 추가 검색
+    if (data.length < limit) {
+      const remainingCount = limit - data.length;
+      const { data: moreBooks, error: moreError } = await supabase
+        .from('books')
+        .select('*')
+        .neq('id', book.id)
+        .eq('author', book.author)
+        .order('recommendation_count', { ascending: false })
+        .limit(remainingCount);
+
+      if (!moreError && moreBooks) {
+        return [...data, ...moreBooks];
+      }
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('비슷한 도서 추천 실패:', error);
+    return [];
+  }
+}
