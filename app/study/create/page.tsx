@@ -147,14 +147,24 @@ export default function CreateStudyPage() {
 
       if (error) throw error;
 
-      // 생성자를 첫 번째 참여자로 추가
+      // 생성자를 첫 번째 참여자로 추가하고 자동으로 승인 상태로 설정
       await supabase.from('study_participants').insert({
         study_id: data.id,
         user_id: user!.id,
         user_name: ownerName,
         role: 'owner',
+        status: 'approved', // 방장은 자동으로 승인 상태로 설정
         joined_at: new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
       });
+
+      // 스터디 테이블에 approved_participants 필드 업데이트
+      await supabase
+        .from('studies')
+        .update({
+          approved_participants: 1, // 방장이 첫 번째 승인된 참여자
+        })
+        .eq('id', data.id);
 
       showToast('스터디가 생성되었습니다.', 'success');
       router.push(`/study/${data.id}`);
