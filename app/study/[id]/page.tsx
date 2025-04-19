@@ -1,6 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
+import BookmarkButton from '@/components/study/BookmarkButton';
 import ChatRoom from '@/components/study/ChatRoom';
 import ShareButton from '@/components/study/ShareButton';
 import StudyEditForm from '@/components/study/StudyEditForm';
@@ -1075,11 +1076,12 @@ export default function StudyDetailPage() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2">
               <ShareButton
                 title={study.title}
                 description={`${study.category} 스터디 - ${study.approved_participants}/${study.max_participants}명 확정`}
               />
+              <BookmarkButton studyId={studyId} />
             </div>
           </div>
 
