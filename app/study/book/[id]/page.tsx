@@ -500,7 +500,7 @@ export default function BookDetailPage() {
                             alt={comment.user_name}
                             width={40}
                             height={40}
-                            objectFit="cover"
+                            className="h-full w-full object-cover"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
