@@ -172,45 +172,68 @@ export default function BookDetailPage() {
       const supabase = createClient();
 
       // 이미 추천했는지 확인
-      const { data: existingRec } = await supabase
+      const { data: existingRec, error: recError } = await supabase
         .from('book_recommendations')
         .select('id')
         .eq('user_id', user.id)
         .eq('book_id', book.id)
         .maybeSingle();
 
+      if (recError) {
+        console.error('추천 확인 오류:', recError);
+        throw recError;
+      }
+
       if (existingRec) {
-        // 추천 취소
-        await supabase
+        // 추천 취소 로직
+        const { error: deleteError } = await supabase
           .from('book_recommendations')
           .delete()
           .eq('id', existingRec.id);
 
-        // Books 테이블 카운트 감소
-        await supabase.rpc('decrement_book_recommendation', {
-          book_id: book.id,
-        });
+        if (deleteError) throw deleteError;
 
+        // Books 테이블 카운트 감소
+        const { error: rpcError } = await supabase.rpc(
+          'decrement_book_recommendation',
+          {
+            book_id: book.id,
+          }
+        );
+
+        if (rpcError) throw rpcError;
+
+        // UI 업데이트
         setBook({
           ...book,
-          recommendation_count: book.recommendation_count - 1,
+          recommendation_count: Math.max(0, book.recommendation_count - 1),
           user_has_recommended: false,
         });
 
         showToast('도서 추천을 취소했습니다.', 'success');
       } else {
-        // 추천 추가
-        await supabase.from('book_recommendations').insert({
-          user_id: user.id,
-          book_id: book.id,
-          created_at: new Date().toISOString(),
-        });
+        // 추천 추가 로직
+        const { error: insertError } = await supabase
+          .from('book_recommendations')
+          .insert({
+            user_id: user.id,
+            book_id: book.id,
+            created_at: new Date().toISOString(),
+          });
+
+        if (insertError) throw insertError;
 
         // Books 테이블 카운트 증가
-        await supabase.rpc('increment_book_recommendation', {
-          book_id: book.id,
-        });
+        const { error: rpcError } = await supabase.rpc(
+          'increment_book_recommendation',
+          {
+            book_id: book.id,
+          }
+        );
 
+        if (rpcError) throw rpcError;
+
+        // UI 업데이트
         setBook({
           ...book,
           recommendation_count: book.recommendation_count + 1,
@@ -482,8 +505,9 @@ export default function BookDetailPage() {
                             unoptimized={true}
                             src={comment.user_avatar}
                             alt={comment.user_name}
-                            fill
-                            className="h-full w-full object-cover"
+                            width={40}
+                            height={40}
+                            objectFit="cover"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
