@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   Book,
   MessageSquare,
-  Star,
   ThumbsUp,
   User,
   Users,
@@ -373,8 +372,8 @@ export default function BookDetailPage() {
                     alt={book.title}
                     width={300}
                     height={300}
-                    unoptimized={true}
-                    className="rounded-lg object-cover shadow-md"
+                    objectFit="cover"
+                    className="rounded-lg shadow-md"
                   />
                 ) : (
                   <div className="flex h-[300px] w-[200px] items-center justify-center rounded-lg bg-gray-200 shadow-md">
