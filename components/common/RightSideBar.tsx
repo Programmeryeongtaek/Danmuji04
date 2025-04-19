@@ -9,6 +9,7 @@ import {
   Settings,
   User,
   UserCircle,
+  Users,
   Video,
   X,
 } from 'lucide-react';
@@ -30,12 +31,19 @@ interface RightSideBarProps {
 
 const menuItems = [
   // TODO: 이어서 학습하기 링크 연결 (캐시해서 자동으로 연결 - 마지막에 시청한 영상 링크로 이동하도록)
+  // 학습 관련 메뉴
   { icon: BookOpen, label: '내 학습', href: '/my/learning' },
   { icon: Video, label: '이어서 학습하기', href: '/' },
   { icon: Heart, label: '찜 리스트', href: '/my/wishlist' },
   { icon: Bookmark, label: '북마크', href: '/my/bookmarks' },
   { icon: BookOpen, label: '내 글 모음', href: '/my/writings' },
   { icon: GraduationCap, label: '수료증', href: '/my/certificates' },
+
+  // 스터디 관련 메뉴 추가
+  { icon: Users, label: '내 스터디', href: '/my/studies' },
+  { icon: Bookmark, label: '스터디 북마크', href: '/my/study-bookmarks' },
+
+  // 기타 메뉴
   { icon: Bell, label: '알림', href: '/my/notifications' },
   { icon: Settings, label: '설정', href: '/settings' },
 ];
@@ -103,7 +111,11 @@ const RightSideBar = ({
 
         {/* Menu Items */}
         <nav className="flex flex-col py-2">
-          {menuItems.map((item, index) => (
+          {/* 학습 관련 메뉴 섹션 */}
+          <div className="mb-2 px-4 py-1 text-xs font-semibold text-gray-500">
+            학습
+          </div>
+          {menuItems.slice(0, 6).map((item, index) => (
             <Link
               key={index}
               href={item.href}
@@ -114,10 +126,55 @@ const RightSideBar = ({
               <span className="text-sm">{item.label}</span>
             </Link>
           ))}
+
+          {/* 스터디 관련 메뉴 섹션 */}
+          <div className="mb-2 mt-2 px-4 py-1 text-xs font-semibold text-gray-500">
+            스터디
+          </div>
+          {menuItems.slice(6, 8).map((item, index) => (
+            <Link
+              key={`study-${index}`}
+              href={item.href}
+              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100"
+              onClick={onClose}
+            >
+              <item.icon className="mr-3 h-5 w-5" />
+              <span className="text-sm">{item.label}</span>
+            </Link>
+          ))}
+
+          {/* 기타 메뉴 섹션 */}
+          <div className="mb-2 mt-2 px-4 py-1 text-xs font-semibold text-gray-500">
+            기타
+          </div>
+          {menuItems.slice(8).map((item, index) => (
+            <Link
+              key={`other-${index}`}
+              href={item.href}
+              className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100"
+              onClick={onClose}
+            >
+              <item.icon className="mr-3 h-5 w-5" />
+              <span className="text-sm">{item.label}</span>
+            </Link>
+          ))}
+
+          {/* 바로가기 링크 */}
+          <div className="mb-2 mt-4 px-4 py-1 text-xs font-semibold text-gray-500">
+            바로가기
+          </div>
+          <Link
+            href="/study/create"
+            className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100"
+            onClick={onClose}
+          >
+            <Users className="mr-3 h-5 w-5 text-blue-500" />
+            <span className="text-sm">스터디 개설하기</span>
+          </Link>
         </nav>
 
         {/* Logout Button */}
-        <div className="p-6">
+        <div className="mt-auto p-6">
           <Button
             onClick={async () => {
               await onLogout();

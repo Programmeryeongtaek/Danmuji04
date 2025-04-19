@@ -9,6 +9,7 @@ import {
   Heart,
   PencilLine,
   User,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -34,6 +35,8 @@ interface UserStats {
   writingsCount: number;
   certificatesCount: number;
   wishlistCount: number;
+  studiesParticipatingCount: number; // 참여 중인 스터디 수
+  studiesCreatedCount: number; // 생성한 스터디 수
 }
 
 const MyPageMenu = () => {
@@ -44,6 +47,8 @@ const MyPageMenu = () => {
     writingsCount: 0,
     certificatesCount: 0,
     wishlistCount: 0,
+    studiesParticipatingCount: 0,
+    studiesCreatedCount: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
@@ -123,12 +128,27 @@ const MyPageMenu = () => {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id);
 
+        // 6. 참여 중인 스터디 수
+        const { count: participatingStudiesCount } = await supabase
+          .from('study_participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'approved');
+
+        // 7. 생성한 스터디 수
+        const { count: createdStudiesCount } = await supabase
+          .from('studies')
+          .select('*', { count: 'exact', head: true })
+          .eq('owner_id', user.id);
+
         setStats({
           enrolledCourses: enrolledCount || 0,
           completedCourses: completedCount || 0,
           writingsCount: writingsCount || 0,
           certificatesCount: certificatesCount || 0,
           wishlistCount: wishlistCount || 0,
+          studiesParticipatingCount: participatingStudiesCount || 0,
+          studiesCreatedCount: createdStudiesCount || 0,
         });
       } catch (error) {
         console.error('사용자 데이터 로드 실패:', error);
@@ -230,9 +250,16 @@ const MyPageMenu = () => {
             </div>
           </div>
 
-          <Link href="/settings/profile">
-            <Button className="mt-2 w-full py-2 text-sm">프로필 수정</Button>
-          </Link>
+          <div className="mt-4 flex flex-col gap-2">
+            <Link href="/settings/profile">
+              <Button className="w-full py-2 text-sm">프로필 수정</Button>
+            </Link>
+            <Link href="/study/create">
+              <Button className="w-full bg-gradient-to-r from-gold-start to-gold-end py-2 text-sm text-white hover:opacity-90">
+                스터디 개설하기
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* 사용자 통계 */}
@@ -281,6 +308,55 @@ const MyPageMenu = () => {
                 </div>
                 <p className="mt-2 text-2xl font-bold">{stats.wishlistCount}</p>
               </div>
+              {/* 스터디 통계 카드 추가 */}
+              <div className="rounded-lg border bg-amber-50 p-4">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-amber-600" />
+                  <span className="text-sm font-medium">참여 중인 스터디</span>
+                </div>
+                <p className="mt-2 text-2xl font-bold">
+                  {stats.studiesParticipatingCount}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 스터디 현황 섹션 추가 */}
+          <div className="rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+              <Users className="h-5 w-5 text-gold-start" />
+              <span>스터디 활동</span>
+            </h2>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 rounded-lg bg-purple-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">참여중인 스터디</p>
+                    <p className="text-xl font-bold">
+                      {stats.studiesParticipatingCount}개
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-purple-400" />
+                </div>
+              </div>
+              <div className="flex-1 rounded-lg bg-blue-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">내가 개설한 스터디</p>
+                    <p className="text-xl font-bold">
+                      {stats.studiesCreatedCount}개
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-400" />
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Link href="/my/studies">
+                <Button className="bg-gold-start text-white hover:opacity-90">
+                  스터디 관리
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -297,6 +373,19 @@ const MyPageMenu = () => {
             { label: '작성한 글 보기', href: '/my/writings' },
           ]}
         />
+
+        {/* 스터디 메뉴 카드 추가 */}
+        <MenuCard
+          title="내 스터디"
+          icon={Users}
+          items={[
+            { label: '참여 중인 스터디', href: '/my/studies' },
+            { label: '내가 개설한 스터디', href: '/my/studies?type=created' },
+            { label: '스터디 북마크', href: '/my/study-bookmarks' },
+            { label: '도서 기반 스터디', href: '/study?category=book' },
+          ]}
+        />
+
         <MenuCard
           title="내 강의 관리"
           icon={PencilLine}
@@ -310,6 +399,7 @@ const MyPageMenu = () => {
             profile.role !== 'manager'
           }
         />
+
         <MenuCard
           title="내 자료"
           icon={FileText}
