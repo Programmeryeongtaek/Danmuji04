@@ -389,12 +389,6 @@ export default function BookDetailPage() {
                 <p className="mb-4 text-lg text-gray-700">{book.author}</p>
 
                 <div className="mb-4 flex items-center">
-                  <div className="mr-4 flex items-center">
-                    <Star className="mr-1 h-5 w-5 fill-amber-500 text-amber-500" />
-                    <span className="font-medium">
-                      {book.rating.toFixed(1)}
-                    </span>
-                  </div>
                   <div className="flex items-center">
                     <ThumbsUp className="mr-1 h-5 w-5 text-gray-700" />
                     <span className="font-medium">
