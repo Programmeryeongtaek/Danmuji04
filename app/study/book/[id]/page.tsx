@@ -170,7 +170,7 @@ export default function BookDetailPage() {
     try {
       const supabase = createClient();
 
-      // 이미 추천했는지 확인
+      // 이미 추천했는지 확인 - 더 명확한 쿼리
       const { data: existingRec, error: recError } = await supabase
         .from('book_recommendations')
         .select('id')
@@ -183,6 +183,7 @@ export default function BookDetailPage() {
         throw recError;
       }
 
+      // 이미 추천했으면 삭제
       if (existingRec) {
         // 추천 취소 로직
         const { error: deleteError } = await supabase
@@ -190,17 +191,25 @@ export default function BookDetailPage() {
           .delete()
           .eq('id', existingRec.id);
 
-        if (deleteError) throw deleteError;
+        console.log('추천 삭제 결과:', deleteError);
 
-        // Books 테이블 카운트 감소
-        const { error: rpcError } = await supabase.rpc(
-          'decrement_book_recommendation',
-          {
-            book_id: book.id,
-          }
-        );
+        if (deleteError) {
+          console.error('추천 삭제 오류:', deleteError);
+          throw deleteError;
+        }
 
-        if (rpcError) throw rpcError;
+        // 직접 쿼리로 recommendation_count 업데이트
+        const { error: updateError } = await supabase
+          .from('books')
+          .update({
+            recommendation_count: Math.max(0, book.recommendation_count - 1),
+          })
+          .eq('id', book.id);
+
+        if (updateError) {
+          console.error('카운트 업데이트 오류:', updateError);
+          throw updateError;
+        }
 
         // UI 업데이트
         setBook({
@@ -220,17 +229,22 @@ export default function BookDetailPage() {
             created_at: new Date().toISOString(),
           });
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          throw insertError;
+        }
 
-        // Books 테이블 카운트 증가
-        const { error: rpcError } = await supabase.rpc(
-          'increment_book_recommendation',
-          {
-            book_id: book.id,
-          }
-        );
+        // 직접 쿼리로 recommendation_count 업데이트
+        const { error: updateError } = await supabase
+          .from('books')
+          .update({
+            recommendation_count: book.recommendation_count + 1,
+          })
+          .eq('id', book.id);
 
-        if (rpcError) throw rpcError;
+        if (updateError) {
+          console.error('카운트 업데이트 오류:', updateError);
+          throw updateError;
+        }
 
         // UI 업데이트
         setBook({
@@ -243,7 +257,7 @@ export default function BookDetailPage() {
       }
     } catch (error) {
       console.error('도서 추천 처리 실패:', error);
-      showToast('도서 추천 처리에 실패했습니다.', 'error');
+      showToast('도서 추천 처리에 실패했습니다. 다시 시도해주세요.', 'error');
     }
   };
 
