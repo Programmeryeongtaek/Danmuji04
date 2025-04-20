@@ -4,13 +4,24 @@ import { useToast } from '@/components/common/Toast/Context';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
-import { ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { ArrowLeft, Book } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
+
+// 인터페이스 확장
+interface BookInfo {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
+}
 
 export default function CreateStudyPage() {
   const router = useRouter();
   const user = useAtomValue(userAtom);
+  const searchParams = useSearchParams();
+  const bookId = searchParams.get('book_id');
   const { showToast } = useToast();
 
   const [title, setTitle] = useState('');
@@ -22,6 +33,7 @@ export default function CreateStudyPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [location, setLocation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
 
   const categoryOptions = [
     { value: '', label: '카테고리 선택' },
@@ -50,6 +62,34 @@ export default function CreateStudyPage() {
     setStartDate(formatDateForInput(today));
     setEndDate(formatDateForInput(nextMonth));
   }, []);
+
+  // 도서 ID가 URL에 있는 경우 도서 정보 로드
+  useEffect(() => {
+    const fetchBookInfo = async () => {
+      if (!bookId) return;
+
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('books')
+          .select('id, title, author, cover_url')
+          .eq('id', bookId)
+          .single();
+
+        if (error) throw error;
+
+        setBookInfo(data);
+
+        // 입력 필드 자동 채우기
+        setTitle(`[도서] ${data.title} 스터디`);
+        setCategory('book'); // 도서 카테고리로 자동 설정
+      } catch (error) {
+        console.error('도서 정보 로드 실패:', error);
+      }
+    };
+
+    fetchBookInfo();
+  }, [bookId]);
 
   // 날짜 포맷 함수
   const formatDateForInput = (date: Date) => {
@@ -100,20 +140,31 @@ export default function CreateStudyPage() {
           location: isOnline ? '온라인' : location,
           is_online: isOnline,
           status: 'recruiting',
+          book_id: bookInfo?.id || null, // 도서 연결 정보 추가
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // 생성자를 첫 번째 참여자로 추가
+      // 생성자를 첫 번째 참여자로 추가하고 자동으로 승인 상태로 설정
       await supabase.from('study_participants').insert({
         study_id: data.id,
         user_id: user!.id,
         user_name: ownerName,
         role: 'owner',
+        status: 'approved', // 방장은 자동으로 승인 상태로 설정
         joined_at: new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
       });
+
+      // 스터디 테이블에 approved_participants 필드 업데이트
+      await supabase
+        .from('studies')
+        .update({
+          approved_participants: 1, // 방장이 첫 번째 승인된 참여자
+        })
+        .eq('id', data.id);
 
       showToast('스터디가 생성되었습니다.', 'success');
       router.push(`/study/${data.id}`);
@@ -127,21 +178,48 @@ export default function CreateStudyPage() {
 
   // TODO: 스터디 설명 또는 참고 사진 추가할 수 있도록 구현
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center">
-        <button
-          onClick={() => router.back()}
-          className="mr-4 rounded-full p-2 hover:bg-gray-100"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-2xl font-bold">스터디 개설하기</h1>
-      </div>
-
-      <form
-        onSubmit={handleSubmit}
-        className="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6 shadow-sm"
-      >
+    <form
+      onSubmit={handleSubmit}
+      className="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6 shadow-sm"
+    >
+      {/* 도서 정보가 있는 경우 표시 (추가) */}
+      {bookInfo && (
+        <div className="mb-6 rounded-lg bg-blue-50 p-4">
+          <div className="flex items-center">
+            {bookInfo.cover_url ? (
+              <Image
+                src={bookInfo.cover_url}
+                alt={bookInfo.title}
+                width={48}
+                height={64}
+                unoptimized={true}
+                className="mr-4rounded object-cover shadow-sm"
+              />
+            ) : (
+              <div className="mr-4 flex h-16 w-12 items-center justify-center rounded bg-gray-200">
+                <Book className="h-6 w-6 text-gray-400" />
+              </div>
+            )}
+            <div>
+              <div className="text-sm font-medium text-blue-800">
+                도서 스터디
+              </div>
+              <div className="font-medium">{bookInfo.title}</div>
+              <div className="text-sm text-gray-600">{bookInfo.author}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex items-center">
+          <button
+            onClick={() => router.back()}
+            className="mr-4 rounded-full p-2 hover:bg-gray-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-2xl font-bold">스터디 개설하기</h1>
+        </div>
         <div>
           <label htmlFor="title" className="mb-1 block font-medium">
             스터디 제목 <span className="text-red-500">*</span>
@@ -299,7 +377,7 @@ export default function CreateStudyPage() {
             {isSubmitting ? '생성 중...' : '스터디 생성하기'}
           </button>
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }

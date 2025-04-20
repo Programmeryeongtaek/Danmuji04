@@ -31,6 +31,22 @@ const slideData = [
   },
   {
     id: 4,
+    title: '함께 공부하는 스터디',
+    description: '관심 있는 분야의 스터디에 참여하거나 직접 개설해보세요.',
+    buttonText: '스터디 참여하기',
+    link: '/study',
+    bgColor: 'bg-amber-50',
+  },
+  {
+    id: 5,
+    title: '도서로 시작하는 스터디',
+    description: '좋은 책을 함께 읽고 토론하며 지식을 나눠보세요.',
+    buttonText: '도서 스터디 보기',
+    link: '/study?category=book',
+    bgColor: 'bg-rose-50',
+  },
+  {
+    id: 6,
     title: '나의 학습 현황',
     description: '등록한 강의와 학습 진행 상황을 한눈에 확인하세요.',
     buttonText: '대시보드 바로가기',

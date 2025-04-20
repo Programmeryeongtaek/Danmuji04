@@ -5,7 +5,13 @@ import { useAllCourseProgress } from '@/hooks/useCourse';
 import { Course } from '@/types/course/courseModel';
 import { Lecture } from '@/types/knowledge/lecture';
 import { createClient } from '@/utils/supabase/client';
-import { BookmarkIcon, BookOpen, Calendar, GraduationCap } from 'lucide-react';
+import {
+  BookmarkIcon,
+  BookOpen,
+  Calendar,
+  GraduationCap,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -16,6 +22,21 @@ interface DashboardStatsProps {
   totalStudyTime: number;
   lastActiveDate: string | null;
   streakDays: number;
+  studyParticipationCount: number; // 참여 중인 스터디 수
+  studyCreatedCount: number; // 생성한 스터디 수
+}
+
+// 스터디 정보 타입 정의
+interface Study {
+  id: string;
+  title: string;
+  category: string;
+  owner_id: string;
+  max_participants: number;
+  current_participants: number;
+  status: 'recruiting' | 'in_progress' | 'completed';
+  start_date: string;
+  role?: 'owner' | 'participant';
 }
 
 const DashboardPage = () => {
@@ -26,9 +47,12 @@ const DashboardPage = () => {
     totalStudyTime: 0,
     lastActiveDate: null,
     streakDays: 0,
+    studyParticipationCount: 0,
+    studyCreatedCount: 0,
   });
   const [recentCourses, setRecentCourses] = useState<Course[]>([]);
   const [recentLectures, setRecentLectures] = useState<Lecture[]>([]);
+  const [recentStudies, setRecentStudies] = useState<Study[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { progressData, isLoading: progressLoading } = useAllCourseProgress();
   const { certificates, isLoading: certificatesLoading } = useAllCertificates();
@@ -103,6 +127,56 @@ const DashboardPage = () => {
           setRecentCourses(courses || []);
         }
 
+        // 참여 중인 스터디 수 계산
+        const { count: participationCount } = await supabase
+          .from('study_participants')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'approved');
+
+        // 생성한 스터디 수 계산
+        const { count: createdCount } = await supabase
+          .from('studies')
+          .select('id', { count: 'exact', head: true })
+          .eq('owner_id', user.id);
+
+        // 최근 참여 중인 스터디 가져오기
+        const { data: participatedStudies } = await supabase
+          .from('study_participants')
+          .select('study_id, role')
+          .eq('user_id', user.id)
+          .eq('status', 'approved')
+          .order('joined_at', { ascending: false })
+          .limit(3);
+
+        let studyIds: string[] = [];
+        const roleMap: Record<string, 'owner' | 'participant'> = {};
+
+        if (participatedStudies && participatedStudies.length > 0) {
+          studyIds = participatedStudies.map((p) => p.study_id);
+          participatedStudies.forEach((p) => {
+            roleMap[p.study_id] = p.role as 'owner' | 'participant';
+          });
+        }
+
+        // 스터디 상세 정보 가져오기
+        if (studyIds.length > 0) {
+          const { data: studies } = await supabase
+            .from('studies')
+            .select('*')
+            .in('id', studyIds)
+            .order('updated_at', { ascending: false });
+
+          if (studies) {
+            // 역할 정보 추가
+            const studiesWithRole = studies.map((study) => ({
+              ...study,
+              role: roleMap[study.id],
+            }));
+            setRecentStudies(studiesWithRole);
+          }
+        }
+
         // 완료한 코스 수 계산
         let completedCount = 0;
         if (progressData) {
@@ -126,6 +200,8 @@ const DashboardPage = () => {
           totalStudyTime: totalStudyTime,
           lastActiveDate: lastActivity?.last_accessed || null,
           streakDays: streakDays,
+          studyParticipationCount: participationCount || 0,
+          studyCreatedCount: createdCount || 0,
         });
       } catch (error) {
         console.error('대시보드 데이터 로드 실패:', error);
@@ -136,6 +212,16 @@ const DashboardPage = () => {
 
     fetchDashboardData();
   }, [progressData]);
+
+  // 날짜 포맷 함수
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  };
 
   if (isLoading || progressLoading || certificatesLoading) {
     return (
@@ -187,6 +273,21 @@ const DashboardPage = () => {
             <div>
               <p className="text-sm text-gray-500">찜한 강의</p>
               <p className="text-xl font-bold">{stats.wishlistedCount}개</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 스터디 통계 카드 추가 */}
+        <div className="rounded-lg border bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-purple-100 p-2">
+              <Users className="h-5 w-5 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">참여 중인 스터디</p>
+              <p className="text-xl font-bold">
+                {stats.studyParticipationCount}개
+              </p>
             </div>
           </div>
         </div>
@@ -284,6 +385,86 @@ const DashboardPage = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* 스터디 참여 현황 섹션 추가 */}
+      <div className="mb-8">
+        <h2 className="mb-4 text-lg font-bold">참여 중인 스터디</h2>
+
+        {recentStudies.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recentStudies.map((study) => (
+              <Link
+                key={study.id}
+                href={`/study/${study.id}`}
+                className="block rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="font-medium">{study.title}</h3>
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs ${
+                      study.status === 'recruiting'
+                        ? 'bg-green-100 text-green-600'
+                        : study.status === 'in_progress'
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {study.status === 'recruiting'
+                      ? '모집중'
+                      : study.status === 'in_progress'
+                        ? '진행중'
+                        : '완료'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500">{study.category}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-sm">
+                    <Users className="mr-1 inline-block h-4 w-4" />
+                    {study.current_participants}/{study.max_participants}명
+                  </span>
+                  <span className="text-sm">
+                    시작일: {formatDate(study.start_date)}
+                  </span>
+                </div>
+                {study.role && (
+                  <div className="mt-2">
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-xs ${
+                        study.role === 'owner'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {study.role === 'owner' ? '방장' : '참여자'}
+                    </span>
+                  </div>
+                )}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border bg-white p-6 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <Users className="mb-3 h-12 w-12 text-gray-300" />
+              <p className="text-gray-500">참여 중인 스터디가 없습니다.</p>
+              <div className="mt-4">
+                <Link
+                  href="/study"
+                  className="mr-4 rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                >
+                  스터디 둘러보기
+                </Link>
+                <Link
+                  href="/study/create"
+                  className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:bg-gradient-to-l"
+                >
+                  스터디 개설하기
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 최근 학습 중인 강의/코스 */}
