@@ -5,7 +5,7 @@ import { useToast } from '../common/Toast/Context';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
-import { Book, Search, Star, ThumbsUp } from 'lucide-react';
+import { Book, Search, ThumbsUp } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -15,7 +15,6 @@ interface BookProps {
   author: string;
   cover_url: string;
   description?: string;
-  rating: number;
   recommendation_count: number;
   user_has_recommended?: boolean;
 }
@@ -233,11 +232,6 @@ export default function BookList({
               )}
 
               <div className="mt-auto flex items-center justify-between">
-                <div className="flex items-center">
-                  <Star className="mr-1 h-4 w-4 fill-amber-500 text-amber-500" />
-                  <span>{book.rating.toFixed(1)}</span>
-                </div>
-
                 <button
                   onClick={(e) => handleRecommend(book.id, e)}
                   className={`flex items-center gap-1 rounded-full px-3 py-1 ${

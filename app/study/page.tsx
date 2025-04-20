@@ -2,7 +2,7 @@
 
 import BookList from '@/components/study/BookList';
 import { createClient } from '@/utils/supabase/client';
-import { Book, Star, TrendingUp, Users } from 'lucide-react';
+import { Book, ThumbsUp, TrendingUp, Users } from 'lucide-react';
 import Image from 'next/image';
 
 import Link from 'next/link';
@@ -25,8 +25,8 @@ interface Book {
   title: string;
   author: string;
   cover_url: string;
-  rating: number;
   recommendation_count: number;
+  study_count?: number;
 }
 
 export default function StudyPage() {
@@ -145,13 +145,43 @@ export default function StudyPage() {
     setIsLoading(true);
     try {
       const supabase = createClient();
+
+      // 기본 도서 정보 가져오기
       const { data, error } = await supabase
         .from('books')
         .select('*')
         .order('recommendation_count', { ascending: false });
 
       if (error) throw error;
-      setBooks(data || []);
+
+      if (!data || data.length === 0) {
+        setBooks([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // 각 도서에 대한 스터디 개수 조회
+      const booksWithStudyCount = await Promise.all(
+        data.map(async (book) => {
+          // 해당 도서로 만들어진 스터디 개수 조회
+          const { count, error: countError } = await supabase
+            .from('studies')
+            .select('*', { count: 'exact', head: true })
+            .eq('book_id', book.id);
+
+          if (countError) {
+            console.error(
+              `도서 ${book.id}의 스터디 개수 조회 실패:`,
+              countError
+            );
+            return { ...book, study_count: 0 };
+          }
+
+          return { ...book, study_count: count || 0 };
+        })
+      );
+
+      setBooks(booksWithStudyCount);
     } catch (error) {
       console.error('도서 목록 조회 실패:', error);
     } finally {
@@ -348,16 +378,17 @@ export default function StudyPage() {
                     >
                       <div className="mb-3 flex justify-center">
                         {book.cover_url ? (
-                          <Image
-                            src={book.cover_url}
-                            alt={book.title}
-                            width={144}
-                            height={192}
-                            unoptimized={true}
-                            className="rounded object-cover shadow"
-                          />
+                          <div className="relative h-[200px] w-[140px] overflow-hidden rounded shadow">
+                            <Image
+                              src={book.cover_url}
+                              alt={book.title}
+                              fill
+                              sizes="140px"
+                              className="object-cover"
+                            />
+                          </div>
                         ) : (
-                          <div className="flex h-48 w-36 items-center justify-center rounded bg-gray-200">
+                          <div className="flex h-[200px] w-[140px] items-center justify-center rounded bg-gray-200 shadow">
                             <Book className="h-12 w-12 text-gray-400" />
                           </div>
                         )}
@@ -370,12 +401,19 @@ export default function StudyPage() {
                         {book.author}
                       </p>
 
-                      <div className="mt-auto flex items-center text-amber-500">
-                        <Star className="mr-1 h-4 w-4 fill-amber-500" />
-                        <span>{book.rating.toFixed(1)}</span>
-                        <span className="ml-2 text-sm text-gray-500">
-                          {book.recommendation_count}명이 추천
-                        </span>
+                      <div className="mt-auto flex items-center justify-between">
+                        <div className="flex items-center text-gray-600">
+                          <ThumbsUp className="mr-1 h-4 w-4" />
+                          <span className="text-sm">
+                            {book.recommendation_count}명 추천
+                          </span>
+                        </div>
+                        <div className="flex items-center text-blue-600">
+                          <Users className="mr-1 h-4 w-4" />
+                          <span className="text-sm">
+                            {book.study_count || 0}개 스터디
+                          </span>
+                        </div>
                       </div>
                     </Link>
                   ))}
