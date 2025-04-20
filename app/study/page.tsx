@@ -101,7 +101,31 @@ export default function StudyPage() {
         .limit(4);
 
       setPopularStudies(studiesData || []);
-      setRecommendedBooks(booksData || []);
+
+      // 각 도서에 대한 스터디 개수 조회
+      if (booksData && booksData.length > 0) {
+        const booksWithStudyCount = await Promise.all(
+          booksData.map(async (book) => {
+            const { count, error: countError } = await supabase
+              .from('studies')
+              .select('*', { count: 'exact', head: true })
+              .eq('book_id', book.id);
+
+            if (countError) {
+              console.error(
+                `도서 ${book.id}의 스터디 개수 조회 실패:`,
+                countError
+              );
+              return { ...book, study_count: 0 };
+            }
+
+            return { ...book, study_count: count || 0 };
+          })
+        );
+        setRecommendedBooks(booksWithStudyCount);
+      } else {
+        setRecommendedBooks([]);
+      }
     } catch (error) {
       console.error('Error fetching initial data:', error);
     } finally {
@@ -411,7 +435,10 @@ export default function StudyPage() {
                         <div className="flex items-center text-blue-600">
                           <Users className="mr-1 h-4 w-4" />
                           <span className="text-sm">
-                            {book.study_count || 0}개 스터디
+                            {book.study_count !== undefined
+                              ? book.study_count
+                              : 0}
+                            개 스터디
                           </span>
                         </div>
                       </div>

@@ -5,7 +5,7 @@ import { useToast } from '../common/Toast/Context';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
-import { Book, Search, ThumbsUp } from 'lucide-react';
+import { Book, Search, ThumbsUp, Users } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -15,6 +15,7 @@ interface BookProps {
   author: string;
   cover_url: string;
   description?: string;
+  study_count?: number;
   recommendation_count: number;
   user_has_recommended?: boolean;
 }
@@ -245,6 +246,12 @@ export default function BookList({
                   />
                   <span>{book.recommendation_count}</span>
                 </button>
+
+                <Users className="mr-1 h-4 w-4" />
+                <span className="text-sm">
+                  {book.study_count !== undefined ? book.study_count : 0}개
+                  스터디
+                </span>
               </div>
             </Link>
           ))}

@@ -10,7 +10,6 @@ export interface Book {
   isbn: string;
   publisher: string;
   publication_date: string;
-  rating: number;
   recommendation_count: number;
   created_by: string | null;
   created_at: string;
@@ -27,7 +26,7 @@ export interface BookFormData {
 }
 
 // 모든 도서 목록 조회
-export async function fetchBooks(): Promise<Book[]> {
+export async function fetchBooks(): Promise<(Book & { study_count: number })[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('books')
@@ -35,11 +34,37 @@ export async function fetchBooks(): Promise<Book[]> {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  
+  if (!data || data.length === 0) return [];
+
+  // 각 도서에 대한 스터디 수 조회 및 추가
+  const booksWithStudyCount = await Promise.all(
+    data.map(async (book) => {
+      try {
+        const { count } = await supabase
+          .from('studies')
+          .select('*', { count: 'exact', head: true })
+          .eq('book_id', book.id);
+        
+        return {
+          ...book,
+          study_count: count || 0
+        };
+      } catch (countError) {
+        console.error(`도서 ${book.id}의 스터디 수 조회 실패:`, countError);
+        return {
+          ...book,
+          study_count: 0
+        };
+      }
+    })
+  );
+
+  return booksWithStudyCount;
 }
 
 // 단일 도서 정보 조회
-export async function fetchBookById(bookId: string): Promise<Book | null> {
+export async function fetchBookById(bookId: string): Promise<(Book & { study_count?: number }) | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('books')
@@ -52,7 +77,22 @@ export async function fetchBookById(bookId: string): Promise<Book | null> {
     throw error;
   }
 
-  return data;
+  // 도서에 대한 스터디 수 가져오기
+  try {
+    const { count: studyCount } = await supabase
+      .from('studies')
+      .select('*', { count: 'exact', head: true })
+      .eq('book_id', bookId);
+    
+    return {
+      ...data,
+      study_count: studyCount || 0
+    };
+  } catch (countError) {
+    console.error('스터디 수 조회 실패:', countError);
+    // 오류가 발생해도 도서 정보는 반환
+    return data;
+  }
 }
 
 // ISBN으로 도서 정보 조회 (이미 등록된 도서인지 확인용)
@@ -174,7 +214,7 @@ export async function toggleBookRecommendation(bookId: string, userId: string): 
 }
 
 // 인기 도서 목록 조회 (추천 수 기준)
-export async function fetchPopularBooks(limit: number = 5): Promise<Book[]> {
+export async function fetchPopularBooks(limit: number = 5): Promise<(Book & { study_count: number })[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('books')
@@ -183,7 +223,32 @@ export async function fetchPopularBooks(limit: number = 5): Promise<Book[]> {
     .limit(limit);
 
   if (error) throw error;
-  return data || [];
+  if (!data || data.length === 0) return [];
+
+  // 각 도서에 대한 스터디 수 조회 및 추가
+  const booksWithStudyCount = await Promise.all(
+    data.map(async (book) => {
+      try {
+        const { count } = await supabase
+          .from('studies')
+          .select('*', { count: 'exact', head: true })
+          .eq('book_id', book.id);
+        
+        return {
+          ...book,
+          study_count: count || 0
+        };
+      } catch (countError) {
+        console.error(`도서 ${book.id}의 스터디 수 조회 실패:`, countError);
+        return {
+          ...book,
+          study_count: 0
+        };
+      }
+    })
+  );
+
+  return booksWithStudyCount;
 }
 
 // 사용자가 추천한 도서 목록 조회
@@ -292,4 +357,32 @@ export async function fetchSimilarBooks(isbn: string, limit: number = 5): Promis
     console.error('비슷한 도서 추천 실패:', error);
     return [];
   }
+}
+
+// 도서별 스터디 수 가져오기
+export async function fetchBookWithStudyCount(bookId: string): Promise<Book & { study_count: number }> {
+  const supabase = createClient();
+  
+  // 도서 정보 가져오기
+  const { data: book, error: bookError } = await supabase
+    .from('books')
+    .select('*')
+    .eq('id', bookId)
+    .single();
+  
+  if (bookError) throw bookError;
+  
+  // 관련 스터디 수 조회
+  const { count: studyCount, error: countError } = await supabase
+    .from('studies')
+    .select('*', { count: 'exact', head: true })
+    .eq('book_id', bookId);
+  
+  if (countError) throw countError;
+  
+  // 결과 반환
+  return {
+    ...book,
+    study_count: studyCount || 0
+  };
 }
