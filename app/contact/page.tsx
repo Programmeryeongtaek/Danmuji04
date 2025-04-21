@@ -3,6 +3,7 @@
 import { useToast } from '@/components/common/Toast/Context';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { useAtomValue } from 'jotai';
 import { CheckCircle, Mail, MessageSquare } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
@@ -59,16 +60,23 @@ export default function ContactPage() {
       const supabase = createClient();
 
       // 문의 내용 저장
-      const { error } = await supabase.from('contact_messages').insert({
-        user_id: user?.id || null,
-        name,
-        email,
-        subject,
-        message,
-        status: 'unread',
-      });
+      const { data: contactData, error } = await supabase
+        .from('contact_messages')
+        .insert({
+          user_id: user?.id || null,
+          name,
+          email,
+          subject,
+          message,
+          status: 'unread',
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // 관리자에게 알림 생성
+      await createAdminNotifications(supabase, contactData.id, name, subject);
 
       setIsSubmitted(true);
       showToast('문의가 성공적으로 전송되었습니다.', 'success');
@@ -77,6 +85,43 @@ export default function ContactPage() {
       showToast('제출 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // 관리자에게 알림 생성 함수
+  const createAdminNotifications = async (
+    supabase: SupabaseClient,
+    inquiryId: number,
+    senderName: string,
+    inquirySubject: string
+  ) => {
+    try {
+      // 관리자 목록 가져오기
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin');
+
+      if (!admins || admins.length === 0) {
+        console.log('알림을 보낼 관리자가 없습니다.');
+        return;
+      }
+
+      // 각 관리자에게 알림 생성
+      const notifications = admins.map((admin) => ({
+        user_id: admin.id,
+        title: '새로운 문의 접수',
+        message: `${senderName}님이 "${inquirySubject}" 주제로 문의를 남겼습니다.`,
+        type: 'contact_inquiry',
+        related_data: { inquiry_id: inquiryId },
+        read: false,
+      }));
+
+      await supabase.from('notifications').insert(notifications);
+      console.log('관리자 알림 생성 완료');
+    } catch (error) {
+      console.error('관리자 알림 생성 실패:', error);
+      // 주요 기능 완료했으므로 알림 실패는 사용자에게 표시하지 않음
     }
   };
 
