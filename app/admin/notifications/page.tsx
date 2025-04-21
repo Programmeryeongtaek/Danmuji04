@@ -91,16 +91,83 @@ export default function NotificationsManagePage() {
   // 템플릿 로드 함수
   const loadTemplates = async () => {
     try {
+      console.log('템플릿 로드 시작');
       const supabase = createClient();
+
+      // 먼저 테이블 존재 여부 확인
+      const { data: tableInfo, error: tableError } = await supabase
+        .from('notification_templates')
+        .select('id')
+        .limit(1);
+
+      console.log('테이블 존재 확인:', tableInfo, tableError);
+
+      if (tableError) {
+        console.error('테이블 확인 오류:', tableError);
+        // 테이블이 없다면 기본 템플릿 데이터로 대체
+        setTemplates([
+          {
+            id: 1,
+            title: '새로운 강의 추가',
+            message: '새로운 강의가 등록되었습니다. 지금 확인해보세요!',
+            type: 'system',
+          },
+          {
+            id: 2,
+            title: '시스템 점검 안내',
+            message:
+              '서비스 개선을 위한 점검이 예정되어 있습니다. 자세한 내용은 공지사항을 참고해주세요.',
+            type: 'system',
+          },
+          {
+            id: 3,
+            title: '이벤트 안내',
+            message:
+              '새로운 이벤트가 시작되었습니다. 지금 참여하고 혜택을 받아보세요!',
+            type: 'event',
+          },
+        ]);
+        return;
+      }
+
+      // 템플릿 정보 가져오기
       const { data, error } = await supabase
         .from('notification_templates')
         .select('*')
         .order('id', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('템플릿 로드 오류:', error);
+        throw error;
+      }
+
+      console.log('로드된 템플릿:', data);
       setTemplates(data || []);
     } catch (error) {
-      console.error('템플릿 로드 중 오류:', error);
+      console.error('템플릿 로드 실패:', error);
+      // 오류 발생 시 기본 데이터로 대체
+      setTemplates([
+        {
+          id: 1,
+          title: '새로운 강의 추가',
+          message: '새로운 강의가 등록되었습니다. 지금 확인해보세요!',
+          type: 'system',
+        },
+        {
+          id: 2,
+          title: '시스템 점검 안내',
+          message:
+            '서비스 개선을 위한 점검이 예정되어 있습니다. 자세한 내용은 공지사항을 참고해주세요.',
+          type: 'system',
+        },
+        {
+          id: 3,
+          title: '이벤트 안내',
+          message:
+            '새로운 이벤트가 시작되었습니다. 지금 참여하고 혜택을 받아보세요!',
+          type: 'event',
+        },
+      ]);
     }
   };
 
