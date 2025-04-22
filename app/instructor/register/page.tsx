@@ -4,19 +4,39 @@ import { useToast } from '@/components/common/Toast/Context';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Upload, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
+
+// 전문 분야 옵션 정의
+const SPECIALTY_OPTIONS = [
+  { value: 'humanities', label: '인문학' },
+  { value: 'philosophy', label: '철학' },
+  { value: 'psychology', label: '심리학' },
+  { value: 'economics', label: '경제학' },
+  { value: 'self-development', label: '자기계발' },
+  { value: 'leadership', label: '리더십' },
+  { value: 'other', label: '기타 (직접 입력)' },
+];
 
 export default function InstructorRegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [specialty, setSpecialty] = useState('');
+  const [customSpecialty, setCustomSpecialty] = useState('');
   const [experience, setExperience] = useState('');
   const [motivation, setMotivation] = useState('');
+  const [socialLinks, setSocialLinks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // 이미지 첨부 관련 상태
+  const [certificateImage, setCertificateImage] = useState<File | null>(null);
+  const [certificatePreview, setCertificatePreview] = useState<string | null>(
+    null
+  );
+
   const { showToast } = useToast();
   const router = useRouter();
   const user = useAtomValue(userAtom);
@@ -46,6 +66,33 @@ export default function InstructorRegisterPage() {
     loadUserData();
   }, [user]);
 
+  // 이미지 선택 핸들러
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 이미지 타입 체크
+    if (!file.type.startsWith('image/')) {
+      showToast('이미지 파일만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    // 5MB 이하 체크
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('5MB 이하의 이미지만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    setCertificateImage(file);
+
+    // 미리보기 생성
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCertificatePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -55,15 +102,17 @@ export default function InstructorRegisterPage() {
       return;
     }
 
-    if (
-      !name ||
-      !email ||
-      !phoneNumber ||
-      !specialty ||
-      !experience ||
-      !motivation
-    ) {
-      showToast('모든 필드를 입력해주세요.', 'error');
+    // 필수 필드 검증
+    if (!name || !email || !phoneNumber || !experience || !motivation) {
+      showToast('모든 필수 항목을 입력해주세요.', 'error');
+      return;
+    }
+
+    // 전문 분야 검증 (specialty 또는 customSpecialty 중 하나는 필수)
+    const finalSpecialty = specialty === 'other' ? customSpecialty : specialty;
+
+    if (!finalSpecialty) {
+      showToast('전문 분야를 입력해주세요.', 'error');
       return;
     }
 
@@ -72,19 +121,66 @@ export default function InstructorRegisterPage() {
     try {
       const supabase = createClient();
 
+      // 이미지 업로드 (있는 경우)
+      let certificateUrl = null;
+      if (certificateImage) {
+        const fileExt = certificateImage.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `instructor-certificates/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('instructor-docs')
+          .upload(filePath, certificateImage);
+
+        if (uploadError) throw uploadError;
+
+        // 파일 URL 가져오기
+        const { data: publicUrl } = supabase.storage
+          .from('instructor-docs')
+          .getPublicUrl(filePath);
+
+        certificateUrl = publicUrl.publicUrl;
+      }
+
       // 강사 신청 정보 저장
-      const { error } = await supabase.from('instructor_applications').insert({
-        user_id: user.id,
-        name,
-        email,
-        phone_number: phoneNumber,
-        specialty,
-        experience,
-        motivation,
-        status: 'pending', // 관리자 승인 대기 상태
-      });
+      const { data: application, error } = await supabase
+        .from('instructor_applications')
+        .insert({
+          user_id: user.id,
+          name,
+          email,
+          phone_number: phoneNumber,
+          specialty: finalSpecialty,
+          experience,
+          motivation,
+          social_links: socialLinks,
+          certificate_url: certificateUrl,
+          status: 'pending', // 관리자 승인 대기 상태
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // 관리자에게 알림 생성
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin');
+
+      if (admins && admins.length > 0) {
+        // 각 관리자에게 알림 생성
+        const notifications = admins.map((admin) => ({
+          user_id: admin.id,
+          title: '새로운 강사 신청',
+          message: `${name}님이 강사 등록을 신청했습니다.`,
+          type: 'instructor_application',
+          related_data: { application_id: application.id },
+          read: false,
+        }));
+
+        await supabase.from('notifications').insert(notifications);
+      }
 
       setIsSubmitted(true);
       showToast('강사 등록 신청이 완료되었습니다.', 'success');
@@ -132,7 +228,7 @@ export default function InstructorRegisterPage() {
       >
         <div>
           <label htmlFor="name" className="mb-1 block font-medium">
-            이름
+            이름 <span className="text-red-500">*</span>
           </label>
           <input
             id="name"
@@ -146,7 +242,7 @@ export default function InstructorRegisterPage() {
 
         <div>
           <label htmlFor="email" className="mb-1 block font-medium">
-            이메일
+            이메일 <span className="text-red-500">*</span>
           </label>
           <input
             id="email"
@@ -160,7 +256,7 @@ export default function InstructorRegisterPage() {
 
         <div>
           <label htmlFor="phoneNumber" className="mb-1 block font-medium">
-            연락처
+            연락처 <span className="text-red-500">*</span>
           </label>
           <input
             id="phoneNumber"
@@ -174,9 +270,8 @@ export default function InstructorRegisterPage() {
         </div>
 
         <div>
-          {/* //TODO: 전문분야 셀프 추가 기능 */}
           <label htmlFor="specialty" className="mb-1 block font-medium">
-            전문 분야
+            전문 분야 <span className="text-red-500">*</span>
           </label>
           <select
             id="specialty"
@@ -186,19 +281,50 @@ export default function InstructorRegisterPage() {
             required
           >
             <option value="">선택해주세요</option>
-            <option value="인문학">인문학</option>
-            <option value="철학">철학</option>
-            <option value="심리학">심리학</option>
-            <option value="경제학">경제학</option>
-            <option value="자기계발">자기계발</option>
-            <option value="리더십">리더십</option>
+            {SPECIALTY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
+
+          {/* 기타 선택 시 직접 입력 필드 표시 */}
+          {specialty === 'other' && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={customSpecialty}
+                onChange={(e) => setCustomSpecialty(e.target.value)}
+                placeholder="전문 분야를 직접 입력해주세요"
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+                required
+              />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="socialLinks" className="mb-1 block font-medium">
+            소셜 미디어 / 블로그 / 포트폴리오 링크
+          </label>
+          <input
+            id="socialLinks"
+            type="text"
+            value={socialLinks}
+            onChange={(e) => setSocialLinks(e.target.value)}
+            placeholder="본인을 소개할 수 있는 사이트 링크를 입력해주세요"
+            className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            블로그, 포트폴리오, 인스타그램 등 자신을 소개할 수 있는 링크를
+            입력해주세요.
+          </p>
         </div>
 
         <div>
           <label htmlFor="experience" className="mb-1 block font-medium">
-            관련 경력 (학력, 자격증, 경력 등)
-            {/* //TODO: 자격 인증 사진 추가 기능능 */}
+            관련 경력 (학력, 자격증, 경력 등){' '}
+            <span className="text-red-500">*</span>
           </label>
           <textarea
             id="experience"
@@ -210,9 +336,68 @@ export default function InstructorRegisterPage() {
           ></textarea>
         </div>
 
+        {/* 자격증 이미지 첨부 영역 */}
+        <div>
+          <label className="mb-1 block font-medium">
+            자격증 / 경력 증명 이미지
+          </label>
+          <div className="flex items-start gap-4">
+            {certificatePreview ? (
+              <div className="relative h-48 w-auto overflow-hidden rounded-lg border">
+                <img
+                  src={certificatePreview}
+                  alt="자격증 미리보기"
+                  className="h-full w-auto object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCertificateImage(null);
+                    setCertificatePreview(null);
+                  }}
+                  className="absolute right-1 top-1 rounded-full bg-white p-1 shadow hover:bg-gray-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex h-48 w-40 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50">
+                <Upload className="mb-2 h-8 w-8 text-gray-400" />
+                <p className="text-center text-xs text-gray-500">
+                  자격증 또는 경력을
+                  <br />
+                  증명할 수 있는 이미지를
+                  <br />
+                  업로드해주세요
+                </p>
+              </div>
+            )}
+
+            <div className="flex-1">
+              <label
+                htmlFor="certificate-upload"
+                className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                이미지 선택하기
+              </label>
+              <input
+                id="certificate-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                * 5MB 이하의 JPG, PNG 파일만 업로드 가능합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label htmlFor="motivation" className="mb-1 block font-medium">
-            지원 동기
+            지원 동기 <span className="text-red-500">*</span>
           </label>
           <textarea
             id="motivation"
