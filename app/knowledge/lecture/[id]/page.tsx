@@ -2,11 +2,10 @@ import LectureContent from '@/components/knowledge/lecture/LectureContent';
 import { createClient } from '@/utils/supabase/server';
 import { Suspense } from 'react';
 
-export default async function LecturePage({
-  params,
-}: {
-  params: { id: string };
-}) {
+type Params = Promise<{ id: string }>;
+
+export default async function LecturePage(props: { params: Params }) {
+  const params = await props.params;
   const supabase = await createClient();
   const { data: lecture, error } = await supabase
     .from('lectures')

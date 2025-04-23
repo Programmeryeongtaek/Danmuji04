@@ -1,6 +1,6 @@
 'user client';
 
-import { ReviewReplyProps } from '@/types/knowledge/lecture';
+import { ReviewReplyProps } from '@/app/types/knowledge/lecture';
 import {
   deleteReviewReply,
   toggleReplyLike,

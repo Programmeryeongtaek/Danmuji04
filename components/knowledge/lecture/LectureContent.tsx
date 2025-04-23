@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import EnrollBar from './EnrollBar';
 import ReviewSection from './ReviewSection';
 import { createClient } from '@/utils/supabase/client';
-import { Lecture } from '@/types/knowledge/lecture';
+import { Lecture } from '@/app/types/knowledge/lecture';
 import ShareButton from './ShareButton';
 import BookmarkButton from './BookmarkButton';
 import Link from 'next/link';

@@ -1,6 +1,6 @@
 'use client';
 
-import { CategoryProps } from '@/types/knowledge/lecture';
+import { CategoryProps } from '@/app/types/knowledge/lecture';
 import {
   BookOpen,
   Brain,

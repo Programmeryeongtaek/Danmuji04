@@ -4,7 +4,7 @@ import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import { CertificateModal } from '@/components/Course/CertificateModal';
 import { useAllCertificates } from '@/hooks/useCertificate';
-import { COURSE_CATEGORIES } from '@/types/course/categories';
+import { COURSE_CATEGORIES } from '@/app/types/course/categories';
 import { formatDate } from '@/utils/formatDate';
 import {
   Certificate,

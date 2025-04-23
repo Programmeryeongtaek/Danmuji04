@@ -1,6 +1,6 @@
 'use client';
 
-import { ReviewItemProps } from '@/types/knowledge/lecture';
+import { ReviewItemProps } from '@/app/types/knowledge/lecture';
 import {
   addReviewReply,
   createClient,

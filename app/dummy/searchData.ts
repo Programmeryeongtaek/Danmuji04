@@ -1,4 +1,4 @@
-import { Post } from '../types/home/search';
+import { Post } from '@/app/types/home/search';
 
 export const dummyPosts: Post[] = [
   {

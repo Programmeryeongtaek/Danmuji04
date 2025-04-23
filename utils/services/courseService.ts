@@ -1,4 +1,4 @@
-import { Course, CourseFormData, CourseItem, CourseItemFormData, CourseWriting, WritingFormData } from '@/types/course/courseModel';
+import { Course, CourseFormData, CourseItem, CourseItemFormData, CourseWriting, WritingFormData } from '@/app/types/course/courseModel';
 import { createClient } from '../supabase/client';
 
 // 코스 상세 정보 조회 (섹션 및 아이템 포함)

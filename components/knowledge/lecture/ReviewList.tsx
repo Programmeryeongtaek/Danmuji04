@@ -1,6 +1,6 @@
 'use client';
 
-import { ReviewListProps } from '@/types/knowledge/lecture';
+import { ReviewListProps } from '@/app/types/knowledge/lecture';
 import { ReviewItem } from './ReviewItem';
 
 export function ReviewList({

@@ -7,7 +7,7 @@ import {
   FilterState,
   Lecture,
   LectureSectionProps,
-} from '@/types/knowledge/lecture';
+} from '@/app/types/knowledge/lecture';
 import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';

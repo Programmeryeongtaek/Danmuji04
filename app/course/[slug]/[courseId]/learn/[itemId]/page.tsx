@@ -1,19 +1,11 @@
 import CourseLearnContent from '@/components/Course/learn/CourseLearnContent';
 import { Suspense } from 'react';
 
-interface CourseLearnPageProps {
-  params: {
-    slug: string;
-    courseId: string;
-    itemId: string;
-  };
-}
+type Params = Promise<{ slug: string; courseId: string; itemId: string }>;
 
-export default async function CourseLearnPage({
-  params,
-}: CourseLearnPageProps) {
-  // async 함수에서 params를 await 해서 사용
-  const { slug, courseId, itemId } = await params;
+export default async function CourseLearnPage(props: { params: Params }) {
+  const params = await props.params;
+  const { slug, courseId, itemId } = params;
 
   return (
     <Suspense

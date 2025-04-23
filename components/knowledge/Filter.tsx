@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import FilterModal from './FilterModal';
-import { FilterChangeProps, FilterState } from '@/types/knowledge/lecture';
+import { FilterChangeProps, FilterState } from '@/app/types/knowledge/lecture';
 
 const Filter = ({ onApply }: FilterChangeProps) => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);

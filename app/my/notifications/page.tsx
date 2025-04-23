@@ -3,7 +3,7 @@
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import { useNotificationsRealtime } from '@/hooks/useNotificationsRealtime';
-import { COURSE_CATEGORIES } from '@/types/course/categories';
+import { COURSE_CATEGORIES } from '@/app/types/course/categories';
 import {
   Award,
   Bell,

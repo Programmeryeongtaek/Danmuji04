@@ -1,6 +1,10 @@
 'use client';
 
-import { Course, CourseItem, CourseWriting } from '@/types/course/courseModel';
+import {
+  Course,
+  CourseItem,
+  CourseWriting,
+} from '@/app/types/course/courseModel';
 import { createClient } from '@/utils/supabase/client';
 import {
   ChevronLeft,

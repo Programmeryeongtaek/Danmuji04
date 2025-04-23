@@ -1,4 +1,4 @@
-import { YoutubeMocks } from '@/types/course/courseType';
+import { YoutubeMocks } from '@/app/types/course/courseType';
 
 export const mockCourses: YoutubeMocks = {
   reading: [

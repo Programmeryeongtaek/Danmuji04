@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { CertificateModal } from './CertificateModal';
-import { CourseCategory } from '@/types/course/categories';
+import { CourseCategory } from '@/app/types/course/categories';
 import { useCertificate } from '@/hooks/useCertificate';
 import { useToast } from '../common/Toast/Context';
 

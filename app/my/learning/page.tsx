@@ -4,7 +4,7 @@ import Card from '@/components/common/Card';
 import CancelEnrollmentButton from '@/components/My/CancelEnrollmentButton';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
-import { Lecture } from '@/types/knowledge/lecture';
+import { Lecture } from '@/app/types/knowledge/lecture';
 import {
   calculateEnrollmentProgress,
   createClient,

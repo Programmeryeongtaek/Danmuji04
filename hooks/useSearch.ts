@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { SearchResults } from '../types/home/search';
-import { dummyPosts } from '../dummy/searchData';
+
+import { SearchResults } from '../app/types/home/search';
+import { dummyPosts } from '@/app/dummy/searchData';
 
 function useSearch(initialSearchTerm: string = '') {
   const [searchResults, setSearchResults] = useState<SearchResults>({

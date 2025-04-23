@@ -1,6 +1,6 @@
 'use client';
 
-import { CourseWriting } from '@/types/course/courseModel';
+import { CourseWriting } from '@/app/types/course/courseModel';
 import { createClient } from '@/utils/supabase/client';
 import { useState } from 'react';
 
@@ -18,7 +18,9 @@ export default function WritingSection({
   onWritingSaved,
 }: WritingSectionProps) {
   const [content, setContent] = useState(userWriting?.content || '');
-  const [isPublic, setIsPublic] = useState(userWriting?.is_public || true);
+  const [isPublic, setIsPublic] = useState<boolean>(
+    userWriting?.is_public ?? true
+  );
   const [isEditing, setIsEditing] = useState(!userWriting);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
