@@ -12,7 +12,10 @@ import { createClient } from '@/utils/supabase/client';
 import { Profile } from '@/app/settings/profile/page';
 import RightSideBar from './RightSideBar';
 import NotificationDropdown from '../My/NotificationDropdown';
-import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
+import {
+  COURSE_CATEGORIES,
+  CourseCategory,
+} from '@/app/types/course/categories';
 import NavDropdown from '../NavDropdown';
 import { useRouter } from 'next/navigation';
 

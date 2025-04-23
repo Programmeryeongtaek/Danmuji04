@@ -14,7 +14,7 @@ import {
 import { ToastType } from '@/components/common/Toast/type';
 import { StarRating } from './StarRating';
 import { ReviewList } from './ReviewList';
-import { ReviewProps } from '@/types/knowledge/lecture';
+import { ReviewProps } from '@/app/types/knowledge/lecture';
 
 interface ReviewSectionProps {
   lectureId: number;

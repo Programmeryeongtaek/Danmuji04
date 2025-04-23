@@ -1,6 +1,6 @@
 'use client';
 
-import { Lecture } from '@/types/knowledge/lecture';
+import { Lecture } from '@/app/types/knowledge/lecture';
 import { Bookmark, Heart, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';

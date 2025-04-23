@@ -1,4 +1,4 @@
-import { FilterModalProps, FilterState } from '@/types/knowledge/lecture';
+import { FilterModalProps, FilterState } from '@/app/types/knowledge/lecture';
 import Modal from '../common/Modal';
 import { useState } from 'react';
 import Button from '../common/Button/Button';

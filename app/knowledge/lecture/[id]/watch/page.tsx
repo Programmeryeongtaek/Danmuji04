@@ -6,8 +6,8 @@ import { useToast } from '@/components/common/Toast/Context';
 import LectureCurriculum from '@/components/knowledge/lecture/watch/LectureCurriculum';
 import NavigationButtons from '@/components/knowledge/lecture/watch/NavigationButtons';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
-import { Lecture } from '@/types/knowledge/lecture';
-import { LectureItem, LectureSection } from '@/types/lectureFrom';
+import { Lecture } from '@/app/types/knowledge/lecture';
+import { LectureItem, LectureSection } from '@/app/types/lectureFrom';
 import {
   createClient,
   getCompletedItems,

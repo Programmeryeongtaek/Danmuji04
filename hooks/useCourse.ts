@@ -1,7 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
-import { Course, CourseWithSections } from '@/types/course/courseModel';
+import { Course, CourseWithSections } from '@/app/types/course/courseModel';
 import { fetchCourseDetail, fetchCourses, fetchCoursesByCategory, fetchUserCoursesProgress, getUserCourseProgress, getUserWritingStatus, isAdminUser, markCourseCompleted, markItemAsCompleted, markWritingCompleted } from '@/utils/services/courseService';
 import { useCallback, useEffect, useState } from 'react';
 

@@ -6,7 +6,7 @@ import {
   LectureDetail,
   LectureItem,
   LectureSection,
-} from '@/types/lectureFrom';
+} from '@/app/types/lectureFrom';
 import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';

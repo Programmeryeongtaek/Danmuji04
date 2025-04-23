@@ -1,6 +1,9 @@
 'use client';
 
-import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
+import {
+  COURSE_CATEGORIES,
+  CourseCategory,
+} from '@/app/types/course/categories';
 import { formatDate } from '@/utils/formatDate';
 import { Certificate } from '@/utils/services/certificateService';
 import { Award, Download, RefreshCw } from 'lucide-react';

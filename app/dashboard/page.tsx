@@ -2,8 +2,8 @@
 
 import { useAllCertificates } from '@/hooks/useCertificate';
 import { useAllCourseProgress } from '@/hooks/useCourse';
-import { Course } from '@/types/course/courseModel';
-import { Lecture } from '@/types/knowledge/lecture';
+import { Course } from '@/app/types/course/courseModel';
+import { Lecture } from '@/app/types/knowledge/lecture';
 import { createClient } from '@/utils/supabase/client';
 import {
   BookmarkIcon,

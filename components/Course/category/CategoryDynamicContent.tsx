@@ -6,7 +6,7 @@ import {
   useCoursePermission,
 } from '@/hooks/useCourse';
 import QuoteSection from '../QuotesSection';
-import { CourseCategory, isValidCategory } from '@/types/course/categories';
+import { CourseCategory, isValidCategory } from '@/app/types/course/categories';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 import CourseList from './CourseList';

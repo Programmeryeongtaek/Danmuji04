@@ -1,7 +1,7 @@
 'use client';
 
 import ProgressBar from '@/components/common/ProgressBar';
-import { LectureItem, LectureSection } from '@/types/lectureFrom';
+import { LectureItem, LectureSection } from '@/app/types/lectureFrom';
 import {
   Check,
   ChevronDown,

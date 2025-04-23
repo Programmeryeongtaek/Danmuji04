@@ -2,7 +2,10 @@
 
 import QuoteSection from '@/components/Course/QuotesSection';
 import { useCoursePermission } from '@/hooks/useCourse';
-import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
+import {
+  COURSE_CATEGORIES,
+  CourseCategory,
+} from '@/app/types/course/categories';
 import { BookOpen, Edit, HelpCircle, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 

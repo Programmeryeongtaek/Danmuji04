@@ -8,7 +8,7 @@ import {
   GROUP_TYPE_OPTIONS,
   LectureFormData,
   LectureSectionFormData,
-} from '@/types/lectureFrom';
+} from '@/app/types/lectureFrom';
 import { X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';

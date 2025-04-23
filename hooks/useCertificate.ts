@@ -1,7 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
-import { CourseCategory } from '@/types/course/categories';
+import { CourseCategory } from '@/app/types/course/categories';
 import { createClient } from '@/utils/supabase/client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';

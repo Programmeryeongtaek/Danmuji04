@@ -1,7 +1,7 @@
 'use client';
 
 import { useCoursePermission } from '@/hooks/useCourse';
-import { Course, CourseItem } from '@/types/course/courseModel';
+import { Course, CourseItem } from '@/app/types/course/courseModel';
 import { createClient } from '@/utils/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
