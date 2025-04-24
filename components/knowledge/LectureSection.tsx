@@ -24,6 +24,10 @@ interface ExtendedLectureSectionProps extends LectureSectionProps {
   searchQuery?: string;
 }
 
+interface ExtendedLectureSectionProps extends LectureSectionProps {
+  searchQuery?: string;
+}
+
 const categoryLabelMap = new Map([
   ['all', '전체'],
   ['search', '검색'],

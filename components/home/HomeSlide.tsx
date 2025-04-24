@@ -11,7 +11,7 @@ const slideData = [
     description: '지식과 배움의 여정, 단무지와 함께 시작해보세요.',
     buttonText: '서비스 소개 보기',
     link: '/introduce',
-    bgColor: 'bg-gold-start/10',
+    bgColor: 'bg-gold-start/30',
   },
   {
     id: 2,
@@ -35,7 +35,7 @@ const slideData = [
     description: '관심 있는 분야의 스터디에 참여하거나 직접 개설해보세요.',
     buttonText: '스터디 참여하기',
     link: '/study',
-    bgColor: 'bg-amber-50',
+    bgColor: 'bg-gold-start/40',
   },
   {
     id: 5,
