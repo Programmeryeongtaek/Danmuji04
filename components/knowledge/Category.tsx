@@ -1,6 +1,6 @@
 'use client';
 
-import { CategoryProps } from '@/types/knowledge/lecture';
+import { CategoryProps } from '@/app/types/knowledge/lecture';
 import {
   BookOpen,
   Brain,
@@ -25,6 +25,7 @@ const categories = [
 
 const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeButtonRef = useRef<HTMLButtonElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -37,7 +38,45 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
     }
   }, [searchParams, onCategoryClick]);
 
-  const searchParams = useSearchParams();
+  // URL에서 카테고리 파라미터 확인
+  useEffect(() => {
+    const categoryParams = searchParams.get('category');
+    if (categoryParams && categoryParams !== selectedCategory) {
+      onCategoryClick(categoryParams);
+    }
+  }, [searchParams, selectedCategory, onCategoryClick]);
+
+  // 선택된 카테고리가 화면에 보이도록 스크롤
+  useEffect(() => {
+    if (activeButtonRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const activeButton = activeButtonRef.current;
+
+      // 활성화된 버튼이 컨테이너의 시야에 완전히 들어오도록 스크롤
+      const buttonLeft = activeButton.offsetLeft;
+      const buttonWidth = activeButton.offsetWidth;
+      const containerWidth = container.offsetWidth;
+      const containerScrollLeft = container.scrollLeft;
+
+      // 버튼이 왼쪽에 있을 경우
+      if (buttonLeft < containerScrollLeft) {
+        container.scrollTo({
+          left: buttonLeft - 16, // 왼쪽 여백 추가
+          behavior: 'smooth',
+        });
+      }
+      // 버튼이 오른쪽에 있을 경우
+      else if (
+        buttonLeft + buttonWidth >
+        containerScrollLeft + containerWidth
+      ) {
+        container.scrollTo({
+          left: buttonLeft + buttonWidth - containerWidth + 16, // 오른쪽 여백 추가
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [selectedCategory]);
 
   // URL에서 카테고리 파라미터 확인
   useEffect(() => {
@@ -85,6 +124,22 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
     scrollContainerRef.current!.scrollLeft = scrollLeft - walk;
   };
 
+  // 모바일 터치 이벤트 처리
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (scrollContainerRef.current) {
+      setStartX(e.touches[0].pageX - scrollContainerRef.current.offsetLeft);
+      setScrollLeft(scrollContainerRef.current.scrollLeft);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!scrollContainerRef.current) return;
+
+    const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startX) * 2;
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   return (
     <div
       ref={scrollContainerRef}
@@ -93,6 +148,8 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
       onMouseLeave={handleMouseLeave}
       onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
     >
       {categories.map(({ id, icon: Icon, label }) => (
         <button

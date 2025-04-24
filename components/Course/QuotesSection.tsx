@@ -1,6 +1,6 @@
 'use client';
 
-import { quotes } from '@/dummy/quotesData';
+import { quotes } from '@/app/dummy/quotesData';
 import { useCallback, useEffect, useState } from 'react';
 
 interface QuotesProps {

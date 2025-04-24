@@ -2,22 +2,15 @@ import CourseLearnContent from '@/components/Course/learn/CourseLearnContent';
 import { createClient } from '@/utils/supabase/client';
 import { Suspense } from 'react';
 
-interface CoursePageProps {
-  params: {
-    slug: string;
-    courseId: string;
-  };
-  searchParams: {
-    itemId?: string;
-  };
-}
+type Params = Promise<{ slug: string; courseId: string }>;
+type SearchParams = Promise<{ itemId?: string }>;
 
-export default async function CoursePage({
-  params,
-  searchParams,
-}: CoursePageProps) {
-  const { slug, courseId } = await params;
-  const { itemId: queryItemId } = searchParams;
+export default async function CoursePage(props: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const { slug, courseId } = await props.params;
+  const { itemId: queryItemId } = await props.searchParams;
 
   // itemId가 URL 파라미터로 제공되면 사용하고, 그렇지 않으면 첫 번째 아이템을 찾습니다
   let itemId = queryItemId;

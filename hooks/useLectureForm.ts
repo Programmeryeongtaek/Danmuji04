@@ -1,5 +1,5 @@
 import { useToast } from '@/components/common/Toast/Context';
-import { LectureFormData, LectureSectionFormData } from '@/types/lectureFrom';
+import { LectureFormData, LectureSectionFormData } from '@/app/types/lectureFrom';
 import { createClient } from '@/utils/supabase/client';
 import { useState } from 'react';
 

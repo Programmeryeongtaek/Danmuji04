@@ -4,11 +4,11 @@ import {
   CATEGORY_IDS,
   COURSE_CATEGORIES,
   CourseCategory,
-} from '@/types/course/categories';
+} from '@/app/types/course/categories';
 import { FormEvent, useEffect, useState } from 'react';
 import { useToast } from '../common/Toast/Context';
 import { fetchCourseById, updateCourse } from '@/utils/services/courseService';
-import { CourseFormData } from '@/types/course/courseModel';
+import { CourseFormData } from '@/app/types/course/courseModel';
 
 interface CourseEditFormProps {
   courseId: string;

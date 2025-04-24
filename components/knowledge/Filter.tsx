@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import FilterModal from './FilterModal';
-import { FilterChangeProps, FilterState } from '@/types/knowledge/lecture';
+import { FilterChangeProps, FilterState } from '@/app/types/knowledge/lecture';
 
 const Filter = ({ onApply }: FilterChangeProps) => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -13,7 +13,7 @@ const Filter = ({ onApply }: FilterChangeProps) => {
     <>
       <button
         onClick={() => setIsFilterModalOpen(true)}
-        className="rounded-lg border border-gray-300 bg-gradient-to-r from-gold-start to-gold-end px-2 py-1"
+        className="rounded-lg border border-gray-300 bg-gradient-to-r from-gold-end to-gold-start px-2 py-1"
       >
         Filter
       </button>

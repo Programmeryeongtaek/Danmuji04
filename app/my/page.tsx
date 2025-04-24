@@ -1,4 +1,4 @@
-import MyPageMenu from '@/components/common/My/MyPageMenu';
+import MyPageMenu from '@/components/My/MyPageMenu';
 
 const MyPage = () => {
   return <MyPageMenu />;

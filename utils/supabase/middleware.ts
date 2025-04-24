@@ -28,23 +28,31 @@ export async function updateSession(request: NextRequest) {
 // 간단한 실수로도 사용자가 무작위로 로그아웃되는 문제를 디버깅하기가 매우 어려워질 수 있습니다.
 // 중요: auth.getUser()를 제거하지 마세요
 
+try {
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
-  const publicPaths = ['/signup', '/login', '/auth', '/']; // 공개 접근 가능한 경로
-  const isPublicPath = publicPaths.some(path => 
+  // 인증이 필요한 특정 경로 (더 구체적으로 지정)
+  const protectedPaths = ['/my', '/dashboard', '/settings'];
+  const isProtectedPath = protectedPaths.some(path =>
     request.nextUrl.pathname.startsWith(path)
-  )
+  );
 
-  // middleware.ts의 리다이렉트 조건
-  if (!user && !isPublicPath) {
-    // 로그인이 필요한 경우 홈 페이지의 로그인 모달로 리다이렉트
+  // 로그인이 필요한 경로이고 사용자가 로그인하지 않은 경우 리다이렉트
+  if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.searchParams.set('login','true');
     return NextResponse.redirect(url);
   }
+} catch (error) {
+  console.error('Auth check error:', error);
+  // 에러 발생 시 기본 응답 반환 (차단하지 않음)
+}
+
+  return supabaseResponse
+}
 
 // 중요: supabaseResponse 객체를 반드시 그대로 반환해야 합니다.
 // NextResponse.next()로 새로운 response 객체를 생성하는 경우 다음 사항을 반드시 지켜주세요:
@@ -61,6 +69,3 @@ export async function updateSession(request: NextRequest) {
 
 // 이 과정을 지키지 않으면 브라우저와 서버의 동기화가 깨져
 // 사용자 세션이 예기치 않게 종료될 수 있습니다!
-
-  return supabaseResponse
-}

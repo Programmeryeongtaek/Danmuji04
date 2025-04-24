@@ -1,19 +1,23 @@
 'use client';
 
-import { User } from 'lucide-react';
+import { Search, SearchIcon, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import LoginModal from '../home/LoginModal';
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Button from './Button/Button';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { Profile } from '@/app/settings/profile/page';
 import RightSideBar from './RightSideBar';
-import NotificationDropdown from './My/NotificationDropdown';
-import { COURSE_CATEGORIES, CourseCategory } from '@/types/course/categories';
+import NotificationDropdown from '../My/NotificationDropdown';
+import {
+  COURSE_CATEGORIES,
+  CourseCategory,
+} from '@/app/types/course/categories';
 import NavDropdown from '../NavDropdown';
+import { useRouter } from 'next/navigation';
 
 interface DropdownItem {
   id: string;
@@ -32,8 +36,14 @@ const Header = () => {
   const [studyItems, setStudyItems] = useState<DropdownItem[]>([]);
   const [communityItems, setCommunityItems] = useState<DropdownItem[]>([]);
 
+  const router = useRouter();
   const user = useAtomValue(userAtom);
+  const setUser = useSetAtom(userAtom);
   const isLoading = useAtomValue(isLoadingAtom);
+
+  // 검색 기능
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 코스 카테고리 로드
   useEffect(() => {
@@ -55,7 +65,6 @@ const Header = () => {
     // 지식 카테고리는 서버에서 가져오거나 동적으로 생성
     // Category.tsx에서 사용하는 카테고리 정보 활용
     const knowledgeDropdownItems = [
-      { id: 'all', label: '전체', href: '/knowledge?category=all' },
       {
         id: 'humanities',
         label: '인문학',
@@ -91,13 +100,22 @@ const Header = () => {
     setKnowledgeItems(knowledgeDropdownItems);
   }, []);
 
+  // 스터디 카테고리 로드
+  useEffect(() => {
+    const studyDropdownItems = [
+      { id: 'square', label: '광장', href: '/study?category=square' },
+      { id: 'book', label: '도서', href: '/study?category=book' },
+    ];
+
+    setStudyItems(studyDropdownItems);
+  }, []);
+
   // 커뮤니티 카테고리 로드
   useEffect(() => {
     const communityDropdownItems = [
-      { id: 'faq', label: '질문 게시판', href: '/community/faq' },
-      { id: 'chats', label: '자유게시판', href: '/community/chats' },
-      { id: 'study', label: '스터디', href: '/community/study' },
-      { id: 'notice', label: '공지사항', href: '/community/notice' },
+      { id: 'notice', label: '공지사항', href: '/community?category=notice' },
+      { id: 'chats', label: '자유게시판', href: '/community?category=chats' },
+      { id: 'faq', label: '질문 게시판', href: '/community?category=faq' },
     ];
 
     setCommunityItems(communityDropdownItems);
@@ -144,8 +162,25 @@ const Header = () => {
   }, [user]);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      setUser(null);
+      router.push('/');
+    } catch (error) {
+      console.error('로그아웃 중 오류 발생:', error);
+    }
+  };
+
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(
+        `/knowledge?category=search&q=${encodeURIComponent(searchQuery)}`
+      );
+      setIsSearchOpen(false);
+      setSearchQuery('');
+    }
   };
 
   return (
@@ -167,18 +202,89 @@ const Header = () => {
                 <span>단무지</span>
               </Link>
             </li>
-            <li>임시1</li>
+            <span>｜</span>
+            <li>
+              <Link
+                href={'/introduce'}
+                className="text-sm hover:text-gold-start"
+              >
+                소개
+              </Link>
+            </li>
           </ul>
           <ul className="flex items-center gap-1">
-            <li>임시2</li>
-            <li>임시3</li>
+            <li>
+              <Link
+                href="/instructor/register"
+                className="text-sm hover:text-gold-start"
+              >
+                강사등록
+              </Link>
+            </li>
+            <span>｜</span>
+            <li>
+              <Link href="/contact" className="text-sm hover:text-gold-start">
+                문의하기
+              </Link>
+            </li>
           </ul>
         </header>
       </section>
+
+      {/* 모바일 검색 입력창 */}
+      {isSearchOpen && (
+        <div className="fixed inset-x-0 top-0 z-[100] bg-white p-4 shadow-md md:hidden">
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="검색어를 입력하세요"
+              className="w-full rounded-full border border-gray-300 bg-gray-100 py-2 pl-4 pr-10 focus:border-gold-start focus:outline-none"
+              autoFocus
+            />
+            <div className="absolute right-0 top-0 flex h-full items-center">
+              <button type="submit" className="px-3 text-gray-500">
+                <Search className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="px-3 text-gray-500"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       <header className="border-title sticky top-0 z-50 flex h-[50px] w-full items-center border-t bg-light">
         <nav className="flex w-full items-center justify-between px-4 md:px-8">
           {/* 왼쪽: 로고 및 네비게이션 링크 */}
           <div className="flex min-w-fit flex-shrink-0 items-center">
+            {/* 모바일에서만 표시되는 검색 버튼 */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="mr-3 text-gray-700"
+            >
+              <Search className="h-5 w-5 md:hidden" />
+            </button>
+
             {/* 모바일에서는 숨기고 데스크톱에서만 보이는 로고 */}
             <Link
               href="/"
@@ -226,9 +332,10 @@ const Header = () => {
             <div className="relative w-full">
               <input
                 type="text"
-                placeholder="배우고 싶은 지식을 검색해보세요"
-                className="w-full rounded-full bg-gray-100 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-gold-start"
+                placeholder="배우고 싶은 지식을 검색해보세요."
+                className="w-full rounded-full bg-gray-100 py-2 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-start"
               />
+              <SearchIcon className="absolute right-4 top-2" />
               <search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             </div>
           </div>
@@ -242,10 +349,12 @@ const Header = () => {
               대시보드
             </Link>
 
-            {/* 알림 드롭다운 추가 */}
-            <div className="hidden md:block">
-              <NotificationDropdown />
-            </div>
+            {/* 알림 드롭다운 - 데스크톱과 모바일 모두 표시 */}
+            {user && (
+              <div className="flex items-center">
+                <NotificationDropdown />
+              </div>
+            )}
 
             {isLoading ? (
               <span>로딩중...</span>

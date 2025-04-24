@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
 interface NavDropdownItemProps {
@@ -19,6 +20,7 @@ interface NavDropdownProps {
 const NavDropdown = ({ title, href, items, children }: NavDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const router = useRouter();
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) {
@@ -42,6 +44,11 @@ const NavDropdown = ({ title, href, items, children }: NavDropdownProps) => {
       }
     };
   }, []);
+
+  const handleNavigation = (href: string) => {
+    setIsOpen(false);
+    router.push(href);
+  };
 
   return (
     <div
@@ -72,13 +79,13 @@ const NavDropdown = ({ title, href, items, children }: NavDropdownProps) => {
       {isOpen && (
         <div className="absolute left-0 top-full z-10 mt-1 w-48 rounded-md border border-gray-100 bg-white py-2 shadow-lg">
           {items.map((item) => (
-            <Link
+            <button
               key={item.id}
-              href={item.href}
-              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gold-start"
+              onClick={() => handleNavigation(item.href)}
+              className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 hover:text-gold-start"
             >
               {item.label}
-            </Link>
+            </button>
           ))}
           {children}
         </div>

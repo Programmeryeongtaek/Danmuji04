@@ -9,13 +9,13 @@ interface YouTubePlayerProps {
 
 declare global {
   interface Window {
-    YT: any;
+    YT: typeof YT;
     onYouTubeIframeAPIReady: () => void;
   }
 }
 
 export default function YouTubePlayer({ youtubeId }: YouTubePlayerProps) {
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<YT.Player | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function YouTubePlayer({ youtubeId }: YouTubePlayerProps) {
     }
 
     // 플레이어 상태 변경 이벤트 핸들러
-    function onPlayerStateChange(event: any) {
+    function onPlayerStateChange() {
       // 여기서 필요한 이벤트 처리 (예: 시청 완료 시 처리)
       // if (event.data === window.YT.PlayerState.ENDED) {
       //   console.log('Video ended');

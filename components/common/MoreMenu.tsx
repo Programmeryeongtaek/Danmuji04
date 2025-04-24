@@ -8,7 +8,7 @@ import {
   MessageCircle,
   X,
 } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -20,6 +20,7 @@ interface MoreMenuProps {
 export default function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [showBackdrop, setShowBackdrop] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
@@ -43,27 +44,36 @@ export default function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   const menuItems = [
     [
       {
-        icon: HelpCircle,
-        label: '질문 게시판',
-        href: '/community/faq',
+        icon: AlertCircle,
+        label: '공지사항',
+        href: '/community?category=notice',
       },
       {
         icon: MessageCircle,
         label: '자유게시판',
-        href: '/community/chats',
+        href: '/community?category=chats',
       },
       {
-        icon: BookOpen,
-        label: '스터디',
-        href: '/community/study',
+        icon: HelpCircle,
+        label: '질문 게시판',
+        href: '/community?category=faq',
       },
     ],
     [
-      { icon: AlertCircle, label: '공지사항', href: '/community/notice' },
+      {
+        icon: BookOpen,
+        label: '스터디',
+        href: '/study',
+      },
       { icon: Mail, label: '문의하기', href: '/contact' },
       { icon: null, label: '', href: '#' },
     ],
   ];
+
+  const handleNavigation = (href: string) => {
+    onClose();
+    router.push(href);
+  };
 
   if (!isMounted) return null;
 
@@ -81,9 +91,9 @@ export default function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         }`}
       />
 
-      {/* Menu Content */}
+      {/* Menu Content - 가로축 꽉 차도록 수정 */}
       <div
-        className={`relative w-full max-w-md rounded-t-xl bg-white transition-transform duration-300 ${
+        className={`relative w-full rounded-t-xl bg-white transition-transform duration-300 ${
           showBackdrop ? 'translate-y-0' : 'translate-y-full'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -102,17 +112,16 @@ export default function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
             <div key={rowIndex} className="mb-8 grid grid-cols-3 gap-4">
               {row.map((item, colIndex) =>
                 item.icon ? (
-                  <Link
+                  <button
                     key={colIndex}
-                    href={item.href}
+                    onClick={() => handleNavigation(item.href)}
                     className="flex flex-col items-center justify-center gap-2 text-center"
-                    onClick={onClose}
                   >
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
                       <item.icon className="h-6 w-6 text-gray-700" />
                     </div>
                     <span className="text-sm text-gray-800">{item.label}</span>
-                  </Link>
+                  </button>
                 ) : (
                   <div key={colIndex} className="flex-1"></div>
                 )

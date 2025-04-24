@@ -1,13 +1,9 @@
 import CourseEditClient from '@/components/Course/CourseEditClient';
 
-interface CourseEditPageProps {
-  params: {
-    courseId: string;
-  };
-}
+type Params = Promise<{ courseId: string }>;
 
-export default async function CourseEditPage({ params }: CourseEditPageProps) {
-  const { courseId } = await params;
+export default async function CourseEditPage(props: { params: Params }) {
+  const { courseId } = await props.params;
 
   return (
     <div className="mx-auto max-w-4xl p-6">

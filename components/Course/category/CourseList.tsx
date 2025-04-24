@@ -5,7 +5,7 @@ import {
   useCourseList,
   useCoursePermission,
 } from '@/hooks/useCourse';
-import { getCategoryTitle } from '@/types/course/categories';
+import { getCategoryTitle } from '@/app/types/course/categories';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Calendar, Check, Edit, Play, Youtube } from 'lucide-react';

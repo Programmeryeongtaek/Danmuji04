@@ -3,7 +3,7 @@
 import Card from '@/components/common/Card';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
-import { Lecture } from '@/types/knowledge/lecture';
+import { Lecture } from '@/app/types/knowledge/lecture';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';

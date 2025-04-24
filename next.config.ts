@@ -22,10 +22,22 @@ const nextConfig: NextConfig = {
     },
     {
       protocol: 'https',
+      hostname: 'hcqusfewtyxmpdvzpeor.supabase.co',
+      port: '',
+      pathname: '/storage/v1/object/public/books/**',
+    },
+    {
+      protocol: 'https',
       hostname: 'picsum.photos',
       port: '',
       pathname: '/**',
     },
+    {
+      protocol: 'https',
+      hostname: 'image.aladin.co.kr',
+      port: '',
+      pathname: '/**',
+    }
   ]
   }
 };

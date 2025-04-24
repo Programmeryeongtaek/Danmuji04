@@ -1,8 +1,8 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
-import { COURSE_CATEGORIES } from '@/types/course/categories';
-import { CourseWriting } from '@/types/course/courseModel';
+import { COURSE_CATEGORIES } from '@/app/types/course/categories';
+import { CourseWriting } from '@/app/types/course/courseModel';
 import { fetchAllUserWritings } from '@/utils/services/courseService';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
