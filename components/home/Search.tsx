@@ -11,14 +11,17 @@ const phrases = [
 ];
 
 const Search = () => {
-  const [currentIndex, setCurrentIndex] = useState([phrases[0]]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    let currentIndex = 0;
     const interval = setInterval(() => {
-      currentIndex = (currentIndex + 1) % phrases.length;
-      setCurrentIndex([phrases[currentIndex]]);
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % phrases.length);
+        setIsAnimating(false);
+      }, 500);
     }, 3000);
 
     return () => clearInterval(interval);
@@ -32,19 +35,50 @@ const Search = () => {
   };
 
   return (
-    <section className="flex h-40 w-full items-center justify-center border border-black">
-      <div className="flex-col pt-10">
-        <span className="flex justify-center pb-3">{currentIndex}</span>
-        <form onSubmit={handleSearch} className="relative h-[50px] w-full">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="공부하고 싶은 키워드를 입력해보세요."
-            className="flex h-[50px] min-w-[350px] rounded-3xl border pl-4"
-          />
-          <SearchIcon className="absolute right-5 top-3" />
-        </form>
+    <section className="relative bg-gradient-to-r from-amber-50 to-yellow-50 py-16">
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col items-center justify-center">
+          <div className="mb-6 h-10 text-center">
+            <h2
+              className={`text-xl font-medium text-gray-800 transition-all duration-500 md:text-2xl ${
+                isAnimating
+                  ? '-translate-y-5 transform opacity-0'
+                  : 'transform opacity-100'
+              }`}
+            >
+              {phrases[currentIndex]}
+            </h2>
+          </div>
+
+          <form onSubmit={handleSearch} className="relative w-full max-w-2xl">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="공부하고 싶은 키워드를 입력해보세요."
+              className="w-full rounded-full border border-gray-300 bg-white px-6 py-4 pr-12 shadow-md focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+            />
+            <button
+              type="submit"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-gold-start p-2 text-white transition-colors hover:bg-gold-end"
+            >
+              <SearchIcon className="h-5 w-5" />
+            </button>
+          </form>
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-sm text-gray-500">추천 검색어:</span>
+            {['인문학', '철학', '심리학', '자기계발', '리더십'].map((tag) => (
+              <a
+                key={tag}
+                href={`/knowledge?category=search&q=${encodeURIComponent(tag)}`}
+                className="rounded-full bg-white px-3 py-1 text-sm hover:bg-gray-50"
+              >
+                {tag}
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
