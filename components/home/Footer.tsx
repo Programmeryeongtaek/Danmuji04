@@ -14,7 +14,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-white py-8">
+    <footer className="border-t bg-gold-start/10 py-8">
       <div className="container mx-auto px-4">
         <div className="mb-8 grid gap-8 md:grid-cols-4">
           {/* 단무지 소개 */}

@@ -62,7 +62,7 @@ const AnnouncementSection = () => {
   };
 
   return (
-    <section className="rounded-xl border bg-white p-6 shadow-sm">
+    <section className="rounded-xl border bg-gold-start/40 p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bell className="h-5 w-5 text-gold-start" />
