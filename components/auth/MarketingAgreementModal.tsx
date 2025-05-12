@@ -1,6 +1,7 @@
 import { SignUpFormData } from '@/hooks/useSignUpForm';
 import Modal from '../common/Modal';
 import { X } from 'lucide-react';
+import Button from '../common/Button/Button';
 
 interface MarketingAgreementModalProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ const MarketingAgreementModal = ({
 }: MarketingAgreementModalProps) => {
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
-      <div className="fixed inset-0 flex flex-col bg-white">
+      <div className="fixed flex w-11/12 flex-col bg-white">
         {/* 헤더 */}
         <div className="flex h-14 items-center justify-between border-b px-4">
           <h2 className="text-lg font-medium">마케팅 정보 수신 동의</h2>
@@ -74,17 +75,17 @@ const MarketingAgreementModal = ({
               }}
               className="flex-1 rounded-lg border border-gray-300 py-3 hover:bg-gray-50"
             >
-              동의하지 않음
+              비동의
             </button>
-            <button
+            <Button
               onClick={() => {
                 onAgree(true);
                 onClose();
               }}
-              className="flex-1 rounded-lg bg-emerald-500 py-3 text-white hover:bg-emerald-600"
+              className="flex-1"
             >
               동의
-            </button>
+            </Button>
           </div>
         </div>
       </div>

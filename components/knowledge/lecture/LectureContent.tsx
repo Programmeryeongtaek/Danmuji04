@@ -390,7 +390,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   href={`/knowledge/lecture/${lecture.id}/watch`}
                   className="block w-full rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-center font-medium text-white shadow-md hover:from-purple-600 hover:to-indigo-700"
                 >
-                  강의 시작하기
+                  학습하기
                 </Link>
               </div>
             </div>

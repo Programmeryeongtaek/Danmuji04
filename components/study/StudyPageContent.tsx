@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import BookList from './BookList';
 import Image from 'next/image';
+import Button from '../common/Button/Button';
 
 // 스터디 및 도서 타입 정의
 interface Study {
@@ -16,6 +17,7 @@ interface Study {
   max_participants: number;
   current_participants: number;
   start_date: string;
+  end_date: string;
   status: 'recruiting' | 'in_progress' | 'completed';
 }
 
@@ -29,14 +31,14 @@ interface Book {
 }
 
 export default function StudyPageContent() {
-  const [activeTab, setActiveTab] = useState<'square' | 'book'>('square');
+  const [activeTab, setActiveTab] = useState<'study' | 'book'>('study');
   const [popularStudies, setPopularStudies] = useState<Study[]>([]);
   const [recommendedBooks, setRecommendedBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [studies, setStudies] = useState<Study[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<'square' | 'book'>(
-    'square'
+  const [selectedCategory, setSelectedCategory] = useState<'study' | 'book'>(
+    'study'
   );
   const [selectedStatus, setSelectedStatus] = useState('all');
 
@@ -46,7 +48,7 @@ export default function StudyPageContent() {
   const statusParam = searchParams.get('status');
 
   useEffect(() => {
-    if (category === 'square' || category === 'book') {
+    if (category === 'study' || category === 'book') {
       setActiveTab(category);
       setSelectedCategory(category);
     }
@@ -64,7 +66,7 @@ export default function StudyPageContent() {
     const statusParam = searchParams.get('status');
 
     // 카테고리 파라미터가 없거나 존재하지 않는 경우 기본값 'square' 사용
-    const validCategory = categoryParam === 'book' ? 'book' : 'square';
+    const validCategory = categoryParam === 'book' ? 'book' : 'study';
 
     if (validCategory !== selectedCategory) {
       setSelectedCategory(validCategory);
@@ -72,7 +74,7 @@ export default function StudyPageContent() {
 
     if (statusParam) setSelectedStatus(statusParam);
 
-    if (validCategory === 'square') {
+    if (validCategory === 'study') {
       fetchStudies(validCategory, statusParam || 'all');
     } else {
       fetchBooks(); // 도서 카테고리일 경우 책 목록 가져오기
@@ -212,7 +214,7 @@ export default function StudyPageContent() {
     }
   };
 
-  const handleTabChange = (tab: 'square' | 'book') => {
+  const handleTabChange = (tab: 'study' | 'book') => {
     setActiveTab(tab);
     setSelectedCategory(tab);
     router.push(`/study?category=${tab}`);
@@ -253,22 +255,24 @@ export default function StudyPageContent() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="mb-2 text-2xl font-bold">단무지 스터디</h1>
-        <p className="text-gray-600">함께 배우고 성장하는 모임에 참여하세요</p>
+        <h1 className="mb-2 text-2xl font-bold">스터디</h1>
+        <p className="text-gray-600">
+          함께 배우고 성장하는 모임을 살펴보고 참여하세요.
+        </p>
       </div>
 
       {/* 카테고리 탭 */}
       <div className="mb-8 flex">
         <button
-          onClick={() => handleTabChange('square')}
+          onClick={() => handleTabChange('study')}
           className={`flex items-center rounded-l-lg border px-6 py-3 ${
-            activeTab === 'square'
+            activeTab === 'study'
               ? 'bg-gold-start text-white'
               : 'bg-white text-gray-700 hover:bg-gray-50'
           }`}
         >
           <Users className="mr-2 h-5 w-5" />
-          광장
+          스터디
         </button>
         <button
           onClick={() => handleTabChange('book')}
@@ -284,18 +288,18 @@ export default function StudyPageContent() {
       </div>
 
       {/* 필터 및 스터디 생성 버튼 */}
-      {selectedCategory === 'square' && (
+      {selectedCategory === 'study' && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="mr-2 flex items-center rounded-lg border p-1 shadow-sm">
+            <div className="mr-2 flex items-center p-1">
               {statusOptions.map((status) => (
                 <button
                   key={status.id}
                   onClick={() => handleStatusChange(status.id)}
-                  className={`rounded-md px-3 py-1 text-sm ${
+                  className={`border-b px-3 py-1 text-sm ${
                     selectedStatus === status.id
-                      ? 'bg-gold-start text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'border-b-4 border-b-gold-start'
+                      : 'text-gray-700 hover:bg-gold-start/20'
                   }`}
                 >
                   {status.label}
@@ -304,13 +308,11 @@ export default function StudyPageContent() {
             </div>
           </div>
 
-          <Link
-            href="/study/create"
-            className="flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
-          >
-            <Users className="mr-2 h-4 w-4" />
-            스터디 개설하기
-          </Link>
+          <Button className="px-4 py-2 text-white">
+            <Link href="/study/create" className="flex items-center">
+              스터디 개설
+            </Link>
+          </Button>
         </div>
       )}
 
@@ -335,9 +337,9 @@ export default function StudyPageContent() {
                   <h2 className="text-xl font-semibold">인기 스터디</h2>
                   <Link
                     href="/study?category=square"
-                    className="text-sm text-gold-start hover:underline"
+                    className="text-md border-b-2 border-gold-start/80 hover:text-gold-start"
                   >
-                    더보기
+                    전체
                   </Link>
                 </div>
 
@@ -363,16 +365,19 @@ export default function StudyPageContent() {
                       </h3>
 
                       <div className="mt-auto space-y-1 text-sm">
-                        <div className="flex items-center text-gray-600">
+                        <div className="flex items-center gap-1 text-gray-600">
                           <Users className="mr-1 h-4 w-4" />
                           <span>
                             {study.current_participants}/
                             {study.max_participants}명
                           </span>
                         </div>
-                        <div className="flex items-center text-gray-600">
+                        <div className="flex items-center gap-1 text-gray-600">
                           <TrendingUp className="mr-1 h-4 w-4" />
-                          <span>시작일: {formatDate(study.start_date)}</span>
+                          <span>
+                            기간: {formatDate(study.start_date)} ~{' '}
+                            {formatDate(study.end_date)}
+                          </span>
                         </div>
                       </div>
                     </Link>
@@ -386,9 +391,9 @@ export default function StudyPageContent() {
                   <h2 className="text-xl font-semibold">추천 도서</h2>
                   <Link
                     href="/study?category=book"
-                    className="text-sm text-gold-start hover:underline"
+                    className="text-md border-b-2 border-gold-start/80 hover:text-gold-start"
                   >
-                    더보기
+                    전체
                   </Link>
                 </div>
 
@@ -447,7 +452,7 @@ export default function StudyPageContent() {
               </section>
             </>
           ) : (
-            // 광장 카테고리 스터디 목록
+            // 카테고리 스터디 목록
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {studies.length > 0 ? (
                 studies.map((study) => (
@@ -472,7 +477,7 @@ export default function StudyPageContent() {
                             ? '진행중'
                             : '완료'}
                       </span>
-                      <span className="text-sm text-gray-500">
+                      <span className="border-b-2 border-gold-start text-sm text-gray-500">
                         {study.category}
                       </span>
                     </div>
@@ -491,20 +496,19 @@ export default function StudyPageContent() {
                       </div>
                       <div className="flex items-center">
                         <TrendingUp className="mr-2 h-4 w-4 text-gray-400" />
-                        <span>시작일: {formatDate(study.start_date)}</span>
+                        <span>
+                          기간: {formatDate(study.start_date)} ~{' '}
+                          {formatDate(study.end_date)}
+                        </span>
                       </div>
                     </div>
                   </Link>
                 ))
               ) : (
-                <div className="col-span-full flex flex-col items-center justify-center rounded-lg border bg-white py-12 text-center">
-                  <p className="mb-4 text-gray-500">스터디가 없습니다.</p>
-                  <Link
-                    href="/study/create"
-                    className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
-                  >
-                    스터디 개설하기
-                  </Link>
+                <div className="col-span-full items-center justify-center rounded-lg border bg-white py-12 text-center">
+                  <p className="text-lg text-gray-500">
+                    해당 스터디가 없습니다.
+                  </p>
                 </div>
               )}
             </div>

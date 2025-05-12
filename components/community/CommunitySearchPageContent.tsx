@@ -250,7 +250,7 @@ export default function CommunitySearchPageContent() {
         <form onSubmit={handleSearch} className="relative w-full max-w-md">
           <input
             type="text"
-            placeholder="검색어를 입력하세요"
+            placeholder="검색어를 입력하세요."
             value={currentSearchTerm}
             onChange={(e) => setCurrentSearchTerm(e.target.value)}
             className="w-full rounded-lg border px-10 py-3 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"

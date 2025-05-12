@@ -44,7 +44,8 @@ export default function CoursePage() {
         </div>
 
         <p className="mb-8 text-gray-600">
-          단무지에서 제공하는 다양한 학습 코스들을 탐색하고 선택하세요.
+          주제별 코스들을 공부하고 수료해보세요. <br />
+          선별한 영상들로 지식을 쌓아보세요.
         </p>
 
         {/* 카테고리 섹션 */}

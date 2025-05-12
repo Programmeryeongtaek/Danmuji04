@@ -43,7 +43,7 @@ const Header = () => {
 
   // 검색 기능
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // 코스 카테고리 로드
   useEffect(() => {
@@ -103,7 +103,7 @@ const Header = () => {
   // 스터디 카테고리 로드
   useEffect(() => {
     const studyDropdownItems = [
-      { id: 'square', label: '광장', href: '/study?category=square' },
+      { id: 'square', label: '스터디', href: '/study?category=study' },
       { id: 'book', label: '도서', href: '/study?category=book' },
     ];
 
@@ -137,22 +137,17 @@ const Header = () => {
 
         if (error) throw error;
 
-        console.log('Profile data before URL:', profileData); // 디버깅 로그
-
         // avatar_url이 있는 경우 public URL 생성
         if (profileData?.avatar_url) {
           const { data: urlData } = supabase.storage
             .from('avatars')
             .getPublicUrl(profileData.avatar_url);
 
-          console.log('Generated public URL:', urlData.publicUrl); // URL 확인용 로그
-
           // 생성된 publicUrl로 profileData 업데이트
           profileData.avatar_url = urlData.publicUrl;
         }
 
         setProfile(profileData);
-        console.log('Final profile data:', profileData); // 최종 데이터 확인
       } catch (error) {
         console.error('Error fetching profile:', error);
       }
@@ -174,44 +169,19 @@ const Header = () => {
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
+    if (searchTerm.trim()) {
       router.push(
-        `/knowledge?category=search&q=${encodeURIComponent(searchQuery)}`
+        `/knowledge?category=search&q=${encodeURIComponent(searchTerm)}`
       );
       setIsSearchOpen(false);
-      setSearchQuery('');
+      setSearchTerm('');
     }
   };
 
   return (
     <>
       <section className="flex h-10 w-full items-center">
-        <header className="flex h-5 w-full justify-between px-8">
-          <ul className="flex justify-between gap-1">
-            <li className="flex justify-start">
-              <Link
-                href={'/introduce'}
-                className="divide-y-black divide-black-200 flex gap-1"
-              >
-                <Image
-                  src={'/images/danmuji.png'}
-                  alt="단무지"
-                  width={20}
-                  height={20}
-                />
-                <span>단무지</span>
-              </Link>
-            </li>
-            <span>｜</span>
-            <li>
-              <Link
-                href={'/introduce'}
-                className="text-sm hover:text-gold-start"
-              >
-                소개
-              </Link>
-            </li>
-          </ul>
+        <header className="flex h-5 w-full justify-end px-8">
           <ul className="flex items-center gap-1">
             <li>
               <Link
@@ -237,9 +207,9 @@ const Header = () => {
           <form onSubmit={handleSearch} className="relative">
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="검색어를 입력하세요"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="검색어를 입력하세요."
               className="w-full rounded-full border border-gray-300 bg-gray-100 py-2 pl-4 pr-10 focus:border-gold-start focus:outline-none"
               autoFocus
             />
@@ -288,13 +258,17 @@ const Header = () => {
             {/* 모바일에서는 숨기고 데스크톱에서만 보이는 로고 */}
             <Link
               href="/"
-              className="hidden whitespace-nowrap bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-transparent md:flex"
+              className="hidden whitespace-nowrap bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-lg font-bold text-transparent md:flex"
             >
               단무지
             </Link>
 
             {/* 데스크톱 메뉴 - 모바일에서는 숨김 */}
             <div className="ml-6 hidden items-center space-x-4 whitespace-nowrap md:ml-10 md:flex md:space-x-6">
+              <Link href={'/introduce'} className="hover:text-gold-start">
+                소개
+              </Link>
+
               {/* 지식 드롭다운 */}
               <NavDropdown
                 title="지식"
@@ -328,30 +302,39 @@ const Header = () => {
           </div>
 
           {/* 가운데 꽉 차는 검색창 - 중간 크기 이상에서만 표시 */}
-          <div className="mx-4 hidden w-full max-w-xl md:block">
+          <form
+            onSubmit={handleSearch}
+            className="mx-4 hidden w-full max-w-xl md:block"
+          >
             <div className="relative w-full">
               <input
                 type="text"
-                placeholder="배우고 싶은 지식을 검색해보세요."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="배우고 싶은 주제를 검색해보세요."
                 className="w-full rounded-full bg-gray-100 py-2 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-start"
               />
-              <SearchIcon className="absolute right-4 top-2" />
+              <button
+                type="submit"
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-gold-start p-2 text-white transition-colors hover:bg-gold-end"
+              >
+                <SearchIcon className="h-3 w-3" />
+              </button>
               <search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             </div>
-          </div>
+          </form>
 
           {/* 오른쪽: 대시보드, 알림, 프로필 */}
           <div className="flex min-w-fit flex-shrink-0 items-center space-x-3 md:space-x-4">
-            <Link
-              href="/dashboard"
-              className="hidden whitespace-nowrap text-gray-700 hover:text-gold-start md:flex"
-            >
-              대시보드
-            </Link>
-
-            {/* 알림 드롭다운 - 데스크톱과 모바일 모두 표시 */}
             {user && (
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/dashboard"
+                  className="hidden whitespace-nowrap text-gray-700 hover:text-gold-start md:flex"
+                >
+                  대시보드
+                </Link>
+
                 <NotificationDropdown />
               </div>
             )}

@@ -323,10 +323,16 @@ const MyPageMenu = () => {
 
           {/* 스터디 현황 섹션 추가 */}
           <div className="rounded-lg border bg-white p-6 shadow-sm">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-              <Users className="h-5 w-5 text-gold-start" />
-              <span>스터디 활동</span>
-            </h2>
+            <div className="mb-4 flex justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <Users className="h-5 w-5 text-gold-start" />
+                <h2 className="text-lg font-bold">스터디 활동</h2>
+              </div>
+
+              <Button className="px-4 text-white hover:opacity-90">
+                <Link href="/my/studies">관리</Link>
+              </Button>
+            </div>
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 rounded-lg bg-purple-50 p-4">
                 <div className="flex items-center justify-between">
@@ -351,13 +357,7 @@ const MyPageMenu = () => {
                 </div>
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
-              <Link href="/my/studies">
-                <Button className="bg-gold-start text-white hover:opacity-90">
-                  스터디 관리
-                </Button>
-              </Link>
-            </div>
+            <div className="mt-4 flex justify-end"></div>
           </div>
         </div>
       </div>
@@ -369,7 +369,7 @@ const MyPageMenu = () => {
           icon={BookOpen}
           items={[
             { label: '학습 중인 강의', href: '/my/learning' },
-            { label: '이어서 학습하기', href: '/' },
+            // { label: '이어서 학습하기', href: '/' },
             { label: '작성한 글 보기', href: '/my/writings' },
           ]}
         />
@@ -380,9 +380,9 @@ const MyPageMenu = () => {
           icon={Users}
           items={[
             { label: '참여 중인 스터디', href: '/my/studies' },
-            { label: '내가 개설한 스터디', href: '/my/studies?type=created' },
+            { label: '개설한 스터디', href: '/my/studies?type=created' },
             { label: '스터디 북마크', href: '/my/study-bookmarks' },
-            { label: '도서 기반 스터디', href: '/study?category=book' },
+            { label: '도서 추천', href: '/study?category=book' },
           ]}
         />
 

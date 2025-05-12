@@ -54,10 +54,10 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
 
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
-      <Modal.CloseButton className="absolute right-[70px] top-[180px]" />
+      <Modal.CloseButton className="absolute right-[100px] top-[150px]" />
       <Modal.Content>
-        <div className="px-2 pb-6 pt-2">
-          <h2 className="mb-4 text-xl font-bold">필터 선택</h2>
+        <div className="px-2">
+          <h2 className="text-xl font-bold">필터 선택</h2>
 
           <div className="mb-4 flex w-full gap-2 overflow-x-auto whitespace-nowrap border-b pb-2"></div>
 
@@ -138,7 +138,7 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
               <span>초기화</span>
             </button>
             <Button onClick={handleApply} className="px-6">
-              적용하기
+              적용
             </Button>
           </div>
         </div>

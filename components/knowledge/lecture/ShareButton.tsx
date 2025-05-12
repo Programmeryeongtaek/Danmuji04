@@ -1,6 +1,5 @@
 'use client';
 
-import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
 
@@ -25,9 +24,9 @@ const ShareButton = ({ lectureId }: ShareButtonProps) => {
   };
 
   return (
-    <Button onClick={handleShare}>
-      <Share className="h-5 w-5" />
-    </Button>
+    <button onClick={handleShare}>
+      <Share className="h-5 w-5 hover:text-gold-start" />
+    </button>
   );
 };
 

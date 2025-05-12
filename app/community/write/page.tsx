@@ -305,10 +305,9 @@ export default function WritePage() {
       <div className="mb-6">
         <Link
           href="/community"
-          className="flex items-center text-gray-600 hover:text-gray-900"
+          className="flex items-center text-gray-600 hover:text-gold-start"
         >
-          <ChevronLeft className="mr-1 h-5 w-5" />
-          <span>커뮤니티로 돌아가기</span>
+          <ChevronLeft className="h-6 w-6" />
         </Link>
       </div>
 
@@ -317,7 +316,7 @@ export default function WritePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 카테고리 선택 */}
         <div>
-          <label className="mb-2 block text-sm font-medium">
+          <label className="mb-2 block text-base font-medium">
             카테고리 <span className="text-red-500">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
@@ -340,7 +339,7 @@ export default function WritePage() {
 
         {/* 제목 입력 */}
         <div>
-          <label htmlFor="title" className="mb-2 block text-sm font-medium">
+          <label htmlFor="title" className="mb-2 block text-base font-medium">
             제목 <span className="text-red-500">*</span>
           </label>
           <input
@@ -350,16 +349,16 @@ export default function WritePage() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="제목을 입력하세요"
             className="w-full rounded-lg border p-2 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
-            maxLength={100}
+            maxLength={50}
           />
           <div className="mt-1 text-right text-xs text-gray-500">
-            {title.length}/100
+            {title.length}/50
           </div>
         </div>
 
         {/* 내용 입력 */}
         <div>
-          <label htmlFor="content" className="mb-2 block text-sm font-medium">
+          <label htmlFor="content" className="mb-2 block text-base font-medium">
             내용 <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -368,7 +367,11 @@ export default function WritePage() {
             onChange={(e) => setContent(e.target.value)}
             placeholder="내용을 입력하세요"
             className="h-80 w-full rounded-lg border p-3 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+            maxLength={500}
           />
+          <div className="mt-1 text-right text-xs text-gray-500">
+            {content.length}/500
+          </div>
         </div>
 
         {/* 태그 입력 */}
@@ -498,7 +501,7 @@ export default function WritePage() {
             취소
           </Link>
           <Button type="submit" disabled={isSubmitting} className="px-6 py-2">
-            {isSubmitting ? '게시 중...' : '게시하기'}
+            {isSubmitting ? '게시 중...' : '작성'}
           </Button>
         </div>
       </form>

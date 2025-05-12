@@ -6,13 +6,7 @@ import {
   CourseWriting,
 } from '@/app/types/course/courseModel';
 import { createClient } from '@/utils/supabase/client';
-import {
-  ChevronLeft,
-  ChevronRight,
-  LayoutList,
-  MessageSquare,
-  Trash2,
-} from 'lucide-react';
+import { MessageSquare, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import WritingSection from './WritingSection';
@@ -33,14 +27,12 @@ export default function CourseLearnContent({
 }: CourseLearnContentProps) {
   const [course, setCourse] = useState<Course | null>(null);
   const [currentItem, setCurrentItem] = useState<CourseItem | null>(null);
-  const [allItems, setAllItems] = useState<CourseItem[]>([]);
   const [userWriting, setUserWriting] = useState<CourseWriting | null>(null);
   const [otherWritings, setOtherWritings] = useState<CourseWriting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'강의영상' | '모든글보기'>(
     '강의영상'
   );
-  const [showCurriculum, setShowCurriculum] = useState(false);
   const [isEditingMyWriting, setIsEditingMyWriting] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [isPublic, setIsPublic] = useState(true);
@@ -119,7 +111,6 @@ export default function CourseLearnContent({
         }
 
         setCourse(courseData);
-        setAllItems(itemsData || []);
         setCurrentItem(currentItemData);
         setUserWriting(userWritingData);
         setOtherWritings(otherWritingsData);
@@ -133,26 +124,12 @@ export default function CourseLearnContent({
     fetchData();
   }, [courseId, itemId]);
 
-  // 이전/다음 아이템 ID 계산
-  const currentIndex = allItems.findIndex((item) => item.id === itemId);
-  const prevItemId = currentIndex > 0 ? allItems[currentIndex - 1].id : null;
-  const nextItemId =
-    currentIndex < allItems.length - 1 ? allItems[currentIndex + 1].id : null;
-
   // 페이지 제목 설정 (category 사용 예)
   useEffect(() => {
     if (currentItem && course) {
       document.title = `${getCategoryTitle(category)} - ${course.title}`;
     }
   }, [category, course, currentItem]);
-
-  // 진행도 계산 (몇 번째 강의 중 몇 번째인지)
-  const progress = {
-    current: currentIndex + 1,
-    total: allItems.length,
-    percentage:
-      allItems.length > 0 ? ((currentIndex + 1) / allItems.length) * 100 : 0,
-  };
 
   // 아이템 완료 처리 함수
   const handleItemComplete = async (): Promise<void> => {
@@ -258,90 +235,12 @@ export default function CourseLearnContent({
   }
 
   return (
-    <div className="relative mx-auto max-w-4xl p-4">
-      {/* 헤더 영역 - 카테고리 제목과 이동 링크 */}
-      <div className="mb-2 flex items-center justify-between">
-        <Link
-          href={`/course/${category}`}
-          className="flex items-center text-blue-500 hover:underline"
-        >
-          <ChevronLeft size={16} />
-          <span>{getCategoryTitle(category)} 강의 목록으로 돌아가기</span>
-        </Link>
-
-        {allItems.length > 1 && (
-          <button
-            onClick={() => setShowCurriculum(!showCurriculum)}
-            className="flex items-center gap-1 rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-          >
-            <LayoutList size={16} />
-            <span>다른 강의 보기</span>
-          </button>
-        )}
-      </div>
-
-      {/* 진행 상태 표시 */}
-      {allItems.length > 1 && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <span>
-              진행도: {progress.current}/{progress.total}
-            </span>
-            <span>{Math.round(progress.percentage)}% 완료</span>
-          </div>
-          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200">
-            <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-500"
-              style={{ width: `${progress.percentage}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
+    <div className="relative mx-auto max-w-4xl px-4 py-8">
       {/* 강의 제목 */}
       <h1 className="mb-2 text-xl font-bold">{currentItem.title}</h1>
 
-      {/* 강의 목차 (팝오버) */}
-      {showCurriculum && (
-        <div className="absolute right-4 top-20 z-10 max-h-96 w-72 overflow-y-auto rounded-lg border bg-white p-4 shadow-lg">
-          <div className="mb-2 flex items-center justify-between border-b pb-2">
-            <h3 className="font-medium">강의 목차</h3>
-            <button
-              onClick={() => setShowCurriculum(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-          <ul className="space-y-1">
-            {allItems.map((item, index) => (
-              <li key={item.id}>
-                <Link
-                  href={`/course/${category}/${courseId}/learn/${item.id}`}
-                  className={`flex items-center rounded-md p-2 ${
-                    item.id === currentItem.id
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-xs">
-                    {index + 1}
-                  </span>
-                  <span className="line-clamp-1">{item.title}</span>
-                  {completedItems.includes(item.id) && (
-                    <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">
-                      완료
-                    </span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {/* 강의 영상 - 항상 표시 */}
-      <div className="mb-6 overflow-hidden rounded-lg shadow-md">
+      <div className="mb-6 overflow-hidden rounded-lg">
         <VideoPlayer
           contentUrl={
             currentItem.youtube_id
@@ -351,7 +250,6 @@ export default function CourseLearnContent({
           type="video"
           youtubeId={currentItem.youtube_id}
           onComplete={handleItemComplete}
-          isLastItem={nextItemId === null}
         />
       </div>
 
@@ -369,8 +267,8 @@ export default function CourseLearnContent({
             onClick={() => setActiveTab('강의영상')}
             className={`px-4 py-2 ${
               activeTab === '강의영상'
-                ? 'border-b-2 border-blue-500 font-medium text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-b-2 border-gold-start font-medium text-gold-start'
+                : 'text-gray-500 hover:text-gold-start'
             }`}
           >
             강의 영상
@@ -379,8 +277,8 @@ export default function CourseLearnContent({
             onClick={() => setActiveTab('모든글보기')}
             className={`flex items-center px-4 py-2 ${
               activeTab === '모든글보기'
-                ? 'border-b-2 border-blue-500 font-medium text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-b-2 border-gold-start font-medium text-gold-start'
+                : 'text-gray-500 hover:text-gold-start'
             }`}
           >
             <MessageSquare size={16} className="mr-1" />
@@ -412,7 +310,7 @@ export default function CourseLearnContent({
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    className="h-48 w-full rounded-lg border p-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="h-48 w-full rounded-lg border p-3 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start"
                     placeholder="강의를 보고 느낀 점이나 배운 내용을 정리해보세요."
                   />
 
@@ -453,7 +351,7 @@ export default function CourseLearnContent({
                 // 보기 모드
                 <div>
                   <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">내 글</h2>
+                    <h2 className="text-lg font-semibold">작성</h2>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleDeleteMyWriting}
@@ -485,40 +383,6 @@ export default function CourseLearnContent({
                 <p className="whitespace-pre-wrap">{writing.content}</p>
               </div>
             ))
-          )}
-        </div>
-      )}
-
-      {/* 이전/다음 버튼 */}
-      {allItems.length > 1 && (
-        <div className="mt-8 flex justify-between">
-          {prevItemId ? (
-            <Link
-              href={`/course/${category}/${courseId}/learn/${prevItemId}`}
-              className="flex items-center gap-1 rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
-            >
-              <ChevronLeft size={16} />
-              <span>이전 강의</span>
-            </Link>
-          ) : (
-            <div></div>
-          )}
-
-          {nextItemId ? (
-            <Link
-              href={`/course/${category}/${courseId}/learn/${nextItemId}`}
-              className="flex items-center gap-1 rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-            >
-              <span>다음 강의</span>
-              <ChevronRight size={16} />
-            </Link>
-          ) : (
-            <Link
-              href={`/course/${category}`}
-              className="flex items-center gap-1 rounded-lg bg-green-500 px-4 py-2 text-white hover:bg-green-600"
-            >
-              <span>코스 완료!</span>
-            </Link>
           )}
         </div>
       )}

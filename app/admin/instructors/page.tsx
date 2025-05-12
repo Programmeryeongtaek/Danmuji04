@@ -2,7 +2,7 @@
 
 import { useToast } from '@/components/common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
-import { Eye, Search, ShieldOff, User } from 'lucide-react';
+import { ArrowLeft, Eye, Search, ShieldOff, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -178,9 +178,9 @@ export default function InstructorsManagePage() {
 
         <Link
           href="/admin"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+          className="rounded-lg border border-gray-300 px-4 py-2 hover:border-gold-start hover:bg-gold-start hover:text-black"
         >
-          관리자 대시보드로 돌아가기
+          <ArrowLeft className="h-5 w-5" />
         </Link>
       </div>
 

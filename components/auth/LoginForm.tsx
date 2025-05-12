@@ -2,6 +2,7 @@
 
 import Button from '@/components/common/Button/Button';
 import { atom, useAtom } from 'jotai';
+import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 
 // Form 상태를 위한 atom
@@ -112,13 +113,18 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
         </div>
       </div>
 
-      <Button
-        type="submit"
-        className={`mt-4 w-full py-2 ${!isValid ? 'cursor-not-allowed opacity-50' : ''}`}
-        disabled={isSubmitting || !isValid}
-      >
-        {isSubmitting ? '로그인 중...' : '로그인'}
-      </Button>
+      <div className="flex flex-col">
+        <Button
+          type="submit"
+          className={`mt-4 w-full py-2 ${!isValid ? 'cursor-not-allowed opacity-50' : ''}`}
+          disabled={isSubmitting || !isValid}
+        >
+          {isSubmitting ? '로그인 중...' : '로그인'}
+        </Button>
+        <Link href="/signup">
+          <Button className="mt-4 w-full py-2">회원가입</Button>
+        </Link>
+      </div>
     </form>
   );
 };

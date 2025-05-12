@@ -5,6 +5,7 @@ import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
 import {
+  ArrowLeft,
   Bell,
   Calendar,
   CheckCircle,
@@ -349,9 +350,9 @@ export default function NotificationsManagePage() {
 
         <Link
           href="/admin"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+          className="rounded-lg border border-gray-300 px-4 py-2 hover:border-gold-start hover:bg-gold-start hover:text-black"
         >
-          관리자 대시보드로 돌아가기
+          <ArrowLeft className="h-4 w-4" />
         </Link>
       </div>
 
@@ -430,7 +431,7 @@ export default function NotificationsManagePage() {
                   }`}
                 >
                   <Users className="h-4 w-4" />
-                  <span>전체 사용자</span>
+                  <span>전체</span>
                 </button>
 
                 <button
@@ -456,7 +457,7 @@ export default function NotificationsManagePage() {
                   }`}
                 >
                   <User className="h-4 w-4" />
-                  <span>일반 사용자</span>
+                  <span>일반</span>
                 </button>
 
                 <div className="relative" ref={customRolesRef}>
@@ -470,7 +471,7 @@ export default function NotificationsManagePage() {
                     }`}
                   >
                     <User className="h-4 w-4" />
-                    <span>커스텀</span>
+                    <span>대상</span>
                     <ChevronDown className="h-4 w-4" />
                   </button>
 
@@ -478,7 +479,7 @@ export default function NotificationsManagePage() {
                     <div className="absolute right-0 z-10 mt-1 w-48 rounded-lg border bg-white shadow-lg">
                       <div className="p-2">
                         <div className="mb-2 px-3 py-1 text-xs font-medium text-gray-500">
-                          권한 선택 (다중 선택 가능)
+                          선택 (다중 선택 가능)
                         </div>
                         <div className="space-y-1">
                           <label className="flex cursor-pointer items-center gap-2 rounded px-3 py-1 hover:bg-gray-100">
@@ -607,10 +608,7 @@ export default function NotificationsManagePage() {
                   </>
                 ) : (
                   <>
-                    <Send className="mr-2 h-4 w-4" />
-                    <span>
-                      {isScheduled ? '알림 예약하기' : '알림 발송하기'}
-                    </span>
+                    <Send className="h-4 w-4" />
                   </>
                 )}
               </button>
@@ -666,7 +664,7 @@ export default function NotificationsManagePage() {
           <div className="rounded-lg border bg-white p-6 shadow-sm">
             <h2 className="mb-4 flex items-center text-lg font-semibold">
               <Clock className="mr-2 h-5 w-5 text-gray-700" />
-              예약된 알림
+              예약 알림
             </h2>
 
             {/* 예약된 알림 목록 컴포넌트 자리 (추후 구현) */}

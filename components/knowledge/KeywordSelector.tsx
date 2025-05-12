@@ -241,7 +241,7 @@ const KeywordSelector = () => {
                 취소
               </button>
               <Button onClick={applyKeywords} className="px-4 py-2">
-                적용하기
+                적용
               </Button>
             </div>
           </div>

@@ -61,14 +61,13 @@ export default function BookmarkButton({
       className={`flex items-center gap-1 rounded-lg border p-2 transition-colors ${
         isBookmarked
           ? 'border-amber-500 bg-amber-50 text-amber-500'
-          : 'border-gray-300 text-gray-500 hover:bg-gray-50'
+          : 'border-gray-300 text-gray-500 hover:border-gold-start hover:bg-gold-start hover:text-black'
       } ${className}`}
       aria-label={isBookmarked ? '북마크 제거' : '북마크 추가'}
     >
       <BookmarkIcon
         className={`h-5 w-5 ${isBookmarked ? 'fill-amber-500' : ''}`}
       />
-      <span className="text-sm">{isBookmarked ? '북마크됨' : '북마크'}</span>
     </button>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { CheckCircle, ChevronRight } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
+import Button from './Button/Button';
 
 interface CompletionModalProps {
   isOpen: boolean;
@@ -33,21 +34,20 @@ export default function CompletionModal({
             : '이 섹션의 학습을 완료했습니다. 다음 강의로 넘어가세요.'}
         </p>
         <div className="flex justify-center gap-4">
-          {!isLastVideo && (
-            <button
-              onClick={onNextVideo}
-              className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-            >
-              <span>다음 강의</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          )}
           <button
             onClick={onClose}
             className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
           >
-            {isLastVideo ? '확인' : '지금은 계속 보기'}
+            {isLastVideo ? '확인' : '머물기'}
           </button>
+          {!isLastVideo && (
+            <Button
+              onClick={onNextVideo}
+              className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            >
+              <span>다음</span>
+            </Button>
+          )}
         </div>
       </div>
     </div>

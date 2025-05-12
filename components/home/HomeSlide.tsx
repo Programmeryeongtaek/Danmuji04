@@ -8,50 +8,64 @@ const slideData = [
   {
     id: 1,
     title: '단무지에 오신 것을 환영합니다',
-    description: '지식과 배움의 여정, 단무지와 함께 시작해보세요.',
-    buttonText: '서비스 소개 보기',
+    description:
+      '무지를 끊는 학습 공간 \n단무지(斷-無知)에 오신 것을 환영합니다.',
+    buttonText: '소개 페이지',
     link: '/introduce',
     bgColor: 'bg-gold-start/30',
+    imageUrl:
+      'https://images.unsplash.com/photo-1743593035236-b3d6cbf351ac?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 2,
-    title: '지식 탐색하기',
-    description: '다양한 분야의 강의를 탐색하고 새로운 지식을 습득하세요.',
+    title: '지식 탐험',
+    description: '다양한 분야의 강의를 통해 \n지식을 쌓아보세요.',
     buttonText: '강의 둘러보기',
     link: '/knowledge',
     bgColor: 'bg-blue-50',
+    imageUrl:
+      'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 3,
-    title: '코스 학습하기',
-    description: '체계적으로 구성된 코스로 깊이 있는 학습을 경험하세요.',
+    title: '코스 학습',
+    description: '주제별로 선별한 영상들로 \n체계적으로 공부하고 수료해보세요.',
     buttonText: '코스 살펴보기',
     link: '/course',
     bgColor: 'bg-emerald-50',
+    imageUrl:
+      'https://images.unsplash.com/photo-1644564924153-2b2d1a08b2a5?q=80&w=1373&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 4,
-    title: '함께 공부하는 스터디',
-    description: '관심 있는 분야의 스터디에 참여하거나 직접 개설해보세요.',
+    title: '스터디 모임',
+    description:
+      '함께 공부하며 지식을 정립하는 공간 \n관심 있는 분야의 스터디에 참여하거나 개설해보세요.',
     buttonText: '스터디 참여하기',
     link: '/study',
     bgColor: 'bg-gold-start/40',
+    imageUrl:
+      'https://images.unsplash.com/photo-1617239098289-ad0ee436361e?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 5,
-    title: '도서로 시작하는 스터디',
-    description: '좋은 책을 함께 읽고 토론하며 지식을 나눠보세요.',
-    buttonText: '도서 스터디 보기',
+    title: '도서 추천',
+    description: '추천 도서를 함께 읽고 \n좋은 내용을 나눠보세요.',
+    buttonText: '도서 살펴보기',
     link: '/study?category=book',
     bgColor: 'bg-rose-50',
+    imageUrl:
+      'https://images.unsplash.com/photo-1709924168698-620ea32c3488?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
   {
     id: 6,
-    title: '나의 학습 현황',
-    description: '등록한 강의와 학습 진행 상황을 한눈에 확인하세요.',
+    title: '학습 현황',
+    description: '학습 진행현황을 점검하고 \n학습을 이어가보세요.',
     buttonText: '대시보드 바로가기',
     link: '/dashboard',
     bgColor: 'bg-purple-50',
+    imageUrl:
+      'https://images.unsplash.com/photo-1666875753105-c63a6f3bdc86?q=80&w=1173&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
 ];
 
@@ -116,11 +130,26 @@ const HomeSlide = () => {
       {/* 슬라이드 내용 */}
       <Link href={slide.link} className="block h-full">
         <div
-          className={`flex h-full flex-col items-center justify-center px-8 py-10 text-center transition-all duration-500 ${slide.bgColor} hover:bg-opacity-80`}
+          className={`relative flex h-full flex-col items-center justify-center px-8 py-10 text-center transition-all duration-500 ${slide.bgColor} hover:bg-opacity-80`}
+          style={{
+            backgroundImage: slide.imageUrl
+              ? `url(${slide.imageUrl})`
+              : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
         >
-          <h2 className="mb-4 text-2xl font-bold">{slide.title}</h2>
-          <p className="mb-6 max-w-md text-gray-700">{slide.description}</p>
-          <div className="rounded-full bg-gradient-to-r from-gold-start to-gold-end px-6 py-2 text-white">
+          {/* 어두운 오버레이 */}
+          <div className="absolute inset-0 bg-black/40" />
+
+          {/* 텍스트 내용 (z-10으로 위에 올림) */}
+          <h2 className="z-10 mb-4 text-2xl font-bold text-white">
+            {slide.title}
+          </h2>
+          <p className="z-10 mb-6 flex h-[70px] max-w-md items-center whitespace-pre-line text-center text-white">
+            {slide.description}
+          </p>
+          <div className="z-10 rounded-full bg-gradient-to-r from-gold-start to-gold-end px-6 py-2 text-white">
             {slide.buttonText}
           </div>
         </div>

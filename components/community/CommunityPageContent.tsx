@@ -235,9 +235,6 @@ export default function CommunityPageContent() {
     <div className="mx-auto max-w-6xl p-4 md:p-6">
       <div className="mb-8">
         <h1 className="mb-2 text-3xl font-bold">커뮤니티</h1>
-        <p className="text-gray-600">
-          다양한 주제로 소통하고 정보를 나눠보세요
-        </p>
       </div>
 
       {/* 카테고리 탭 */}
@@ -246,67 +243,15 @@ export default function CommunityPageContent() {
           <button
             key={category.id}
             onClick={() => handleCategoryChange(category.id)}
-            className={`flex min-w-[120px] flex-1 flex-col items-center justify-center p-4 transition-colors ${
+            className={`flex min-w-[120px] flex-1 items-center justify-center gap-1 p-4 transition-colors ${
               selectedCategory === category.id
                 ? 'bg-gold-start/10 text-gold-start'
                 : 'bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <category.icon className="mb-2 h-6 w-6" />
             <span>{category.label}</span>
           </button>
         ))}
-      </div>
-
-      {/* 현재 선택된 카테고리 설명 */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold">
-          {communityCategories.find((c) => c.id === selectedCategory)?.label}
-        </h2>
-        <p className="text-gray-600">
-          {
-            communityCategories.find((c) => c.id === selectedCategory)
-              ?.description
-          }
-        </p>
-      </div>
-
-      {/* 인기 태그 섹션 */}
-      <div className="mb-6 rounded-lg border bg-gray-50 p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="font-medium">인기 태그</h3>
-          <button
-            onClick={() => setShowTagSection(!showTagSection)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            {showTagSection ? (
-              <ChevronUp className="h-5 w-5" />
-            ) : (
-              <ChevronDown className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-
-        {showTagSection && (
-          <div className="flex flex-wrap gap-2">
-            {popularTags.map((tag) => (
-              <button
-                key={tag.name}
-                onClick={() => handleTagClick(tag.name)}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${
-                  selectedTag === tag.name
-                    ? 'bg-gold-start text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                #{tag.name}
-                <span className="ml-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700">
-                  {tag.count}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* 검색 및 작성 버튼 */}
@@ -314,7 +259,7 @@ export default function CommunityPageContent() {
         <form onSubmit={handleSearch} className="relative w-full max-w-md">
           <input
             type="text"
-            placeholder="검색어를 입력하세요"
+            placeholder="검색어를 입력하세요."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full rounded-lg border px-10 py-2 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
@@ -364,9 +309,46 @@ export default function CommunityPageContent() {
             className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-all hover:bg-gradient-to-l"
           >
             <PlusCircle className="h-5 w-5" />
-            <span>글 작성하기</span>
+            <span>작성</span>
           </button>
         </div>
+      </div>
+      {/* 인기 태그 섹션 */}
+      <div className="mb-6 rounded-lg border bg-gray-50 p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-medium">인기 태그</h3>
+          <button
+            onClick={() => setShowTagSection(!showTagSection)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            {showTagSection ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+
+        {showTagSection && (
+          <div className="flex flex-wrap gap-2">
+            {popularTags.map((tag) => (
+              <button
+                key={tag.name}
+                onClick={() => handleTagClick(tag.name)}
+                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${
+                  selectedTag === tag.name
+                    ? 'bg-gold-start text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                #{tag.name}
+                <span className="ml-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700">
+                  {tag.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 선택된 필터 표시 */}

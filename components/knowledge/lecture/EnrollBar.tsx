@@ -1,5 +1,6 @@
 'use client';
 
+import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import {
   enrollLecture,
@@ -124,15 +125,15 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
           </span>
         </div>
 
-        <button
+        <Button
           onClick={handleEnroll}
           disabled={isLoading || enrollmentStatus === 'active'}
           className={`flex items-center gap-2 rounded-lg px-6 py-3 text-white transition-all ${
             isLoading
               ? 'bg-gray-400'
               : enrollmentStatus === 'active'
-                ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
-                : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
+                ? 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
+                : ''
           }`}
         >
           {isLoading ? (
@@ -143,12 +144,12 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
           ) : enrollmentStatus === 'active' ? (
             <>
               <BookOpen className="h-5 w-5" />
-              <span>계속 학습하기</span>
+              <span>학습중</span>
             </>
           ) : (
-            <span>수강 신청하기</span>
+            <span>수강 신청</span>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

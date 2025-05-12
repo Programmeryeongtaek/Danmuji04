@@ -1,6 +1,7 @@
 'use client';
 
 import { CourseWriting } from '@/app/types/course/courseModel';
+import Button from '@/components/common/Button/Button';
 import { createClient } from '@/utils/supabase/client';
 import { useState } from 'react';
 
@@ -99,18 +100,18 @@ export default function WritingSection({
 
   return (
     <div className="mt-8 border-t pt-6">
-      <h2 className="mb-4 text-xl font-semibold">나의 생각 정리하기</h2>
+      <h2 className="mb-4 text-xl font-semibold">내용 정리하기</h2>
 
       {isEditing ? (
         <div className="space-y-4">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="h-64 w-full rounded-lg border p-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="강의를 보고 느낀 점이나 배운 내용을 정리해보세요."
+            className="h-64 w-full rounded-lg border p-4 focus:outline-none focus:ring-2 focus:ring-gold-start"
+            placeholder="느낀 점이나 알게 된 내용을 글로 정리해보세요."
           />
 
-          <div className="flex items-center">
+          <div className="flex justify-between">
             <label className="flex cursor-pointer items-center">
               <input
                 type="checkbox"
@@ -118,35 +119,35 @@ export default function WritingSection({
                 onChange={(e) => setIsPublic(e.target.checked)}
                 className="mr-2"
               />
-              <span>다른 사람들에게 공개하기</span>
+              <span>내용 공개</span>
             </label>
+
+            <div className="flex justify-end space-x-2">
+              {userWriting && (
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setContent(userWriting.content);
+                    setIsPublic(userWriting.is_public);
+                  }}
+                  className="rounded-lg border px-4 py-2"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+              )}
+
+              <Button
+                onClick={handleSave}
+                className="px-4 py-2 text-white disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {isSaving ? '저장 중...' : userWriting ? '수정' : '작성'}
+              </Button>
+            </div>
           </div>
 
           {error && <div className="text-red-500">{error}</div>}
-
-          <div className="flex justify-end space-x-2">
-            {userWriting && (
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setContent(userWriting.content);
-                  setIsPublic(userWriting.is_public);
-                }}
-                className="rounded-lg border px-4 py-2"
-                disabled={isSaving}
-              >
-                취소
-              </button>
-            )}
-
-            <button
-              onClick={handleSave}
-              className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
-              disabled={isSaving}
-            >
-              {isSaving ? '저장 중...' : userWriting ? '수정 완료' : '저장하기'}
-            </button>
-          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -161,12 +162,9 @@ export default function WritingSection({
                 : '나만 볼 수 있습니다.'}
             </div>
 
-            <button
-              onClick={() => setIsEditing(true)}
-              className="rounded-lg border px-4 py-2 hover:bg-gray-50"
-            >
-              수정하기
-            </button>
+            <Button onClick={() => setIsEditing(true)} className="px-4 py-2">
+              수정
+            </Button>
           </div>
         </div>
       )}
