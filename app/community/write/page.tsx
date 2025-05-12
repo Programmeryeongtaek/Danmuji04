@@ -7,7 +7,7 @@ import { userAtom } from '@/store/auth';
 import {
   createPost,
   fetchPopularTags,
-} from '@/utils/services/communityService';
+} from '@/utils/services/community/postService';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
 import { ChevronLeft, Plus, Upload, X } from 'lucide-react';
@@ -265,15 +265,12 @@ export default function WritePage() {
       }
 
       // 게시글 생성
-      const postId = await createPost(
-        {
-          title,
-          content: finalContent,
-          category,
-          tags,
-        },
-        user
-      );
+      const postId = await createPost({
+        title,
+        content: finalContent,
+        category,
+        tags,
+      });
 
       showToast('게시글이 작성되었습니다.', 'success');
       router.push(`/community/post/${postId}`);

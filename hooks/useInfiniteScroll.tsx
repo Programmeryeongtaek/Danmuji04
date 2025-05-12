@@ -96,7 +96,7 @@ export function useInfiniteScroll<T, D = unknown>({
       setError(
         error instanceof Error
           ? error
-          : new Error('데이터를 불어오는 중 오류가 발생했습니다.')
+          : new Error('데이터를 불러오는 중 오류가 발생했습니다.')
       );
     } finally {
       setIsLoading(false);
@@ -147,6 +147,7 @@ export function useInfiniteScroll<T, D = unknown>({
         observer.current.disconnect();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLoad, hasMore, data.length, isLoading, loadData, ...dependencies]);
 
   // 상태 초기화 함수

@@ -4,8 +4,9 @@ import Card from '@/components/common/Card';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
 import { Lecture } from '@/app/types/knowledge/lecture';
-import { createClient, fetchWishlist } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
+import { fetchWishlist } from '@/utils/services/knowledge/lectureService';
 
 export default function WishlistPage() {
   const [lectures, setLectures] = useState<Lecture[]>([]);

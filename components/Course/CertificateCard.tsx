@@ -4,8 +4,8 @@ import {
   COURSE_CATEGORIES,
   CourseCategory,
 } from '@/app/types/course/categories';
-import { formatDate } from '@/utils/formatDate';
-import { Certificate } from '@/utils/services/certificateService';
+import { Certificate } from '@/app/types/certificate/certificateTypes';
+import { formatDate } from '@/utils/helpers/formatDate';
 import { Award, Download, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import Button from '../common/Button/Button';

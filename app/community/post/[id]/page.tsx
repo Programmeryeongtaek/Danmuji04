@@ -1,23 +1,24 @@
 'use client';
 
+import { Comment, Post } from '@/app/types/community/communityType';
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import LoginModal from '@/components/home/LoginModal';
 import { userAtom } from '@/store/auth';
 import {
-  Comment,
   createComment,
-  deletedComment,
+  deleteComment,
   fetchCommentsByPostId,
+  toggleCommentLike,
+  updateComment,
+} from '@/utils/services/community/commentService';
+import {
   fetchPostById,
   fetchRelatedPosts,
   isPostBookmarked,
-  Post,
-  toggleCommentLike,
-  togglePostBookmark,
+  togglePostBookmarks,
   togglePostLike,
-  updateComment,
-} from '@/utils/services/communityService';
+} from '@/utils/services/community/postService';
 import { useAtomValue } from 'jotai';
 import {
   BookmarkPlus,
@@ -79,15 +80,6 @@ export default function PostDetailPage() {
 
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
-
-  useEffect(() => {
-    if (post && post.content) {
-      console.log('게시글 내용:', post.content);
-      const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-      const matches = [...(post.content.matchAll(imageLinkRegex) || [])];
-      console.log('이미지 URL 매치:', matches);
-    }
-  }, [post]);
 
   useEffect(() => {
     const fetchPostData = async () => {
@@ -221,7 +213,7 @@ export default function PostDetailPage() {
     if (!post) return;
 
     try {
-      const newBookmarkedState = await togglePostBookmark(post.id);
+      const newBookmarkedState = await togglePostBookmarks(post.id);
       setIsBookmarked(newBookmarkedState);
       showToast(
         newBookmarkedState
@@ -448,7 +440,7 @@ export default function PostDetailPage() {
     }
 
     try {
-      const success = await deletedComment(commentId);
+      const success = await deleteComment(commentId);
 
       if (success) {
         if (isReply && parentId) {
@@ -801,7 +793,9 @@ export default function PostDetailPage() {
                         type="submit"
                         className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-3 py-1 text-sm text-white"
                       >
-                        저장
+                        저장재시도Claude가 메시지 길이 제한에 도달하여 응답을
+                        일시 중지했습니다. 계속하기를 입력하시면 대화를 이어갈
+                        수 있습니다.✖P계속편집typescript{' '}
                       </button>
                     </div>
                   </form>

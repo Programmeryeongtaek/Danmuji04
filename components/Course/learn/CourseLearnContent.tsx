@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import WritingSection from './WritingSection';
 import { useToast } from '@/components/common/Toast/Context';
-import { markCourseItemCompleted } from '@/utils/services/courseService';
+import { markItemAsCompleted } from '@/utils/services/course/courseService';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 
 interface CourseLearnContentProps {
@@ -163,7 +163,7 @@ export default function CourseLearnContent({
       }
 
       // 아이템 완료 처리
-      const success = await markCourseItemCompleted(courseId, itemId);
+      const success = await markItemAsCompleted(courseId, itemId);
 
       if (success) {
         showToast('학습이 완료되었습니다.', 'success');

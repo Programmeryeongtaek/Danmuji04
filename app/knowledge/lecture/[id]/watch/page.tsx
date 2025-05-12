@@ -7,18 +7,18 @@ import LectureCurriculum from '@/components/knowledge/lecture/watch/LectureCurri
 import NavigationButtons from '@/components/knowledge/lecture/watch/NavigationButtons';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 import { Lecture } from '@/app/types/knowledge/lecture';
-import { LectureItem, LectureSection } from '@/app/types/lectureFrom';
-import {
-  createClient,
-  getCompletedItems,
-  getLastWatchedItem,
-  markItemAsCompleted,
-  saveLastWatchedItem,
-} from '@/utils/supabase/client';
+import { LectureItem, LectureSection } from '@/app/types/knowledge/lectureForm';
+import { createClient } from '@/utils/supabase/client';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import {
+  getCompletedItems,
+  getLastWatchedItem,
+  markItemAsCompleted,
+  saveLastWatchedItem,
+} from '@/utils/services/knowledge/lectureWatchService';
 
 // DB에서 불러온 섹션 데이터를 위한 타입
 interface DBLectureSection {

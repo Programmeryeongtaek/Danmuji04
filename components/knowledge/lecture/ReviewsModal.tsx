@@ -1,6 +1,7 @@
 'use client';
 
-import { createClient, createReview } from '@/utils/supabase/client';
+import { createReview } from '@/utils/services/knowledge/reviewService';
+import { createClient } from '@/utils/supabase/client';
 import { Star } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 

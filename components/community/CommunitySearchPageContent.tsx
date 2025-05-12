@@ -3,11 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '../common/Toast/Context';
 import { FormEvent, useEffect, useState } from 'react';
-import {
-  FilterOptions,
-  Post,
-  searchPosts,
-} from '@/utils/services/communityService';
 import Link from 'next/link';
 import {
   ChevronDown,
@@ -21,6 +16,8 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
+import { FilterOptions, Post } from '@/app/types/community/communityType';
+import { searchPosts } from '@/utils/services/community/postService';
 
 // 커뮤니티 카테고리 정의
 const communityCategories = [

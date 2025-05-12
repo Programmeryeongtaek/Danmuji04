@@ -13,7 +13,8 @@ import {
   CourseFormData,
   CourseItemFormData,
 } from '@/app/types/course/courseModel';
-import { createCourse, createCourseItem } from '@/utils/services/courseService';
+import { createCourse } from '@/utils/services/course/courseService';
+import { createCourseItem } from '@/utils/services/course/courseItemService';
 import Link from 'next/link';
 import { ChevronLeft, PlusCircle, Trash2, X, Youtube } from 'lucide-react';
 
@@ -160,8 +161,10 @@ export default function CourseCreatePageContent() {
         await createCourseItem(
           course.id,
           {
-            ...item,
-            title: item.title, // 코스 제목과 동일하게 유지
+            title: item.title,
+            description: item.description || '',
+            keywords: item.keywords || '',
+            youtube_id: item.youtube_id,
           },
           1
         );

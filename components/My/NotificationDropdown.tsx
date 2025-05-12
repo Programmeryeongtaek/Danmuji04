@@ -1,6 +1,6 @@
 'use client';
 
-import { useNotifications } from '@/hooks/useCertificate';
+import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Award, Bell, Book, RefreshCw, X } from 'lucide-react';

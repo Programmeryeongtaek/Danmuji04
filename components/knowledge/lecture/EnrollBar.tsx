@@ -2,10 +2,10 @@
 
 import { useToast } from '@/components/common/Toast/Context';
 import {
-  createClient,
   enrollLecture,
   getActiveEnrollment,
-} from '@/utils/supabase/client';
+} from '@/utils/services/knowledge/lectureService';
+import { createClient } from '@/utils/supabase/client';
 import { BookOpen, CheckCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

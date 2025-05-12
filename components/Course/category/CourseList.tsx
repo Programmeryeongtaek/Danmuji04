@@ -12,6 +12,7 @@ import { Calendar, Check, Edit, Play, Youtube } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import CourseActions from './CourseActions';
+import { CourseWithSections } from '@/app/types/course/courseModel';
 
 interface CourseListProps {
   category?: string;
@@ -22,12 +23,14 @@ export default function CourseList({ category }: CourseListProps) {
     useCourseList(category);
   const { progressData, isLoading: progressLoading } = useAllCourseProgress();
   const { isAdmin } = useCoursePermission();
-  const [courses, setCourses] = useState(initialCourses);
+  const [courses, setCourses] = useState<CourseWithSections[]>(
+    initialCourses as CourseWithSections[]
+  );
 
   // initialCourses가 변경될 때 로컬 상태 업데이트
   useEffect(() => {
     if (!coursesLoading) {
-      const sortedCourses = [...initialCourses].sort(
+      const sortedCourses = [...(initialCourses as CourseWithSections[])].sort(
         (a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
@@ -61,9 +64,12 @@ export default function CourseList({ category }: CourseListProps) {
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {courses.map((course) => {
-        // 각 코스의 첫 번째 아이템 정보를 가져옵니다
-        const firstItem = course.sections?.[0]?.items?.[0];
+      {courses.map((course: CourseWithSections) => {
+        // 이제 타입이 명확하므로 안전하게 접근 가능
+        const sections = course.sections || [];
+        const firstSection = sections[0];
+        const firstItem = firstSection?.items?.[0] || null;
+
         const progress = progressData[course.id] || {
           completed: false,
           writingCompleted: false,

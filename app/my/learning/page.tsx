@@ -5,12 +5,10 @@ import CancelEnrollmentButton from '@/components/My/CancelEnrollmentButton';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
 import { Lecture } from '@/app/types/knowledge/lecture';
-import {
-  calculateEnrollmentProgress,
-  createClient,
-} from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { calculateEnrollmentProgress } from '@/utils/services/knowledge/lectureWatchService';
 
 interface EnrolledLecture extends Lecture {
   enrollment_status: 'active' | 'cancelled';

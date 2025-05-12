@@ -1,6 +1,6 @@
 'use client';
 
-import { useNotifications } from '@/hooks/useCertificate';
+import { useNotifications } from '@/hooks/useNotifications';
 import { createClient } from '@/utils/supabase/client';
 import { createContext, ReactNode, useContext, useEffect } from 'react';
 
@@ -37,8 +37,8 @@ interface Notification {
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  markAsRead: (id: number) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
+  markAsRead: (id: number) => Promise<boolean>;
+  markAllAsRead: () => Promise<boolean>;
   refresh: () => Promise<void>;
   isLoading: boolean;
 }
@@ -47,8 +47,8 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType>({
   notifications: [],
   unreadCount: 0,
-  markAsRead: async () => {},
-  markAllAsRead: async () => {},
+  markAsRead: async () => false,
+  markAllAsRead: async () => false,
   refresh: async () => {},
   isLoading: false,
 });
@@ -64,7 +64,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useNotifications();
 
-  // 컨텍스트 값 생성
   const contextValue: NotificationContextType = {
     notifications: notifications as Notification[],
     unreadCount,

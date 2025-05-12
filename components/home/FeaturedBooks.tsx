@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchPopularBooks } from '@/utils/services/bookService';
+import { fetchPopularBooks } from '@/utils/services/book/bookService';
 import { Book, ThumbsUp, Users } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -40,7 +40,7 @@ const FeaturedBooks = () => {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Book className="h-6 w-6 text-gold-start" />
-          <h2 className="text-2xl font-bold">인기 추천 도서</h2>
+          <h2 className="text-2xl font-bold">추천 도서</h2>
         </div>
         <Link
           href="/study?category=book"

@@ -34,6 +34,7 @@ interface SignUpFormErrors {
   password: string;
   passwordConfirm: string;
   name: string;
+  nickname?: string;
   customInterest?: string;
 }
 
@@ -73,7 +74,7 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
   const formRef = useRef<HTMLFormElement>(null);
 
   const checkEmail = useCallback(async (email: string) => {
-    if (!email) return;
+    if (!email) return false;
 
     setIsCheckingEmail(true);
     const { isDuplicate, error } = await checkEmailDuplicate(email);
@@ -94,7 +95,7 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
   }, [setErrors]);
 
   const checkNickname = useCallback(async (nickname: string) => {
-    if (!nickname) return;
+    if (!nickname) return false;
 
     setIsCheckingNickname(true);
     const { isDuplicate, error } = await checkNicknameDuplicate(nickname);
@@ -115,15 +116,14 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
   }, [setErrors]);
 
 
-  const validateForm = async () => {
+  const validateForm = useCallback(async () => {
     let isValid = true;
-    const newErrors = {
+    const newErrors: SignUpFormErrors = {
       email: '',
       password: '',
       passwordConfirm: '',
       name: '',
       nickname: '',
-      customInterest: '',
     };
 
     // 이메일 검증
@@ -170,7 +170,7 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
 
     setErrors(newErrors);
     return isValid;
-  };
+  }, [checkEmail, checkNickname, formData, setErrors]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -203,20 +203,20 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
     }
   };
 
-  const handleFileChange = (file: File | null) => {
+  const handleFileChange = useCallback((file: File | null) => {
     setFormData((prev) => ({ ...prev, profileImage: file }));
-  }
+  }, [setFormData]);
 
-  const toggleInterest = (category: Category) => {
+  const toggleInterest = useCallback((category: Category) => {
     setFormData((prev) => ({
       ...prev,
       interests: prev.interests.includes(category)
         ? prev.interests.filter((c) => c !== category)
         : [...prev.interests, category]
     }));
-  };
+  }, [setFormData]);
 
-  const addCustomInterest = () => {
+  const addCustomInterest = useCallback(() => {
     if (
       customInterest.trim() &&
       !formData.customInterests.includes(customInterest.trim())
@@ -227,14 +227,14 @@ const useSignUpForm = ({ onSubmit }: SignUpFormProps) => {
       }));
       setCustomInterest('');
     }
-  }
+  }, [customInterest, formData.customInterests, setFormData]);
 
-  const removeCustomInterest = (interest: string) => {
+  const removeCustomInterest = useCallback((interest: string) => {
     setFormData((prev) => ({
       ...prev,
       customInterests: prev.customInterests.filter((i) => i !== interest),
-    }))
-  }
+    }));
+  }, [setFormData]);
 
   return {
     formData,

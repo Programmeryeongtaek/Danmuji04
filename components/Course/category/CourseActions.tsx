@@ -1,7 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
-import { deleteCourseMutation } from '@/utils/services/courseService';
+import { deleteCourseMutation } from '@/utils/services/course/courseAdminService';
 import { Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';

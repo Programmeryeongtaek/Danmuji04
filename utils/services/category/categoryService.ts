@@ -1,5 +1,6 @@
-import { createClient } from '../supabase/client';
+import { createClient } from '../../supabase/client';
 
+// 초기 카테고리 매핑
 const INITIAL_CATEGORY_MAP: Record<string, string> = {
   '독서': 'reading',
   '글쓰기': 'writing',
@@ -29,7 +30,10 @@ export function convertCategoryToKey(name: string): string {
   return newKey;
 }
 
-// 데이터베이스에서 모든 카테고리를 가져와 매핑 업데이트
+/**
+ * 데이터베이스에서 모든 카테고리를 가져와 매핑을 업데이트합니다.
+ * @returns 카테고리 매핑 객체
+ */
 export async function updateCategoryMap(): Promise<Record<string, string>> {
   const now = Date.now();
 
@@ -50,7 +54,7 @@ export async function updateCategoryMap(): Promise<Record<string, string>> {
     if (courseError) throw courseError;
 
      // 모든 카테고리 결합
-     const allCategories = [
+    const allCategories = [
       ...(courseCategories || []).map(item => item.category)
     ];
 
@@ -80,7 +84,11 @@ export async function updateCategoryMap(): Promise<Record<string, string>> {
   }
 }
 
-// 카테고리 키로 한글 이름 조회
+/**
+ * 카테고리 키로 한글 이름을 조회합니다.
+ * @param key 카테고리 영문 키
+ * @returns 한글 이름 또는 null
+ */
 export function getCategoryNameByKey(key: string): string | null {
   // key로 name을 찾는 역매핑 생성
   const reverseMap: Record<string, string> = {};

@@ -4,7 +4,6 @@ export interface Course {
   id: string;
   title: string;
   description: string;
-  students: number;
   category: CourseCategory;
   instructor_id: string;
   instructor_name: string;
@@ -14,6 +13,30 @@ export interface Course {
     title: string;
     items: CourseItem[];
   }[];
+}
+
+// 상세 구조를 가진 Course 타입 정의
+export interface CourseWithSections {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  instructor_id: string;
+  instructor_name: string;
+  created_at: string;
+  sections?: Array<{
+    id: string;
+    title: string;
+    items: Array<{
+      id: string;
+      youtube_id?: string;
+      title: string;
+      description?: string;
+      keywords?: string[];
+      order_num: number;
+      created_at: string;
+    }>;
+  }>;
 }
 
 export interface CourseSection {
@@ -49,19 +72,12 @@ export interface CourseWriting {
 }
 
 export interface CourseProgress {
-  course_id: string;
+  id: string;
   user_id: string;
+  course_id: string;
   item_id: string;
   completed: boolean;
   last_accessed: string;
-}
-
-export interface CourseWithSections extends Course {
-  sections: {
-    id: string;
-    title: string;
-    items: CourseItem[];
-  }[];
 }
 
 export interface CourseFormData {
@@ -89,4 +105,17 @@ export interface CourseItemFormData {
 export interface WritingFormData {
   content: string;
   is_public: boolean;
+}
+
+// 코스 및 아이템 정보가 포함된 글쓰기 타입
+export interface WritingWithDetails extends CourseWriting {
+  course: {
+    id: string;
+    title: string;
+    category: string;
+  };
+  item: {
+    id: string;
+    title: string;
+  };
 }

@@ -6,12 +6,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '../common/Toast/Context';
 import { FormEvent, useEffect, useState } from 'react';
 import {
-  fetchPopularTags,
-  fetchPosts,
-  FilterOptions,
-  Post,
-} from '@/utils/services/communityService';
-import {
   Bell,
   ChevronDown,
   ChevronUp,
@@ -28,6 +22,11 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import LoginModal from '../home/LoginModal';
+import { FilterOptions, Post } from '@/app/types/community/communityType';
+import {
+  fetchPopularTags,
+  fetchPosts,
+} from '@/utils/services/community/postService';
 
 // 커뮤니티 카테고리 정의
 const communityCategories = [

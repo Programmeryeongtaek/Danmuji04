@@ -1,13 +1,6 @@
 'use client';
 
 import {
-  BookmarkedPost,
-  deleteMultipleBookmarks,
-  fetchBookmarkedPosts,
-  updateBookmarkImportance,
-  updateBookmarkMemo,
-} from '@/utils/services/communityService';
-import {
   BookmarkIcon,
   CheckSquare,
   Edit,
@@ -23,6 +16,13 @@ import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useToast } from '../common/Toast/Context';
 import Button from '../common/Button/Button';
+import { BookmarkedPost } from '@/app/types/community/communityType';
+import { updateBookmarkImportance } from '@/utils/services/study/bookmarkService';
+import {
+  deleteMultipleBookmarks,
+  updateBookmarkMemo,
+} from '@/utils/services/community/bookmarkService';
+import { fetchBookmarkedPosts } from '@/utils/services/community/postService';
 
 // 중요도 옵션 상수 정의
 const IMPORTANCE_OPTIONS = [

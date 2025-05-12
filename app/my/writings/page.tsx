@@ -3,7 +3,7 @@
 import { useToast } from '@/components/common/Toast/Context';
 import { COURSE_CATEGORIES } from '@/app/types/course/categories';
 import { CourseWriting } from '@/app/types/course/courseModel';
-import { fetchAllUserWritings } from '@/utils/services/courseService';
+import { fetchAllUserWritings } from '@/utils/services/course/writingService';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Book, Calendar, ExternalLink } from 'lucide-react';

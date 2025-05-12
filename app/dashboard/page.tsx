@@ -1,6 +1,5 @@
 'use client';
 
-import { useAllCertificates } from '@/hooks/useCertificate';
 import { useAllCourseProgress } from '@/hooks/useCourse';
 import { Course } from '@/app/types/course/courseModel';
 import { Lecture } from '@/app/types/knowledge/lecture';
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useAllCertificates } from '@/hooks/useAllCertificates';
 
 interface DashboardStatsProps {
   enrollmentCourseCount: number;

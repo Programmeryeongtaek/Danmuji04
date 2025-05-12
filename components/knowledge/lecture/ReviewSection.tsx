@@ -4,17 +4,19 @@ import { useEffect, useState } from 'react';
 import ReviewModal from './ReviewsModal';
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
-import {
-  createClient,
-  deleteReview,
-  fetchAverageRating,
-  fetchReviewsByLectureId,
-  getActiveEnrollment,
-} from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { ToastType } from '@/components/common/Toast/type';
 import { StarRating } from './StarRating';
 import { ReviewList } from './ReviewList';
 import { ReviewProps } from '@/app/types/knowledge/lecture';
+import {
+  deleteReview,
+  fetchReviewsByLectureId,
+} from '@/utils/services/knowledge/reviewService';
+import {
+  fetchAverageRating,
+  getActiveEnrollment,
+} from '@/utils/services/knowledge/lectureService';
 
 interface ReviewSectionProps {
   lectureId: number;
@@ -52,7 +54,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
   // reviews 상태 업데이트
   const handleDeleteReview = async (reviewId: number) => {
     try {
-      await deleteReview(reviewId, currentUserId);
+      await deleteReview(reviewId);
       loadReviews(); // 리뷰 목록 새로고침
     } catch (error) {
       console.error('Error deleting review:', error);

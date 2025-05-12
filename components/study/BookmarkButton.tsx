@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '../common/Toast/Context';
+import { BookmarkIcon } from 'lucide-react';
 import {
   isStudyBookmarked,
   toggleStudyBookmark,
-} from '@/utils/services/studyService';
-import { BookmarkIcon } from 'lucide-react';
+} from '@/utils/services/study/bookmarkService';
 
 interface BookmarkButtonProps {
   studyId: string;
