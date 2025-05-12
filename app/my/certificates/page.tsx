@@ -3,16 +3,14 @@
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import { CertificateModal } from '@/components/Course/CertificateModal';
-import { useAllCertificates } from '@/hooks/useCertificate';
 import { COURSE_CATEGORIES } from '@/app/types/course/categories';
-import { formatDate } from '@/utils/formatDate';
-import {
-  Certificate,
-  updateCertificate,
-} from '@/utils/services/certificateService';
+import { updateCertificate } from '@/utils/services/certificate/certificateService';
 import { createClient } from '@/utils/supabase/client';
 import { Award, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useAllCertificates } from '@/hooks/useAllCertificates';
+import { formatDate } from '@/utils/helpers/formatDate';
+import { Certificate } from '@/app/types/certificate/certificateTypes';
 
 export default function CertificatesPage() {
   const [userName, setUserName] = useState('사용자');

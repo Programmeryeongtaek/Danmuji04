@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import Modal from '../common/Modal';
 import { Award, X } from 'lucide-react';
 import Button from '../common/Button/Button';
-import { formatDate } from '@/utils/formatDate';
+import { formatDate } from '@/utils/helpers/formatDate';
 import { useToast } from '../common/Toast/Context';
-import { generateCertificate } from '@/utils/services/certificateService';
+import { generateCertificate } from '@/utils/services/certificate/certificateService';
 import {
   convertCategoryToKey,
   updateCategoryMap,
-} from '@/utils/services/categoryService';
+} from '@/utils/services/category/categoryService';
 
 interface CertificateModalProps {
   isOpen: boolean;

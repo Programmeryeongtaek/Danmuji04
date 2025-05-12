@@ -13,6 +13,8 @@ import CourseList from './CourseList';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import CourseProgressSummary from '../CourseProgressSummary';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/auth';
 
 interface CategoryDynamicContentProps {
   category: string;
@@ -27,6 +29,7 @@ export function CategoryDynamicContent({
   const { courses, isLoading: coursesLoading } = useCourseList(category);
   const { progressData, isLoading: progressLoading } = useAllCourseProgress();
   const [userName, setUserName] = useState('');
+  const user = useAtomValue(userAtom);
 
   // 사용자 정보 가져오기
   useEffect(() => {
@@ -112,11 +115,13 @@ export function CategoryDynamicContent({
         </div>
 
         <p className="mb-8 text-gray-600">
-          다양한 {title} 관련 코스를 둘러보고 학습하세요.
+          정리하며 {title}에 관한 지식을 정립해보세요. <br />
+          영상 시청과 글쓰기를 모두 완료하면 수료증이 발급됩니다. <br />
+          선별한 {title} 관련 영상을 보고 자신만의 생각을 글로 정리해보세요.
         </p>
 
         {/* 진행 상황 요약 컴포넌트 - 카테고리 prop 추가 */}
-        {totalCourses > 0 && (
+        {user && totalCourses > 0 && (
           <CourseProgressSummary
             categoryName={title}
             totalCourses={totalCourses}

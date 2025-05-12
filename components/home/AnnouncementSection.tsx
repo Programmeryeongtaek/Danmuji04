@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchPosts } from '@/utils/services/communityService';
+import { fetchPosts } from '@/utils/services/community/postService';
 import { Bell, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';

@@ -1,32 +1,26 @@
 'use client';
 
+import { Comment, Post } from '@/app/types/community/communityType';
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import LoginModal from '@/components/home/LoginModal';
 import { userAtom } from '@/store/auth';
 import {
-  Comment,
   createComment,
-  deletedComment,
+  deleteComment,
   fetchCommentsByPostId,
+  toggleCommentLike,
+  updateComment,
+} from '@/utils/services/community/commentService';
+import {
   fetchPostById,
   fetchRelatedPosts,
   isPostBookmarked,
-  Post,
-  toggleCommentLike,
-  togglePostBookmark,
+  togglePostBookmarks,
   togglePostLike,
-  updateComment,
-} from '@/utils/services/communityService';
+} from '@/utils/services/community/postService';
 import { useAtomValue } from 'jotai';
-import {
-  BookmarkPlus,
-  ChevronLeft,
-  Eye,
-  MessageSquare,
-  Share2,
-  ThumbsUp,
-} from 'lucide-react';
+import { BookmarkPlus, ChevronLeft, Share2, ThumbsUp } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -79,15 +73,6 @@ export default function PostDetailPage() {
 
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
-
-  useEffect(() => {
-    if (post && post.content) {
-      console.log('게시글 내용:', post.content);
-      const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-      const matches = [...(post.content.matchAll(imageLinkRegex) || [])];
-      console.log('이미지 URL 매치:', matches);
-    }
-  }, [post]);
 
   useEffect(() => {
     const fetchPostData = async () => {
@@ -221,7 +206,7 @@ export default function PostDetailPage() {
     if (!post) return;
 
     try {
-      const newBookmarkedState = await togglePostBookmark(post.id);
+      const newBookmarkedState = await togglePostBookmarks(post.id);
       setIsBookmarked(newBookmarkedState);
       showToast(
         newBookmarkedState
@@ -448,7 +433,7 @@ export default function PostDetailPage() {
     }
 
     try {
-      const success = await deletedComment(commentId);
+      const success = await deleteComment(commentId);
 
       if (success) {
         if (isReply && parentId) {
@@ -519,7 +504,7 @@ export default function PostDetailPage() {
       <div className="flex h-screen flex-col items-center justify-center">
         <h1 className="mb-4 text-2xl font-bold">게시글을 찾을 수 없습니다</h1>
         <Link href="/community" className="text-blue-500 hover:underline">
-          커뮤니티로 돌아가기
+          돌아가기
         </Link>
       </div>
     );
@@ -533,8 +518,7 @@ export default function PostDetailPage() {
           href="/community"
           className="flex items-center text-gray-600 hover:text-gray-900"
         >
-          <ChevronLeft className="mr-1 h-5 w-5" />
-          <span>커뮤니티로 돌아가기</span>
+          <ChevronLeft className="mr-1 h-6 w-6" />
         </Link>
       </div>
 
@@ -585,19 +569,38 @@ export default function PostDetailPage() {
               </div>
             </div>
           </div>
-          <div className="mt-2 flex items-center gap-4 text-sm text-gray-500 sm:mt-0">
-            <div className="flex items-center gap-1">
-              <Eye className="h-4 w-4" />
-              <span>{post.views}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <MessageSquare className="h-4 w-4" />
-              <span>{comments.length}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <ThumbsUp className="h-4 w-4" />
-              <span>{likesCount}</span>
-            </div>
+
+          {/* 액션 버튼 */}
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={handleShare}
+              className="text-gray-700 hover:text-gold-start"
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+
+            <button
+              onClick={handleBookmark}
+              className={`${
+                isBookmarked
+                  ? 'text-gold-start'
+                  : 'text-gray-700 hover:text-gold-start'
+              }`}
+            >
+              <BookmarkPlus className="h-5 w-5" />
+            </button>
+
+            <button
+              onClick={handleLike}
+              className={`flex gap-1 ${
+                isLiked
+                  ? 'text-gold-start'
+                  : 'text-gray-700 hover:text-gold-start'
+              }`}
+            >
+              <ThumbsUp className="h-5 w-5" />
+              <span className="ml-1 text-sm text-black">{likesCount}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -621,44 +624,6 @@ export default function PostDetailPage() {
           ))}
         </div>
       )}
-
-      {/* 액션 버튼 */}
-      <div className="mb-8 flex justify-center gap-4">
-        <button
-          onClick={handleLike}
-          className={`flex items-center gap-2 rounded-full px-6 py-2 ${
-            isLiked
-              ? 'bg-gold-start text-white'
-              : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <ThumbsUp className="h-5 w-5" />
-          <span>{isLiked ? '좋아요 취소' : '좋아요'}</span>
-          <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-sm">
-            {likesCount}
-          </span>
-        </button>
-
-        <button
-          onClick={handleBookmark}
-          className={`flex items-center gap-2 rounded-full px-6 py-2 ${
-            isBookmarked
-              ? 'bg-blue-500 text-white'
-              : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <BookmarkPlus className="h-5 w-5" />
-          <span>{isBookmarked ? '북마크됨' : '북마크'}</span>
-        </button>
-
-        <button
-          onClick={handleShare}
-          className="flex items-center gap-2 rounded-full border border-gray-300 bg-white px-6 py-2 text-gray-700 hover:bg-gray-50"
-        >
-          <Share2 className="h-5 w-5" />
-          <span>공유하기</span>
-        </button>
-      </div>
 
       {/* 관련 게시글 */}
       {relatedPosts.length > 0 && (
@@ -705,7 +670,7 @@ export default function PostDetailPage() {
           />
           <div className="flex justify-end">
             <Button type="submit" className="px-4 py-2">
-              댓글 작성
+              작성
             </Button>
           </div>
         </form>
@@ -801,7 +766,9 @@ export default function PostDetailPage() {
                         type="submit"
                         className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-3 py-1 text-sm text-white"
                       >
-                        저장
+                        저장재시도Claude가 메시지 길이 제한에 도달하여 응답을
+                        일시 중지했습니다. 계속하기를 입력하시면 대화를 이어갈
+                        수 있습니다.✖P계속편집typescript{' '}
                       </button>
                     </div>
                   </form>

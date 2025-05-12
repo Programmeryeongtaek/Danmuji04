@@ -199,7 +199,7 @@ export default function InstructorRegisterPage() {
           <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
           <h1 className="mb-2 text-2xl font-bold">신청이 완료되었습니다!</h1>
           <p className="mb-6 text-gray-600">
-            강사 등록 신청이 접수되었습니다. 검토 후 이메일로 결과를
+            강사 신청이 접수되었습니다. 검토 후 이메일로 결과를
             알려드리겠습니다.
           </p>
           <button
@@ -216,10 +216,8 @@ export default function InstructorRegisterPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-8 text-center">
-        <h1 className="mb-2 text-3xl font-bold">강사 등록 신청</h1>
-        <p className="text-gray-600">
-          단무지에서 당신의 지식과 경험을 나누어 보세요.
-        </p>
+        <h1 className="mb-2 text-3xl font-bold">강사 등록</h1>
+        <p className="text-gray-600">강사님의 지식과 경험을 나누어 주세요.</p>
       </div>
 
       <form
@@ -414,7 +412,7 @@ export default function InstructorRegisterPage() {
           disabled={isSubmitting}
           className="w-full rounded-lg bg-gradient-to-r from-gold-start to-gold-end py-3 font-medium text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? '제출 중...' : '신청하기'}
+          {isSubmitting ? '제출 중...' : '신청'}
         </button>
       </form>
     </div>

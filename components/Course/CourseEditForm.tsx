@@ -7,7 +7,10 @@ import {
 } from '@/app/types/course/categories';
 import { FormEvent, useEffect, useState } from 'react';
 import { useToast } from '../common/Toast/Context';
-import { fetchCourseById, updateCourse } from '@/utils/services/courseService';
+import {
+  fetchCourseById,
+  updateCourse,
+} from '@/utils/services/course/courseService';
 import { CourseFormData } from '@/app/types/course/courseModel';
 
 interface CourseEditFormProps {
@@ -39,7 +42,7 @@ export default function CourseEditForm({
         setFormData({
           title: courseData.title,
           description: courseData.description || '',
-          category: courseData.category,
+          category: courseData.category as CourseCategory,
         });
       } catch (error) {
         console.error('강의 데이터 로드 실패:', error);

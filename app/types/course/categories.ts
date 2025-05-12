@@ -2,17 +2,17 @@ export const COURSE_CATEGORIES = {
   reading: {
     id: 'reading',
     title: '독서',
-    description: '독서를 해야 하는 이유와 독서법을 모아놓은 코스'
+    description: '독서의 필요와 독서법에 대한 영상들을 소개하는 코스'
   },
   writing: {
     id: 'writing',
     title: '글쓰기',
-    description: '글쓰기를 해야 하는 이유와 노하우를 모아놓은 코스'
+    description: '글쓰기의 시작과 중요성을 소개하는 코스'
   },
   question: {
     id: 'question',
     title: '질문',
-    description: '질문하는 능력과 질문의 중요성을 모아놓은 코스'
+    description: '질문하는 능력과 질문의 중요성을 소개하는 코스'
   }
   // 새 카테고리는 여기에 추가
 } as const;

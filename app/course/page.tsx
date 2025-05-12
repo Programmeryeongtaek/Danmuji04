@@ -31,6 +31,10 @@ export default function CoursePage() {
           {!isLoading && isAdmin && (
             <Link
               href="/course/create"
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.href = '/course/create';
+              }}
               className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
             >
               <PlusCircle className="h-5 w-5" />
@@ -40,7 +44,8 @@ export default function CoursePage() {
         </div>
 
         <p className="mb-8 text-gray-600">
-          단무지에서 제공하는 다양한 학습 코스들을 탐색하고 선택하세요.
+          주제별 코스들을 공부하고 수료해보세요. <br />
+          선별한 영상들로 지식을 쌓아보세요.
         </p>
 
         {/* 카테고리 섹션 */}

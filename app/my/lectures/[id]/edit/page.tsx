@@ -10,7 +10,7 @@ import {
   LectureDBSection,
   LectureFormData,
   LectureSectionFormData,
-} from '@/app/types/lectureFrom';
+} from '@/app/types/knowledge/lectureForm';
 import { createClient } from '@/utils/supabase/client';
 import { X } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';

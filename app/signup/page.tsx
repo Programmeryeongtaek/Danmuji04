@@ -1,7 +1,6 @@
 'use client';
 
-import { ArrowBigLeft, Eye, EyeOff, Plus, X } from 'lucide-react';
-import Link from 'next/link';
+import { Eye, EyeOff, Plus, X } from 'lucide-react';
 import { ChangeEvent, useState } from 'react';
 import EmailVerifyModal from '@/components/auth/EmailVerifyModal';
 import useSignUpForm, {
@@ -11,6 +10,7 @@ import useSignUpForm, {
 import Image from 'next/image';
 import MarketingAgreementModal from '@/components/auth/MarketingAgreementModal';
 import { createClient } from '@/utils/supabase/client';
+import Button from '@/components/common/Button/Button';
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -173,13 +173,7 @@ const SignUpPage = () => {
   return (
     <>
       <div className="mx-auto max-w-md p-6">
-        <div className="flex justify-between">
-          <Link href="/?login=true" className="flex items-center gap-1">
-            <ArrowBigLeft />
-            <button>뒤로 가기</button>
-          </Link>
-          <h1 className="mb-8 text-2xl font-bold">회원가입</h1>
-        </div>
+        <h1 className="mb-8 text-2xl font-bold">회원가입</h1>
 
         <form ref={formRef} className="space-y-6" onSubmit={handleSubmit}>
           {/* 기본 정보 섹션 */}
@@ -197,7 +191,7 @@ const SignUpPage = () => {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-300 p-2"
+                className="w-full rounded-lg border border-gray-300 p-2 hover:border-gold-start focus:border-gold-start focus:outline-none"
               />
               {errors.name && (
                 <span className="mt-1 text-sm text-red-500">{errors.name}</span>
@@ -217,7 +211,7 @@ const SignUpPage = () => {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, email: e.target.value }))
               }
-              className="w-full rounded-lg border border-gray-300 p-2"
+              className="w-full rounded-lg border border-gray-300 p-2 hover:border-gold-start focus:border-gold-start focus:outline-none"
             />
             {errors.email && (
               <span className="mt-1 text-sm text-red-500">{errors.email}</span>
@@ -232,6 +226,7 @@ const SignUpPage = () => {
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
+                placeholder="8자 이상의 비밀번호를 입력해주세요."
                 value={formData.password}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -239,7 +234,7 @@ const SignUpPage = () => {
                     password: e.target.value,
                   }))
                 }
-                className="w-full rounded-lg border border-gray-300 p-2"
+                className="w-full rounded-lg border border-gray-300 p-2 hover:border-gold-start focus:border-gold-start focus:outline-none"
                 minLength={8}
               />
               <button
@@ -269,6 +264,7 @@ const SignUpPage = () => {
             <div className="relative">
               <input
                 type={showPasswordConfirm ? 'text' : 'password'}
+                placeholder="설정한 비밀번호와 동일하게 입력해주세요."
                 value={formData.passwordConfirm}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -276,7 +272,7 @@ const SignUpPage = () => {
                     passwordConfirm: e.target.value,
                   }))
                 }
-                className="w-full rounded-lg border border-gray-300 p-2"
+                className="w-full rounded-lg border border-gray-300 p-2 hover:border-gold-start focus:border-gold-start focus:outline-none"
                 minLength={8}
               />
               <button
@@ -311,7 +307,7 @@ const SignUpPage = () => {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, nickname: e.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-300 p-2"
+                className="w-full rounded-lg border border-gray-300 p-2 hover:border-gold-start focus:border-gold-start focus:outline-none"
                 placeholder="선택사항"
               />
             </div>
@@ -353,7 +349,7 @@ const SignUpPage = () => {
                 />
                 <label
                   htmlFor="profile-image"
-                  className="cursor-pointer rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
+                  className="cursor-pointer rounded-lg border bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:border-gold-start hover:bg-white"
                 >
                   이미지 선택
                 </label>
@@ -388,8 +384,8 @@ const SignUpPage = () => {
                     value={customInterest}
                     onChange={(e) => setCustomInterest(e.target.value)}
                     placeholder="기타 관심 분야 입력"
-                    className="flex-1 rounded-lg border border-gray-300 p-2 text-sm"
-                    onKeyPress={(e) => {
+                    className="flex-1 rounded-lg border border-gray-300 p-2 text-sm hover:border-gold-start focus:border-gold-start"
+                    onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         addCustomInterest();
@@ -464,25 +460,14 @@ const SignUpPage = () => {
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={isSubmitting}
-            className="mt-6 w-full rounded-lg bg-emerald-500 py-3 text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-6 w-full rounded-lg py-3 text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? '가입 중...' : '가입하기'}
-          </button>
+          </Button>
         </form>
-
-        <div className="relative mt-16 flex h-20 items-center justify-center border-t border-gray-700">
-          <span className="absolute -top-3 bg-light px-2 text-gray-700">
-            간편 회원가입
-          </span>
-          <div className="flex gap-3">
-            <button className="h-10 w-10 rounded-xl bg-gray-100">간편</button>
-            <button className="h-10 w-10 rounded-xl bg-gray-100">간편</button>
-            <button className="h-10 w-10 rounded-xl bg-gray-100">간편</button>
-          </div>
-        </div>
       </div>
 
       <EmailVerifyModal

@@ -11,7 +11,6 @@ import {
   User,
   UserCircle,
   Users,
-  Video,
   X,
 } from 'lucide-react';
 import Button from './Button/Button';
@@ -35,11 +34,11 @@ interface RightSideBarProps {
 // 일반 메뉴 아이템
 const menuItems = [
   // 학습 관련 메뉴
-  { icon: BookOpen, label: '내 학습', href: '/my/learning' },
-  { icon: Video, label: '이어서 학습하기', href: '/' },
-  { icon: Heart, label: '찜 리스트', href: '/my/wishlist' },
-  { icon: Bookmark, label: '북마크', href: '/my/bookmarks' },
-  { icon: BookOpen, label: '내 글 모음', href: '/my/writings' },
+  { icon: BookOpen, label: '수강 강의', href: '/my/learning' },
+  // { icon: Video, label: '이어서 학습하기', href: '/' },
+  { icon: Heart, label: '찜한 강의', href: '/my/wishlist' },
+  { icon: Bookmark, label: '게시글 북마크', href: '/my/bookmarks' },
+  { icon: BookOpen, label: '작성한 내용', href: '/my/writings' },
   { icon: GraduationCap, label: '수료증', href: '/my/certificates' },
 
   // 스터디 관련 메뉴
@@ -199,19 +198,6 @@ const RightSideBar = ({
               <span className="text-sm">{item.label}</span>
             </Link>
           ))}
-
-          {/* 바로가기 링크 */}
-          <div className="mb-2 mt-4 px-4 py-1 text-xs font-semibold text-gray-500">
-            바로가기
-          </div>
-          <Link
-            href="/study/create"
-            className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100"
-            onClick={onClose}
-          >
-            <Users className="mr-3 h-5 w-5 text-blue-500" />
-            <span className="text-sm">스터디 개설하기</span>
-          </Link>
         </nav>
 
         {/* Logout Button */}

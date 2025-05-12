@@ -1,13 +1,7 @@
 'use client';
 
-import { ReviewItemProps } from '@/app/types/knowledge/lecture';
-import {
-  addReviewReply,
-  createClient,
-  deleteReview,
-  toggleReviewLike,
-  updateReview,
-} from '@/utils/supabase/client';
+import { ReplyProps, ReviewItemProps } from '@/app/types/knowledge/lecture';
+import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
 import { FormEvent, useEffect, useState } from 'react';
 import { StarRating } from './StarRating';
@@ -16,6 +10,12 @@ import { ReviewReply } from './ReviewReply';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useTimeLimit } from '@/app/hooks/useTimeLimit';
+import {
+  addReviewReply,
+  deleteReview,
+  toggleReviewLike,
+  updateReview,
+} from '@/utils/services/knowledge/reviewService';
 
 export function ReviewItem({
   review,
@@ -49,7 +49,7 @@ export function ReviewItem({
     if (!editContent.trim()) return;
 
     try {
-      await updateReview(review.id, currentUserId, editContent);
+      await updateReview(review.id, editContent);
       setContent(editContent);
       setIsEditing(false);
     } catch (error) {
@@ -68,7 +68,7 @@ export function ReviewItem({
     onDelete(review.id);
 
     try {
-      await deleteReview(review.id, currentUserId);
+      await deleteReview(review.id);
     } catch (error) {
       console.error('Error deleting review:', error);
     }
@@ -85,40 +85,51 @@ export function ReviewItem({
     if (!currentUserId || !replyContent.trim()) return;
 
     try {
-      // 먼저 현재 사용자의 프로필 정보 가져오기
-      const supabase = createClient();
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('name, nickname, avatar_url')
-        .eq('id', currentUserId)
-        .single();
+      const newReply = await addReviewReply(review.id, replyContent);
 
-      // 프로필 이미지 URL 생성
-      let avatarUrl = null;
-      if (profileData?.avatar_url) {
-        const { data: urlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(profileData.avatar_url);
-        avatarUrl = urlData.publicUrl;
-      }
-
-      // addReviewReply 함수 호출
-      const newReply = await addReviewReply(
-        review.id,
-        currentUserId,
-        replyContent
-      );
-
-      // 기존 코드는 그대로 두고, 방금 가져온 프로필 정보를 덮어씌우기
-      newReply.user_profile = {
-        id: currentUserId,
-        name: profileData?.name || '익명',
-        nickname: profileData?.nickname,
-        avatar_url: avatarUrl,
+      // addReviewReply 반환값의 타입을 더 구체적으로 정의
+      type AddReviewReplyResponse = {
+        id: number;
+        content: string;
+        created_at: string;
+        user_id: string;
+        user_profile: {
+          id?: string;
+          name: string;
+          nickname?: string | null;
+          avatar_url?: string | null;
+        } | null;
+        likes_count: number;
+        is_liked: boolean;
       };
 
-      // 이제 setReplies 호출 (기존 코드)
-      setReplies((prev) => [...prev, newReply]);
+      const typedNewReply = newReply as AddReviewReplyResponse;
+
+      // 타입 가드를 사용해서 안전하게 데이터 추출
+      let userProfile = null;
+
+      if (typedNewReply.user_profile) {
+        // user_profile이 존재할 때 id 속성 체크
+        userProfile = {
+          id: typedNewReply.user_profile.id ?? typedNewReply.user_id,
+          name: typedNewReply.user_profile.name,
+          nickname: typedNewReply.user_profile.nickname ?? null,
+          avatar_url: typedNewReply.user_profile.avatar_url ?? null,
+        };
+      }
+
+      // ReplyProps 타입에 맞게 변환
+      const formattedReply: ReplyProps = {
+        id: typedNewReply.id,
+        content: typedNewReply.content,
+        created_at: typedNewReply.created_at,
+        user_id: typedNewReply.user_id,
+        user_profile: userProfile,
+        likes_count: typedNewReply.likes_count,
+        is_liked: typedNewReply.is_liked,
+      };
+
+      setReplies((prev) => [...prev, formattedReply]);
       setReplyContent('');
       setIsReplying(false);
     } catch (error) {
@@ -126,6 +137,7 @@ export function ReviewItem({
     }
   };
 
+  // 누락된 handleReplyUpdate 함수 추가
   const handleReplyUpdate = (
     replyId: number,
     isLiked: boolean,
@@ -213,7 +225,7 @@ export function ReviewItem({
   }, [review.id, supabase]);
 
   // 함수로 URL 체크 및 생성
-  const getValidImageUrl = (url: string) => {
+  const getValidImageUrl = (url: string | null) => {
     if (!url) return null;
     if (url.startsWith('https://')) return url;
     return `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${url}`;

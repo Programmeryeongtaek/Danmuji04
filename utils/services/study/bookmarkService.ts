@@ -1,13 +1,12 @@
+import { requireAuth } from '@/utils/supabase/auth';
 import { createClient } from '@/utils/supabase/client';
 
-// 스터디 북마크 토글 함수
+// 스터디 북마크 토글
 export async function toggleStudyBookmark(studyId: string): Promise<boolean> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) throw new Error('로그인이 필요합니다');
-  
   try {
+    const supabase = createClient();
+    const user = await requireAuth();
+
     // 기존 북마크 확인
     const { data: existingBookmark } = await supabase
       .from('study_bookmarks')
@@ -46,12 +45,12 @@ export async function toggleStudyBookmark(studyId: string): Promise<boolean> {
 
 // 북마크 상태 확인
 export async function isStudyBookmarked(studyId: string): Promise<boolean> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return false;
-  
   try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return false;
+    
     const { data, error } = await supabase
       .from('study_bookmarks')
       .select('id')
@@ -69,18 +68,16 @@ export async function isStudyBookmarked(studyId: string): Promise<boolean> {
 
 // 북마크 메모 업데이트
 export async function updateBookmarkNotes(bookmarkId: string, notes: string): Promise<boolean> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) throw new Error('로그인이 필요합니다');
-  
   try {
+    const supabase = createClient();
+    const user = await requireAuth();
+
     const { error } = await supabase
       .from('study_bookmarks')
       .update({ notes })
       .eq('id', bookmarkId)
       .eq('user_id', user.id);
-    
+
     if (error) throw error;
     return true;
   } catch (error) {
@@ -90,13 +87,11 @@ export async function updateBookmarkNotes(bookmarkId: string, notes: string): Pr
 }
 
 // 북마크 중요도 업데이트
-export async function updateBookmarkImportance(bookmarkId: string, importance: number): Promise<boolean> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) throw new Error('로그인이 필요합니다');
-  
+export async function updateBookmarkImportance(bookmarkId: number, importance: number): Promise<boolean> {
   try {
+    const supabase = createClient();
+    const user = await requireAuth();
+    
     const { error } = await supabase
       .from('study_bookmarks')
       .update({ importance })

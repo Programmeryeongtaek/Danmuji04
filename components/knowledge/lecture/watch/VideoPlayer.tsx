@@ -1,5 +1,6 @@
 'use client';
 
+import Button from '@/components/common/Button/Button';
 import CompletionModal from '@/components/common/CompletionModal';
 import { useToast } from '@/components/common/Toast/Context';
 
@@ -162,10 +163,9 @@ export default function VideoPlayer({
         </div>
 
         {/* YouTube 영상은 직접 진행률 추적이 어려워 사용자가 완료 버튼을 클릭하도록 함 */}
-        {!hasMarkedAsComplete && (
-          <button
+        {!hasMarkedAsComplete ? (
+          <Button
             onClick={async () => {
-              console.log('사용자가 학습 완료 버튼 클릭');
               try {
                 if (onComplete) {
                   await onComplete();
@@ -177,10 +177,12 @@ export default function VideoPlayer({
                 showToast('완료 처리 중 오류가 발생했습니다.', 'error');
               }
             }}
-            className="mt-4 w-full rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            className="mt-4 h-10 w-full rounded-lg px-4 py-2 text-white"
           >
             학습 완료 표시하기
-          </button>
+          </Button>
+        ) : (
+          <div className="mt-4 h-10"></div>
         )}
 
         {/* 완료 모달 */}

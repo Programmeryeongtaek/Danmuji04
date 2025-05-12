@@ -1,4 +1,4 @@
-import { LectureItemFormData } from '@/app/types/lectureFrom';
+import { LectureItemFormData } from '@/app/types/knowledge/lectureForm';
 import { createClient } from '@/utils/supabase/client';
 import { Upload, Video, X } from 'lucide-react';
 import { ChangeEvent, useState } from 'react';

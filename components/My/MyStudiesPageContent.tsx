@@ -267,7 +267,7 @@ export default function MyStudiesPageContent() {
           className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:opacity-90"
         >
           <Plus className="h-5 w-5" />
-          스터디 개설하기
+          개설하기
         </Link>
       </div>
 
@@ -296,7 +296,7 @@ export default function MyStudiesPageContent() {
               <Users className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">내가 개설한 스터디</p>
+              <p className="text-sm text-gray-500">개설한 스터디</p>
               <p className="text-xl font-bold">
                 {studies.filter((s) => s.role === 'owner').length}개
               </p>
@@ -309,7 +309,7 @@ export default function MyStudiesPageContent() {
               <Book className="h-5 w-5 text-green-500" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">도서 스터디</p>
+              <p className="text-sm text-gray-500">도서 추천</p>
               <p className="text-xl font-bold">
                 {
                   studies.filter(
@@ -374,7 +374,7 @@ export default function MyStudiesPageContent() {
                   onChange={(e) => handleFilterChange('status', e.target.value)}
                   className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
                 >
-                  <option value="all">모든 상태</option>
+                  <option value="all">상태</option>
                   <option value="recruiting">모집 중</option>
                   <option value="in_progress">진행 중</option>
                   <option value="completed">완료</option>
@@ -400,8 +400,8 @@ export default function MyStudiesPageContent() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="스터디 검색..."
-              className="w-full rounded-l-lg border border-r-0 border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+              placeholder="찾는 스터디를 검색하세요."
+              className="w-full rounded-l-lg border border-gray-300 px-4 py-2 focus:border-gold-start focus:outline-none"
             />
             <button
               type="submit"
@@ -443,7 +443,7 @@ export default function MyStudiesPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              내가 개설한 스터디
+              개설한 스터디
             </button>
             <button
               onClick={() => handleTabChange('pending')}
@@ -463,7 +463,7 @@ export default function MyStudiesPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              완료된 스터디
+              완료
             </button>
           </div>
         </div>
@@ -579,13 +579,13 @@ export default function MyStudiesPageContent() {
               href="/study"
               className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50"
             >
-              스터디 둘러보기
+              둘러보기
             </Link>
             <Link
               href="/study/create"
               className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:opacity-90"
             >
-              스터디 개설하기
+              개설하기
             </Link>
           </div>
         </div>

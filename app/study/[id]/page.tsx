@@ -1026,7 +1026,7 @@ export default function StudyDetailPage() {
           className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          스터디 목록으로 돌아가기
+          돌아가기
         </Link>
       </div>
     );
@@ -1038,8 +1038,7 @@ export default function StudyDetailPage() {
         href="/study"
         className="mb-6 inline-flex items-center text-gray-600 hover:text-gold-start"
       >
-        <ArrowLeft className="mr-1 h-4 w-4" />
-        스터디 목록으로 돌아가기
+        <ArrowLeft className="mr-1 h-6 w-6" />
       </Link>
 
       <div className="grid gap-8 md:grid-cols-3">
@@ -1048,29 +1047,6 @@ export default function StudyDetailPage() {
           {/* 상태 배지 및 제목 */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${
-                  study.status === 'recruiting'
-                    ? 'bg-green-100 text-green-800'
-                    : study.status === 'in_progress'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
-                }`}
-              >
-                {study.status === 'recruiting' ? (
-                  <>
-                    <Clock className="h-4 w-4" /> 모집중
-                  </>
-                ) : study.status === 'in_progress' ? (
-                  <>
-                    <Users className="h-4 w-4" /> 진행중
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4" /> 완료
-                  </>
-                )}
-              </span>
               <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
                 {study.category}
               </span>
@@ -1142,13 +1118,48 @@ export default function StudyDetailPage() {
 
                       {/* 방장만 볼 수 있는 편집 버튼 */}
                       {user && study.owner_id === user.id && (
-                        <button
-                          onClick={() => setIsEditMode(true)}
-                          className="flex items-center gap-2 rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                          수정
-                        </button>
+                        <div className="flex gap-2">
+                          {/* 상태 변경 */}
+                          <div className="flex items-center rounded-lg border p-2 hover:border-gold-start hover:bg-gold-start hover:text-black">
+                            <span className="mr-2 text-sm font-medium">
+                              스터디 상태:
+                            </span>
+                            <select
+                              value={study.status}
+                              onChange={(e) =>
+                                handleChangeStudyStatus(
+                                  e.target.value as
+                                    | 'recruiting'
+                                    | 'in_progress'
+                                    | 'completed'
+                                )
+                              }
+                              disabled={
+                                study.status === 'completed' || isLoading
+                              }
+                              className="cursor-pointer rounded border bg-white p-1 text-sm"
+                            >
+                              <option value="recruiting">모집중</option>
+                              <option value="in_progress">진행중</option>
+                              <option value="completed">완료</option>
+                            </select>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setIsEditMode(true)}
+                              className="flex items-center gap-2 rounded-lg border px-3 py-1 text-sm hover:border-gold-start hover:bg-gold-start hover:text-black"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudy()}
+                              className="flex items-center gap-2 rounded-lg border px-3 py-1 text-sm hover:border-gold-start hover:bg-gold-start hover:text-black"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
 
@@ -1219,7 +1230,7 @@ export default function StudyDetailPage() {
                     </div>
 
                     <div className="mb-6">
-                      <h2 className="mb-3 text-lg font-medium">스터디 설명</h2>
+                      <h2 className="mb-3 text-lg font-medium">스터디 소개</h2>
                       <div className="whitespace-pre-wrap rounded-lg border p-4 text-gray-700">
                         {study.description}
                       </div>
@@ -1258,47 +1269,10 @@ export default function StudyDetailPage() {
                               href={`/study/book/${bookInfo.id}`}
                               className="mt-2 inline-block text-sm text-blue-600 hover:underline"
                             >
-                              도서 상세정보 보기
+                              도서 상세정보
                             </Link>
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* 관리자 전용 버튼 */}
-                    {user && study.owner_id === user.id && (
-                      <div className="mt-6 flex flex-wrap gap-3 border-t pt-4">
-                        {/* 상태 변경 */}
-                        <div className="flex items-center rounded-lg border bg-gray-50 p-2">
-                          <span className="mr-2 text-sm font-medium">
-                            스터디 상태:
-                          </span>
-                          <select
-                            value={study.status}
-                            onChange={(e) =>
-                              handleChangeStudyStatus(
-                                e.target.value as
-                                  | 'recruiting'
-                                  | 'in_progress'
-                                  | 'completed'
-                              )
-                            }
-                            disabled={study.status === 'completed' || isLoading}
-                            className="rounded border bg-white p-1 text-sm"
-                          >
-                            <option value="recruiting">모집중</option>
-                            <option value="in_progress">진행중</option>
-                            <option value="completed">완료</option>
-                          </select>
-                        </div>
-
-                        <button
-                          onClick={handleDeleteStudy}
-                          className="flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          스터디 삭제
-                        </button>
                       </div>
                     )}
                   </>
@@ -1319,7 +1293,7 @@ export default function StudyDetailPage() {
             {/* 내 참여 상태 */}
             {isParticipant && (
               <div className="rounded-lg border bg-white p-4 shadow-sm">
-                <h3 className="mb-3 font-medium">내 참여 상태</h3>
+                <h3 className="mb-3 font-medium">참여 상태</h3>
                 <div className="rounded-lg bg-gray-50 p-3">
                   {(() => {
                     const userStatus = participants.find(
@@ -1360,15 +1334,16 @@ export default function StudyDetailPage() {
 
             {/* 참여자 정보 카드 */}
             <div className="rounded-lg border bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-medium">참여자 정보</h2>
-
-              {/* 참여 상태 요약 */}
-              <div className="mb-4 flex flex-wrap gap-2">
-                <div className="rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-800">
+              <div className="flex justify-between">
+                <h2 className="mb-4 text-lg font-medium">참여자 정보</h2>
+                <div className="flex items-center justify-center rounded-full bg-gold-start px-3 text-sm text-black">
                   확정 인원: {approvedParticipants.length}/
                   {study.max_participants}
                 </div>
+              </div>
 
+              {/* 참여 상태 요약 */}
+              <div className="mb-4 flex flex-wrap gap-2">
                 {pendingParticipants.length > 0 && (
                   <div className="rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-800">
                     대기 중: {pendingParticipants.length}명
@@ -1546,9 +1521,7 @@ export default function StudyDetailPage() {
                   onClick={handleLeaveStudy}
                   className="w-full rounded-lg border border-red-500 bg-white py-2 font-medium text-red-500 transition hover:bg-red-50"
                 >
-                  {study.owner_id === user?.id
-                    ? '스터디 해체하기'
-                    : '스터디 나가기'}
+                  {study.owner_id === user?.id ? '해체하기' : '나가기'}
                 </button>
               </div>
             )}

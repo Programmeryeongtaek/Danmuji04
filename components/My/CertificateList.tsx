@@ -1,6 +1,6 @@
 import { CertificateCard } from '@/components/Course/CertificateCard';
-import { useAllCertificates } from '@/hooks/useCertificate';
-import { updateCertificate } from '@/utils/services/certificateService';
+import { useAllCertificates } from '@/hooks/useAllCertificates';
+import { updateCertificate } from '@/utils/services/certificate/certificateService';
 import { Award } from 'lucide-react';
 
 interface CertificateListProps {

@@ -6,12 +6,11 @@ import {
   useCoursePermission,
 } from '@/hooks/useCourse';
 import { getCategoryTitle } from '@/app/types/course/categories';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Calendar, Check, Edit, Play, Youtube } from 'lucide-react';
+import { Check, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import CourseActions from './CourseActions';
+import { CourseWithSections } from '@/app/types/course/courseModel';
 
 interface CourseListProps {
   category?: string;
@@ -22,12 +21,14 @@ export default function CourseList({ category }: CourseListProps) {
     useCourseList(category);
   const { progressData, isLoading: progressLoading } = useAllCourseProgress();
   const { isAdmin } = useCoursePermission();
-  const [courses, setCourses] = useState(initialCourses);
+  const [courses, setCourses] = useState<CourseWithSections[]>(
+    initialCourses as CourseWithSections[]
+  );
 
   // initialCourses가 변경될 때 로컬 상태 업데이트
   useEffect(() => {
     if (!coursesLoading) {
-      const sortedCourses = [...initialCourses].sort(
+      const sortedCourses = [...(initialCourses as CourseWithSections[])].sort(
         (a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
@@ -61,9 +62,7 @@ export default function CourseList({ category }: CourseListProps) {
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {courses.map((course) => {
-        // 각 코스의 첫 번째 아이템 정보를 가져옵니다
-        const firstItem = course.sections?.[0]?.items?.[0];
+      {courses.map((course: CourseWithSections) => {
         const progress = progressData[course.id] || {
           completed: false,
           writingCompleted: false,
@@ -75,11 +74,11 @@ export default function CourseList({ category }: CourseListProps) {
         return (
           <div
             key={course.id}
-            className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+            className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white pt-4 shadow-sm transition-shadow hover:border-gold-start hover:shadow-md"
           >
             {/* 관리자 기능 - 관리자에게만 표시 */}
             {isAdmin && (
-              <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-md bg-white/80 p-1 shadow-sm backdrop-blur-sm">
+              <div className="absolute right-1 top-1 z-10 flex gap-1 rounded-md p-1 shadow-sm backdrop-blur-sm">
                 <CourseActions
                   courseId={course.id}
                   category={course.category}
@@ -89,36 +88,21 @@ export default function CourseList({ category }: CourseListProps) {
             )}
 
             <Link href={targetUrl} className="flex flex-1 flex-col">
-              {/* 유튜브 썸네일 (있는 경우) */}
-              {firstItem?.youtube_id && (
-                <div className="relative aspect-video w-full overflow-hidden bg-gray-100">
-                  <img
-                    src={`https://img.youtube.com/vi/${firstItem.youtube_id}/mqdefault.jpg`}
-                    alt={course.title}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Play className="h-12 w-12 text-white" />
-                  </div>
-                  <div className="absolute bottom-2 right-2 rounded bg-black bg-opacity-70 px-2 py-1">
-                    <Youtube className="h-4 w-4 text-red-500" />
-                  </div>
-                </div>
-              )}
-
               <div className="flex flex-1 flex-col p-4">
-                <h3 className="mb-2 line-clamp-2 text-lg font-medium">
-                  {course.title}
-                </h3>
+                <div className="flex h-[80px] border-b">
+                  <h3 className="mb-2 line-clamp-2 flex text-lg font-medium">
+                    {course.title}
+                  </h3>
+                </div>
 
                 {course.description && (
-                  <p className="mb-4 line-clamp-3 text-sm text-gray-600">
+                  <p className="my-4 line-clamp-3 text-sm text-gray-600">
                     {course.description}
                   </p>
                 )}
 
                 <div className="mt-auto flex items-center justify-between text-sm text-gray-500">
-                  {/* 학습 상태 표시 (강의 등록자 대신) */}
+                  {/* 학습 상태 표시 */}
                   <div className="flex items-center gap-2">
                     <div
                       className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
@@ -150,25 +134,6 @@ export default function CourseList({ category }: CourseListProps) {
                       </span>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1">
-                    <Calendar size={14} />
-                    <span>
-                      {formatDistanceToNow(new Date(course.created_at), {
-                        addSuffix: true,
-                        locale: ko,
-                      })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 학습하기 버튼 추가 */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-4 opacity-0 transition-opacity group-hover:opacity-100">
-                <div className="flex justify-center">
-                  <span className="rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white">
-                    강의 바로보기
-                  </span>
                 </div>
               </div>
             </Link>

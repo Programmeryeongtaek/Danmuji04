@@ -47,6 +47,7 @@ interface RelatedStudy {
   current_participants: number;
   max_participants: number;
   start_date: string;
+  end_date: string;
 }
 
 export default function BookDetailPage() {
@@ -335,8 +336,6 @@ export default function BookDetailPage() {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
     }).format(date);
   };
 
@@ -357,7 +356,7 @@ export default function BookDetailPage() {
           className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          도서 목록으로 돌아가기
+          돌아가기
         </Link>
       </div>
     );
@@ -369,8 +368,7 @@ export default function BookDetailPage() {
         href="/study?category=book"
         className="mb-6 inline-flex items-center text-gray-600 hover:text-gold-start"
       >
-        <ArrowLeft className="mr-1 h-4 w-4" />
-        도서 목록으로 돌아가기
+        <ArrowLeft className="mr-1 h-6 w-6" />
       </Link>
 
       <div className="grid gap-8 md:grid-cols-3">
@@ -384,9 +382,8 @@ export default function BookDetailPage() {
                   <Image
                     src={book.cover_url}
                     alt={book.title}
-                    width={300}
+                    width={200}
                     height={300}
-                    objectFit="cover"
                     className="rounded-lg shadow-md"
                   />
                 ) : (
@@ -402,29 +399,20 @@ export default function BookDetailPage() {
                 <p className="mb-4 text-lg text-gray-700">{book.author}</p>
 
                 <div className="mb-4 flex items-center">
-                  <div className="flex items-center">
-                    <ThumbsUp className="mr-1 h-5 w-5 text-gray-700" />
-                    <span className="font-medium">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleRecommend}
+                      className="gap-2font-medium flex items-center"
+                    >
+                      <ThumbsUp
+                        className={`h-6 w-6 ${book.user_has_recommended ? 'text-gold-start' : 'text-black'}`}
+                      />
+                    </button>
+                    <span className="text-lg font-medium">
                       {book.recommendation_count}명 추천
                     </span>
                   </div>
                 </div>
-
-                <button
-                  onClick={handleRecommend}
-                  className={`mb-6 flex items-center gap-2 rounded-lg px-4 py-2 font-medium ${
-                    book.user_has_recommended
-                      ? 'bg-gray-200 text-gray-700'
-                      : 'bg-gradient-to-r from-gold-start to-gold-end text-white hover:bg-gradient-to-l'
-                  }`}
-                >
-                  <ThumbsUp
-                    className={`h-5 w-5 ${book.user_has_recommended ? '' : 'text-white'}`}
-                  />
-                  {book.user_has_recommended
-                    ? '추천 취소하기'
-                    : '이 책 추천하기'}
-                </button>
 
                 {book.description && (
                   <div>
@@ -443,7 +431,8 @@ export default function BookDetailPage() {
                 href={`/study/create?book_id=${id}`}
                 className="flex items-center justify-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-3 font-medium text-white transition hover:bg-gradient-to-l"
               >
-                <Users className="mr-2 h-5 w-5" />이 책으로 스터디 모임 개설하기
+                <Users className="mr-2 h-5 w-5" />
+                스터디 모임 개설
               </Link>
             </div>
           </div>
@@ -479,7 +468,7 @@ export default function BookDetailPage() {
                         disabled={!newComment.trim() || isSubmitting}
                         className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white disabled:opacity-50"
                       >
-                        {isSubmitting ? '등록 중...' : '댓글 등록'}
+                        {isSubmitting ? '등록 중...' : '작성'}
                       </button>
                     </div>
                   </div>
@@ -557,34 +546,34 @@ export default function BookDetailPage() {
                     href={`/study/${study.id}`}
                     className="block rounded-lg border bg-white p-4 transition hover:border-gold-start hover:shadow-sm"
                   >
-                    <span
-                      className={`mb-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                        study.status === 'recruiting'
-                          ? 'bg-green-100 text-green-800'
+                    <div className="flex justify-between">
+                      <span
+                        className={`mb-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                          study.status === 'recruiting'
+                            ? 'bg-green-100 text-green-800'
+                            : study.status === 'in_progress'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {study.status === 'recruiting'
+                          ? '모집중'
                           : study.status === 'in_progress'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {study.status === 'recruiting'
-                        ? '모집중'
-                        : study.status === 'in_progress'
-                          ? '진행중'
-                          : '완료'}
-                    </span>
+                            ? '진행중'
+                            : '완료'}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {formatDate(study.start_date)} ~{' '}
+                        {formatDate(study.end_date)}
+                      </span>
+                    </div>
 
                     <h3 className="mb-2 font-medium">{study.title}</h3>
 
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <Users className="mr-1 h-4 w-4" />
-                        <span>
-                          {study.current_participants}/{study.max_participants}
-                          명
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="mr-1 h-4 w-4" />
                       <span>
-                        시작일: {formatDate(study.start_date).split(' ')[0]}
+                        {study.current_participants}/{study.max_participants}명
                       </span>
                     </div>
                   </Link>
@@ -592,15 +581,13 @@ export default function BookDetailPage() {
               </div>
             ) : (
               <div className="rounded-lg bg-gray-50 p-6 text-center">
-                <p className="mb-4 text-gray-600">
-                  이 책으로 진행 중인 스터디가 없습니다.
-                </p>
+                <p className="mb-4 text-gray-600">스터디가 없습니다.</p>
                 <Link
                   href={`/study/create?book_id=${book.id}`}
                   className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
                 >
                   <Users className="mr-2 h-4 w-4" />
-                  스터디 개설하기
+                  개설하기
                 </Link>
               </div>
             )}

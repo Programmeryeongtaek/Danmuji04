@@ -1,6 +1,5 @@
 'use client';
 
-import { useAllCertificates } from '@/hooks/useCertificate';
 import { useAllCourseProgress } from '@/hooks/useCourse';
 import { Course } from '@/app/types/course/courseModel';
 import { Lecture } from '@/app/types/knowledge/lecture';
@@ -14,6 +13,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useAllCertificates } from '@/hooks/useAllCertificates';
+import { getCategoryTitle } from '../types/course/categories';
 
 interface DashboardStatsProps {
   enrollmentCourseCount: number;
@@ -36,6 +37,7 @@ interface Study {
   current_participants: number;
   status: 'recruiting' | 'in_progress' | 'completed';
   start_date: string;
+  end_date: string;
   role?: 'owner' | 'participant';
 }
 
@@ -296,7 +298,7 @@ const DashboardPage = () => {
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 학습 현황 */}
         <div className="col-span-2 rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold">나의 학습 현황</h2>
+          <h2 className="mb-4 text-lg font-bold">학습 현황</h2>
 
           <div className="mb-6">
             <div className="mb-2 flex items-center justify-between">
@@ -341,14 +343,14 @@ const DashboardPage = () => {
               href="/my/learning"
               className="text-sm font-medium text-blue-500 hover:underline"
             >
-              모든 수강 중인 강의 보기 →
+              수강 중인 강의 보기 →
             </Link>
           </div>
         </div>
 
         {/* 수료증 */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold">나의 수료증</h2>
+          <h2 className="mb-4 text-lg font-bold">코스 수료증</h2>
 
           {certificates && certificates.length > 0 ? (
             <div className="space-y-4">
@@ -358,7 +360,9 @@ const DashboardPage = () => {
                     <GraduationCap className="h-5 w-5 text-yellow-600" />
                   </div>
                   <div>
-                    <p className="font-medium">{cert.category} 수료증</p>
+                    <p className="font-medium">
+                      {getCategoryTitle(cert.category)}
+                    </p>
                     <p className="text-sm text-gray-500">
                       발급일: {new Date(cert.issued_at).toLocaleDateString()}
                     </p>
@@ -371,7 +375,7 @@ const DashboardPage = () => {
                   href="/my/certificates"
                   className="text-sm font-medium text-blue-500 hover:underline"
                 >
-                  모든 수료증 보기 →
+                  모든 수료증 →
                 </Link>
               </div>
             </div>
@@ -399,8 +403,8 @@ const DashboardPage = () => {
                 href={`/study/${study.id}`}
                 className="block rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="font-medium">{study.title}</h3>
+                <div className="mb-2 flex items-start justify-between">
+                  <h3 className="w-4/5 font-medium">{study.title}</h3>
                   <span
                     className={`rounded-full px-2 py-1 text-xs ${
                       study.status === 'recruiting'
@@ -418,28 +422,16 @@ const DashboardPage = () => {
                   </span>
                 </div>
                 <p className="text-sm text-gray-500">{study.category}</p>
-                <div className="mt-2 flex items-center justify-between">
+                <div className="mt-2 flex flex-col gap-1">
                   <span className="text-sm">
                     <Users className="mr-1 inline-block h-4 w-4" />
                     {study.current_participants}/{study.max_participants}명
                   </span>
                   <span className="text-sm">
-                    시작일: {formatDate(study.start_date)}
+                    {formatDate(study.start_date)} ~{' '}
+                    {formatDate(study.end_date)}
                   </span>
                 </div>
-                {study.role && (
-                  <div className="mt-2">
-                    <span
-                      className={`inline-block rounded-full px-2 py-0.5 text-xs ${
-                        study.role === 'owner'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}
-                    >
-                      {study.role === 'owner' ? '방장' : '참여자'}
-                    </span>
-                  </div>
-                )}
               </Link>
             ))}
           </div>
@@ -459,7 +451,7 @@ const DashboardPage = () => {
                   href="/study/create"
                   className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:bg-gradient-to-l"
                 >
-                  스터디 개설하기
+                  스터디 개설
                 </Link>
               </div>
             </div>
@@ -485,8 +477,10 @@ const DashboardPage = () => {
                     강의
                   </span>
                 </div>
-                <p className="text-sm text-gray-500">{lecture.category}</p>
-                <p className="mt-2 text-sm">강의자: {lecture.instructor}</p>
+                <div className="flex h-10 flex-col">
+                  <p className="text-sm text-gray-500">{lecture.category}</p>
+                  <p className="mt-2 text-sm">강사: {lecture.instructor}</p>
+                </div>
               </Link>
             ))}
 
@@ -502,8 +496,11 @@ const DashboardPage = () => {
                     코스
                   </span>
                 </div>
-                <p className="text-sm text-gray-500">{course.category}</p>
-                <p className="mt-2 text-sm">강의자: {course.instructor_name}</p>
+                <div className="flex h-10 flex-col">
+                  <p className="text-sm text-gray-500">
+                    {getCategoryTitle(course.category)}
+                  </p>
+                </div>
               </Link>
             ))}
           </div>

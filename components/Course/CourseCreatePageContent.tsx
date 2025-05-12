@@ -13,9 +13,11 @@ import {
   CourseFormData,
   CourseItemFormData,
 } from '@/app/types/course/courseModel';
-import { createCourse, createCourseItem } from '@/utils/services/courseService';
+import { createCourse } from '@/utils/services/course/courseService';
+import { createCourseItem } from '@/utils/services/course/courseItemService';
+import { ArrowLeft, PlusCircle, Trash2, X, Youtube } from 'lucide-react';
+import Button from '../common/Button/Button';
 import Link from 'next/link';
-import { ChevronLeft, PlusCircle, Trash2, X, Youtube } from 'lucide-react';
 
 export default function CourseCreatePageContent() {
   const searchParams = useSearchParams();
@@ -45,7 +47,6 @@ export default function CourseCreatePageContent() {
   // 빈 코스 아이템 추가
   const addCourseItem = () => {
     setCourseItems([
-      ...courseItems,
       {
         title: '',
         description: '',
@@ -160,8 +161,10 @@ export default function CourseCreatePageContent() {
         await createCourseItem(
           course.id,
           {
-            ...item,
-            title: item.title, // 코스 제목과 동일하게 유지
+            title: item.title,
+            description: item.description || '',
+            keywords: item.keywords || '',
+            youtube_id: item.youtube_id,
           },
           1
         );
@@ -189,18 +192,13 @@ export default function CourseCreatePageContent() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-4">
-      <div className="mb-6">
-        <Link
-          href="/course"
-          className="flex items-center text-blue-500 hover:underline"
-        >
-          <ChevronLeft size={16} />
-          <span>코스 목록으로 돌아가기</span>
+    <div className="mx-auto max-w-4xl px-4 py-16">
+      <div className="flex items-center justify-between">
+        <h1 className="mb-6 text-2xl font-bold">강의 추가하기</h1>
+        <Link href={'/course'}>
+          <ArrowLeft />
         </Link>
       </div>
-
-      <h1 className="mb-6 text-2xl font-bold">새 강의 추가하기</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 카테고리 선택 */}
@@ -208,8 +206,6 @@ export default function CourseCreatePageContent() {
           <h2 className="mb-4 text-xl font-semibold">강의 카테고리</h2>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">카테고리</label>
-
             {showCategoryInput ? (
               <div className="flex items-center gap-2">
                 <input
@@ -217,16 +213,16 @@ export default function CourseCreatePageContent() {
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   className="flex-1 rounded-lg border p-2"
-                  placeholder="새 카테고리 이름"
+                  placeholder="새 카테고리를 작성해주세요."
                   autoFocus
                 />
-                <button
+                <Button
                   type="button"
                   onClick={addCustomCategory}
-                  className="rounded-lg bg-green-500 px-3 py-2 text-white"
+                  className="rounded-lg px-3 py-2"
                 >
                   추가
-                </button>
+                </Button>
                 <button
                   type="button"
                   onClick={() => setShowCategoryInput(false)}
@@ -244,7 +240,7 @@ export default function CourseCreatePageContent() {
                     onClick={() => setCategory(cat)}
                     className={`rounded-lg px-4 py-2 ${
                       category === cat
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-gold-start text-white'
                         : 'border hover:bg-gray-50'
                     }`}
                   >
@@ -255,10 +251,10 @@ export default function CourseCreatePageContent() {
                 <button
                   type="button"
                   onClick={() => setShowCategoryInput(true)}
-                  className="flex items-center gap-1 rounded-lg border px-3 py-2 text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-1 rounded-lg border px-3 py-2 text-gray-700 hover:border-gold-start hover:bg-gold-start"
                 >
                   <PlusCircle size={16} />
-                  <span>카테고리 추가</span>
+                  <span>추가</span>
                 </button>
               </div>
             )}
@@ -275,14 +271,14 @@ export default function CourseCreatePageContent() {
         <div className="rounded-lg border p-4">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">강의 목록</h2>
-            <button
+            <Button
               type="button"
               onClick={addCourseItem}
-              className="flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-2 text-white hover:bg-blue-600"
+              className="flex items-center gap-1 rounded-lg px-3 py-2"
             >
               <PlusCircle size={16} />
-              <span>강의 추가</span>
-            </button>
+              <span>추가</span>
+            </Button>
           </div>
 
           {courseItems.length === 0 ? (
@@ -394,7 +390,7 @@ export default function CourseCreatePageContent() {
             disabled={isSubmitting}
             className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-3 text-white hover:opacity-90 disabled:opacity-50"
           >
-            {isSubmitting ? '추가 중...' : '강의 추가하기'}
+            {isSubmitting ? '추가 중...' : '등록'}
           </button>
         </div>
       </form>

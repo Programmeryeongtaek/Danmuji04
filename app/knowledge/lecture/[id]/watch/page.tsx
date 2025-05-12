@@ -7,18 +7,18 @@ import LectureCurriculum from '@/components/knowledge/lecture/watch/LectureCurri
 import NavigationButtons from '@/components/knowledge/lecture/watch/NavigationButtons';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 import { Lecture } from '@/app/types/knowledge/lecture';
-import { LectureItem, LectureSection } from '@/app/types/lectureFrom';
-import {
-  createClient,
-  getCompletedItems,
-  getLastWatchedItem,
-  markItemAsCompleted,
-  saveLastWatchedItem,
-} from '@/utils/supabase/client';
+import { LectureItem, LectureSection } from '@/app/types/knowledge/lectureForm';
+import { createClient } from '@/utils/supabase/client';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import {
+  getCompletedItems,
+  getLastWatchedItem,
+  markItemAsCompleted,
+  saveLastWatchedItem,
+} from '@/utils/services/knowledge/lectureWatchService';
 
 // DB에서 불러온 섹션 데이터를 위한 타입
 interface DBLectureSection {
@@ -385,8 +385,7 @@ export default function LectureWatchPage() {
             href={`/knowledge/lecture/${lectureId}`}
             className="flex items-center gap-1"
           >
-            <ChevronLeft className="h-5 w-5" />
-            <span>강의 상세로 돌아가기</span>
+            <ChevronLeft className="h-6 w-6 hover:text-gold-start" />
           </Link>
         </div>
       </div>
@@ -416,29 +415,31 @@ export default function LectureWatchPage() {
         <h2 className="text-lg font-semibold">{currentItem.title}</h2>
       </div>
 
-      {/* 이전/다음 버튼 */}
-      <NavigationButtons
-        onPrevious={handlePrevious}
-        onNext={
-          nextItemId === null
-            ? handleCourseCompletion
-            : currentItem?.type === 'text'
-              ? handleTextComplete
-              : handleNext
-        }
-        hasPrevious={prevItemId !== null}
-        isLastItem={nextItemId === null}
-        isCurrentItemCompleted={completedItems.includes(currentItem.id)}
-        isCourseCompleted={isCourseCompleted} // 추가
-      />
+      <div className="flex flex-col gap-6">
+        {/* 이전/다음 버튼 */}
+        <NavigationButtons
+          onPrevious={handlePrevious}
+          onNext={
+            nextItemId === null
+              ? handleCourseCompletion
+              : currentItem?.type === 'text'
+                ? handleTextComplete
+                : handleNext
+          }
+          hasPrevious={prevItemId !== null}
+          isLastItem={nextItemId === null}
+          isCurrentItemCompleted={completedItems.includes(currentItem.id)}
+          isCourseCompleted={isCourseCompleted} // 추가
+        />
 
-      {/* 커리큘럼 */}
-      <LectureCurriculum
-        sections={sections}
-        currentItemId={currentItem.id}
-        onItemSelect={handleItemSelect}
-        completedItems={completedItems} // 현재 completedItems 상태 전달
-      />
+        {/* 커리큘럼 */}
+        <LectureCurriculum
+          sections={sections}
+          currentItemId={currentItem.id}
+          onItemSelect={handleItemSelect}
+          completedItems={completedItems} // 현재 completedItems 상태 전달
+        />
+      </div>
 
       {/* 완료 모달 */}
       {showCompletionModal && (

@@ -3,11 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '../common/Toast/Context';
 import { FormEvent, useEffect, useState } from 'react';
-import {
-  FilterOptions,
-  Post,
-  searchPosts,
-} from '@/utils/services/communityService';
 import Link from 'next/link';
 import {
   ChevronDown,
@@ -21,6 +16,8 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
+import { FilterOptions, Post } from '@/app/types/community/communityType';
+import { searchPosts } from '@/utils/services/community/postService';
 
 // 커뮤니티 카테고리 정의
 const communityCategories = [
@@ -253,7 +250,7 @@ export default function CommunitySearchPageContent() {
         <form onSubmit={handleSearch} className="relative w-full max-w-md">
           <input
             type="text"
-            placeholder="검색어를 입력하세요"
+            placeholder="검색어를 입력하세요."
             value={currentSearchTerm}
             onChange={(e) => setCurrentSearchTerm(e.target.value)}
             className="w-full rounded-lg border px-10 py-3 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"

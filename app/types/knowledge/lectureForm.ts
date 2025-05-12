@@ -1,4 +1,4 @@
-import { Lecture } from './knowledge/lecture';
+import { Lecture } from './lecture';
 
 export interface LectureItem {
   id: number;

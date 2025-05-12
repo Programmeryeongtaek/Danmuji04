@@ -12,13 +12,14 @@ import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
 import { useSearchParams } from 'next/navigation';
+import {} from '@/utils/supabase/client';
+import { useBookmarks } from '@/hooks/useBookmarks';
+import Pagination from '../common/Pagination';
 import {
   fetchLectures,
   fetchLecturesByCategory,
   searchLectures,
-} from '@/utils/supabase/client';
-import { useBookmarks } from '@/hooks/useBookmarks';
-import Pagination from '../common/Pagination';
+} from '@/utils/services/knowledge/lectureService';
 
 interface ExtendedLectureSectionProps extends LectureSectionProps {
   searchQuery?: string;

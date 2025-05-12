@@ -1,22 +1,25 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
+import { useCallback, useEffect, useState } from 'react';
+import useSupabase from './useSupabase';
 import { ToastType } from '@/components/common/Toast/type';
-import { createClient } from '@/utils/supabase/client';
-import { useEffect, useState } from 'react';
 
 export const useBookmarks = () => {
   const [bookmarkedLectures, setBookmarkedLectures] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
+  const { supabase, user } = useSupabase();
 
-  const fetchBookmarks = async () => {
+  const fetchBookmarks = useCallback(async () => {
+    if (!user) {
+      setBookmarkedLectures([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data } = await supabase
         .from('bookmarks')
         .select('lecture_id')
@@ -30,14 +33,11 @@ export const useBookmarks = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [supabase, user]);
 
-  const handleToggleBookmark = async (lectureId: number) => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
+  const handleToggleBookmark = useCallback(async (lectureId: number) => {
     if (!user) {
-      showToast('로그인이 필요합니다.', 'warning' as ToastType);
+      showToast('로그인이 필요합니다.', 'error' as ToastType);
       return;
     }
 
@@ -65,12 +65,12 @@ export const useBookmarks = () => {
       console.error('Bookmark error:', error);
       showToast('오류가 발생했습니다.', 'error');
     }
-  };
+  }, [supabase, user, bookmarkedLectures, showToast]);
 
   useEffect(() => {
     fetchBookmarks();
-
-    const supabase = createClient();
+    
+    if (!user) return;
     
     const channel = supabase
       .channel('bookmarks_changes')
@@ -80,6 +80,7 @@ export const useBookmarks = () => {
           event: '*',
           schema: 'public',
           table: 'bookmarks',
+          filter: `user_id=eq.${user.id}`,
         },
         () => {
           fetchBookmarks();
@@ -90,7 +91,7 @@ export const useBookmarks = () => {
     return () => {
       channel.unsubscribe();
     };
-  }, []);
+  }, [supabase, user, fetchBookmarks]);
 
   return {
     bookmarkedLectures,
@@ -98,4 +99,4 @@ export const useBookmarks = () => {
     isLoading,
     fetchBookmarks
   };
-}
+};

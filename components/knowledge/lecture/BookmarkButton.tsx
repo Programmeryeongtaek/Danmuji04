@@ -1,6 +1,5 @@
 'use client';
 
-import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import { ToastType } from '@/components/common/Toast/type';
 import { createClient } from '@/utils/supabase/client';
@@ -82,10 +81,11 @@ const BookmarkButton = ({
   }, [initialIsBookmarked]);
 
   return (
-    <Button onClick={handleBookmark} className="flex items-center gap-2">
-      <Bookmark className={`h-5 w-5 ${isBookmarked ? 'fill-white' : ''}`} />
-      <span>{isBookmarked ? '찜완료' : '찜하기'}</span>
-    </Button>
+    <button onClick={handleBookmark} className="flex items-center gap-2 p-2">
+      <Bookmark
+        className={`h-5 w-5 ${isBookmarked ? 'fill-gold-start text-gold-start' : ''}`}
+      />
+    </button>
   );
 };
 

@@ -214,7 +214,7 @@ export default function CreateStudyPageContent() {
         <div className="mb-6 flex items-center">
           <button
             onClick={() => router.back()}
-            className="mr-4 rounded-full p-2 hover:bg-gray-100"
+            className="mr-4 rounded-full p-2 hover:bg-gray-100 hover:text-gold-start"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -374,7 +374,7 @@ export default function CreateStudyPageContent() {
             disabled={isSubmitting}
             className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-2 text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSubmitting ? '생성 중...' : '스터디 생성하기'}
+            {isSubmitting ? '생성 중...' : '생성'}
           </button>
         </div>
       </div>

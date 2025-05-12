@@ -158,40 +158,43 @@ export default function BookList({
 
   return (
     <div>
-      {/* 검색창 */}
-      <div className="mb-6 flex">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="도서 제목 또는 저자 검색"
-          className="flex-1 rounded-l-lg border border-gray-300 px-4 py-2 focus:border-gold-start focus:outline-none"
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-        />
-        <button
-          onClick={handleSearch}
-          disabled={isLoading}
-          className="flex items-center rounded-r-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white"
-        >
-          {isLoading ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-          ) : (
-            <>
-              <Search className="mr-2 h-5 w-5" />
-              검색
-            </>
-          )}
-        </button>
-      </div>
+      <div className="flex justify-between">
+        {/* 검색창 */}
+        <div className="mb-6 flex w-6/12">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="도서 제목 또는 저자를 입력하세요."
+            className="flex-1 rounded-l-lg border border-gray-300 px-4 py-2 focus:border-gold-start focus:outline-none"
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          <button
+            onClick={handleSearch}
+            disabled={isLoading}
+            className="flex items-center rounded-r-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white"
+          >
+            {isLoading ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            ) : (
+              <>
+                <Search className="mr-2 h-5 w-5" />
+                검색
+              </>
+            )}
+          </button>
+        </div>
 
-      {/* 도서 추천 버튼 */}
-      <div className="mb-6 flex justify-end">
-        <Link
-          href="/study/book/recommend"
-          className="flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
-        >
-          <Book className="mr-2 h-5 w-5" />새 도서 추천하기
-        </Link>
+        {/* 도서 추천 버튼 */}
+        <div className="mb-6 flex justify-end">
+          <Link
+            href="/study/book/recommend"
+            className="flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
+          >
+            <Book className="mr-2 h-5 w-5" />
+            도서추천
+          </Link>
+        </div>
       </div>
 
       {/* 도서 목록 */}
@@ -201,17 +204,15 @@ export default function BookList({
             <Link
               key={book.id}
               href={`/study/book/${book.id}`}
-              className="flex flex-col rounded-lg border bg-white p-5 shadow-sm transition hover:shadow-md"
+              className="flex flex-col rounded-lg border bg-white p-5 shadow-sm transition hover:border-gold-start hover:shadow-md"
             >
-              <div className="mb-4 flex justify-center">
+              <div className="mb-4 flex h-[300px] justify-center">
                 {book.cover_url ? (
                   <Image
                     src={book.cover_url}
                     alt={book.title}
                     width={200}
                     height={180}
-                    unoptimized={true}
-                    className="rounded object-cover shadow"
                   />
                 ) : (
                   <div className="flex h-[180px] w-[120px] items-center justify-center rounded bg-gray-200 shadow">
@@ -220,11 +221,11 @@ export default function BookList({
                 )}
               </div>
 
-              <div className="mb-1 line-clamp-2 text-lg font-semibold">
+              <div className="mb-1 line-clamp-2 h-[60px] text-lg font-semibold">
                 {book.title}
               </div>
 
-              <p className="mb-2 text-gray-600">{book.author}</p>
+              <p className="mb-2 font-semibold text-gray-600">{book.author}</p>
 
               {book.description && (
                 <p className="mb-3 line-clamp-3 text-sm text-gray-500">
@@ -247,11 +248,13 @@ export default function BookList({
                   <span>{book.recommendation_count}</span>
                 </button>
 
-                <Users className="mr-1 h-4 w-4" />
-                <span className="text-sm">
-                  {book.study_count !== undefined ? book.study_count : 0}개
-                  스터디
-                </span>
+                <div className="flex items-center gap-2">
+                  <Users className="mr-1 h-4 w-4" />
+                  <span className="text-sm">
+                    {book.study_count !== undefined ? book.study_count : 0}개
+                    스터디
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

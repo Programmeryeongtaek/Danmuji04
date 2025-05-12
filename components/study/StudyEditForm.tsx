@@ -259,7 +259,7 @@ export default function StudyEditForm({
           disabled={isSubmitting}
           className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:bg-gradient-to-l disabled:opacity-50"
         >
-          {isSubmitting ? '저장 중...' : '저장하기'}
+          {isSubmitting ? '저장 중...' : '저장'}
         </button>
       </div>
     </form>

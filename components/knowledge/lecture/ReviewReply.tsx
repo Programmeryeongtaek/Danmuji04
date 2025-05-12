@@ -1,17 +1,18 @@
 'user client';
 
 import { ReviewReplyProps } from '@/app/types/knowledge/lecture';
-import {
-  deleteReviewReply,
-  toggleReplyLike,
-  updateReviewReply,
-} from '@/utils/supabase/client';
+import {} from '@/utils/supabase/client';
 import { Heart, Pencil, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useTimeLimit } from '@/app/hooks/useTimeLimit';
+import {
+  deleteReviewReply,
+  toggleReplyLike,
+  updateReviewReply,
+} from '@/utils/services/knowledge/reviewService';
 
 export function ReviewReply({
   reply,
@@ -34,7 +35,7 @@ export function ReviewReply({
     if (!window.confirm('답글을 삭제하시겠습니까?')) return;
 
     try {
-      await deleteReviewReply(reply.id, currentUserId);
+      await deleteReviewReply(reply.id);
       onDelete(reply.id);
     } catch (error) {
       console.error('Error deleting reply:', error);
@@ -62,7 +63,7 @@ export function ReviewReply({
     if (!editContent.trim()) return;
 
     try {
-      await updateReviewReply(reply.id, currentUserId, editContent);
+      await updateReviewReply(reply.id, currentUserId);
       onEdit(reply.id, editContent);
       setIsEditing(false);
     } catch (error) {

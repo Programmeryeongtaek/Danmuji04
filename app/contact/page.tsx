@@ -254,7 +254,7 @@ export default function ContactPage() {
               disabled={isSubmitting}
               className="w-full rounded-lg bg-gradient-to-r from-gold-start to-gold-end py-3 font-medium text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? '전송 중...' : '메시지 보내기'}
+              {isSubmitting ? '전송 중...' : '전송'}
             </button>
           </form>
         </div>

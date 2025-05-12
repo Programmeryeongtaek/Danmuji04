@@ -10,7 +10,9 @@ const ProgressBar = ({
   return (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">강의 진행률</span>
+        <span className="text-base font-medium font-semibold text-gray-700">
+          강의 진행률
+        </span>
         <span className="text-sm font-medium text-gray-700">{progress}%</span>
       </div>
       <div className="h-2.5 w-full rounded-full bg-gray-200">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useToast } from '../common/Toast/Context';
-import { cancelEnrollment } from '@/utils/supabase/client';
+import { cancelEnrollment } from '@/utils/services/knowledge/lectureService';
 import { ToastType } from '../common/Toast/type';
 import { AlertTriangle } from 'lucide-react';
 

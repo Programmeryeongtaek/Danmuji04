@@ -3,12 +3,11 @@
 import { useToast } from '@/components/common/Toast/Context';
 import { COURSE_CATEGORIES } from '@/app/types/course/categories';
 import { CourseWriting } from '@/app/types/course/courseModel';
-import { fetchAllUserWritings } from '@/utils/services/courseService';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { fetchAllUserWritings } from '@/utils/services/course/writingService';
 import { Book, Calendar, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import Button from '@/components/common/Button/Button';
 
 interface WritingWithDetails extends CourseWriting {
   course: {
@@ -139,17 +138,11 @@ export default function MyWritingsPage() {
                         ]?.title || writing.course?.category}
                       </span>
                       <h3 className="overflow-hidden text-ellipsis break-normal font-medium">
-                        {writing.course?.title.length > 15
-                          ? `${writing.course?.title.substring(0, 15)}...`
+                        {writing.course?.title.length > 30
+                          ? `${writing.course?.title.substring(0)}...`
                           : writing.course?.title}
                       </h3>
                     </div>
-                  </div>
-                  <div className="flex justify-end text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(writing.created_at), {
-                      addSuffix: true,
-                      locale: ko,
-                    })}
                   </div>
                 </div>
 
@@ -182,13 +175,15 @@ export default function MyWritingsPage() {
                 </div>
 
                 <div className="mt-3 flex justify-end">
-                  <Link
-                    href={`/course/${writing.course?.category}/${writing.course?.id}/learn/${writing.item?.id}`}
-                    className="flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1 text-sm text-white hover:bg-blue-600"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    강의로 이동
-                  </Link>
+                  <Button>
+                    <Link
+                      href={`/course/${writing.course?.category}/${writing.course?.id}/learn/${writing.item?.id}`}
+                      className="flex items-center gap-1 rounded-lg px-3 py-1 text-base text-white"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      이동
+                    </Link>
+                  </Button>
                 </div>
               </div>
             ))}

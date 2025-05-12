@@ -8,7 +8,6 @@ import {
   Bell,
   FileText,
   MessageSquare,
-  Settings,
   ShieldCheck,
   Users,
 } from 'lucide-react';
@@ -49,12 +48,6 @@ const adminMenuItems = [
     icon: Bell,
     href: '/admin/notifications',
     description: '시스템 알림 설정 및 발송',
-  },
-  {
-    title: '시스템 설정',
-    icon: Settings,
-    href: '/admin/settings',
-    description: '시스템 환경 설정',
   },
 ];
 

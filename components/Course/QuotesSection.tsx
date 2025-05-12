@@ -31,7 +31,7 @@ const QuoteSection = ({ category }: QuotesProps) => {
 
   return (
     // TODO: 문장이 길어지면 화면에 영향을 받음. 이를 해결하거나, 문장을 나누도록 만들자.
-    <div className="bg-light p-6 text-center">
+    <div className="flex h-[150px] flex-col items-center justify-center bg-light p-6 text-center">
       <p className="mb-2 text-xl font-medium text-gray-600">
         {currentQuote.text}
       </p>
