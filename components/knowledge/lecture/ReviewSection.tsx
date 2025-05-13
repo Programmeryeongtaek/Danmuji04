@@ -30,7 +30,6 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
   const [reviews, setReviews] = useState<ReviewProps[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEnrolled, setIsEnrolled] = useState(false);
   const [hasExistingReview, setHasExistingReview] = useState(false);
   const { showToast } = useToast();
 
@@ -60,13 +59,6 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
           .maybeSingle();
 
         setHasExistingReview(!!existingReview);
-
-        // 수강 상태 확인
-        const { data: enrollment } = await getActiveEnrollment(
-          lectureId,
-          user.id
-        );
-        setIsEnrolled(!!enrollment?.status);
       }
     } catch (error) {
       showToast('수강평을 불러오는데 실패했습니다.', error as ToastType);
