@@ -2,11 +2,14 @@
 
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
+import LoginModal from '@/components/home/LoginModal';
+import { userAtom } from '@/store/auth';
 import {
   enrollLecture,
   getActiveEnrollment,
 } from '@/utils/services/knowledge/lectureService';
 import { createClient } from '@/utils/supabase/client';
+import { useAtomValue } from 'jotai';
 import { BookOpen, CheckCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -20,25 +23,20 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
   const [enrollmentStatus, setEnrollmentStatus] =
     useState<EnrollmentStatus>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [lectureInfo, setLectureInfo] = useState<{
     title: string;
     is_free: boolean;
     price: number;
   } | null>(null);
+
   const { showToast } = useToast();
+  const user = useAtomValue(userAtom);
 
   useEffect(() => {
     const checkEnrollment = async () => {
       try {
         const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          setEnrollmentStatus(null);
-          return;
-        }
 
         // 강의 정보 가져오기
         const { data: lecture } = await supabase
@@ -51,16 +49,15 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
           setLectureInfo(lecture);
         }
 
-        const response = await getActiveEnrollment(lectureId, user.id);
-        if (response.error) {
-          setEnrollmentStatus(null);
-          return;
+        // 로그인한 경우에만 수강 상태 확인
+        if (user) {
+          const response = await getActiveEnrollment(lectureId, user.id);
+          if (!response.error && response.data) {
+            setEnrollmentStatus(response.data.status as EnrollmentStatus);
+          } else {
+            setEnrollmentStatus(null);
+          }
         }
-
-        // data가 null이 아닌 경우에만 status에 접근
-        setEnrollmentStatus(
-          response.data ? (response.data.status as EnrollmentStatus) : null
-        );
       } catch (error) {
         console.error('Error checking enrollment:', error);
         setEnrollmentStatus(null);
@@ -68,7 +65,7 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
     };
 
     checkEnrollment();
-  }, [lectureId]);
+  }, [lectureId, user]);
 
   const handleEnroll = async () => {
     if (!lectureId) {
@@ -76,24 +73,23 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
       return;
     }
 
+    // 로그인 여부 확인
+    if (!user) {
+      showToast('로그인이 필요합니다.', 'error');
+      setIsLoginModalOpen(true);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setEnrollmentStatus(null);
-        showToast('로그인이 필요합니다.', 'error');
-        return;
-      }
-
       await enrollLecture(Number(lectureId));
-      const response = await getActiveEnrollment(Number(lectureId), user.id);
-      if (!response.error && response.data) {
-        setEnrollmentStatus(response.data.status as EnrollmentStatus);
-        showToast('수강 신청이 완료되었습니다.', 'success');
+
+      if (user) {
+        const response = await getActiveEnrollment(Number(lectureId), user.id);
+        if (!response.error && response.data) {
+          setEnrollmentStatus(response.data.status as EnrollmentStatus);
+          showToast('수강 신청이 완료되었습니다.', 'success');
+        }
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -104,54 +100,59 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
     }
   };
 
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white shadow-lg">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <div className="flex flex-col">
-          <span className="font-medium">{lectureInfo?.title || '강의'}</span>
-          <span className="text-sm text-gray-500">
-            {enrollmentStatus === 'active' ? (
-              <span className="flex items-center text-green-600">
-                <CheckCircle className="mr-1 h-4 w-4" />
-                학습 중
-              </span>
-            ) : (
-              <span>
-                {lectureInfo?.is_free
-                  ? '무료'
-                  : `${lectureInfo?.price?.toLocaleString() || 0}원`}
-              </span>
-            )}
-          </span>
-        </div>
+  const handleCloseLoginModal = () => {
+    setIsLoginModalOpen(false);
+  };
 
-        <Button
-          onClick={handleEnroll}
-          disabled={isLoading || enrollmentStatus === 'active'}
-          className={`flex items-center gap-2 rounded-lg px-6 py-3 text-white transition-all ${
-            isLoading
-              ? 'bg-gray-400'
-              : enrollmentStatus === 'active'
-                ? 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
-                : ''
-          }`}
-        >
-          {isLoading ? (
-            <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-              <span>처리 중...</span>
-            </>
-          ) : enrollmentStatus === 'active' ? (
-            <>
-              <BookOpen className="h-5 w-5" />
-              <span>학습중</span>
-            </>
-          ) : (
-            <span>수강 신청</span>
-          )}
-        </Button>
+  return (
+    <>
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white shadow-lg">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          <div className="flex flex-col">
+            <span className="font-medium">{lectureInfo?.title || '강의'}</span>
+            <span className="text-sm text-gray-500">
+              {enrollmentStatus === 'active' ? (
+                <span className="flex items-center text-green-600">
+                  <CheckCircle className="mr-1 h-4 w-4" />
+                  학습 중
+                </span>
+              ) : (
+                <span>
+                  {lectureInfo?.is_free
+                    ? '무료'
+                    : `${lectureInfo?.price?.toLocaleString() || 0}원`}
+                </span>
+              )}
+            </span>
+          </div>
+
+          <Button
+            onClick={handleEnroll}
+            disabled={isLoading || enrollmentStatus === 'active'}
+            className={`flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-white transition-all hover:from-purple-600 hover:to-indigo-700 ${
+              isLoading ? 'bg-gray-400' : enrollmentStatus === 'active'
+            }`}
+          >
+            {isLoading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                <span>처리 중...</span>
+              </>
+            ) : enrollmentStatus === 'active' ? (
+              <>
+                <BookOpen className="h-5 w-5" />
+                <span>학습중</span>
+              </>
+            ) : (
+              <span>수강신청</span>
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
+
+      {/* 로그인 모달 */}
+      <LoginModal isOpen={isLoginModalOpen} onClose={handleCloseLoginModal} />
+    </>
   );
 };
 

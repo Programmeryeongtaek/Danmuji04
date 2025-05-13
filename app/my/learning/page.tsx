@@ -62,10 +62,14 @@ export default function MyLearningPage() {
       // 4. 각 강의의 진행률 계산
       const lecturesWithProgress = await Promise.all(
         lectures.map(async (lecture) => {
-          const progress = await calculateEnrollmentProgress(
-            lecture.id,
-            user.id
-          );
+          let progress = 0;
+          try {
+            progress = await calculateEnrollmentProgress(lecture.id, user.id);
+          } catch (error) {
+            console.error(`강의 ${lecture.id}의 진행률 계산 중 오류:`, error);
+            // 오류 발생 시 진행률 0으로 설정
+          }
+
           const enrollment = enrollments.find(
             (e) => e.lecture_id === lecture.id
           );

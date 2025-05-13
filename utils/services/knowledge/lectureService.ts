@@ -24,12 +24,12 @@ export async function fetchLectures(): Promise<Lecture[]> {
 export async function searchLectures(query: string): Promise<Lecture[]> {
   try {
     const supabase = createClient();
+    
+    const searchPattern = `%${query}%`;
     const { data, error } = await supabase
       .from('lectures')
       .select('*')
-      .or(
-        `title.likes.%${query}%,keyword.ilike.%${query}%,category.ilike.%${query}%`
-      )
+      .or(`title.ilike.${searchPattern},keyword.ilike.${searchPattern},category.ilike.${searchPattern}`)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -425,74 +425,57 @@ export async function enrollLecture(lectureId: number) {
 export async function cancelEnrollment(lectureId: number) {
   try {
     const supabase = createClient();
-    const user = await requireAuth();
-
-    // 현재 수강 상태 확인
-    const { data: enrollment, error: fetchError } = await supabase
-      .from('enrollments')
-      .select('status, progress')
-      .eq('lecture_id', lectureId)
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (fetchError) throw fetchError;
-
-    if (!enrollment) {
+    
+    // 1. 로그인 확인
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return {
         success: false,
-        message: '수강 정보를 찾을 수 없습니다.'
+        message: '로그인이 필요합니다.'
       };
     }
-
-    // 진행률 체크 (20% 이상이면 취소 불가
-    if (enrollment.progress && enrollment.progress >= 20) {
+    
+    // 2. 수강 정보 직접 삭제 (업데이트 대신)
+    const { error: deleteError } = await supabase
+      .from('enrollments')
+      .delete()
+      .eq('lecture_id', lectureId)
+      .eq('user_id', user.id);
+    
+    if (deleteError) {
+      console.error('수강 정보 삭제 실패:', deleteError);
       return {
         success: false,
-        message: '수강률이 20% 이상인 강의는 취소할 수 없습니다.'
+        message: '수강 취소 중 오류가 발생했습니다.'
       };
     }
-
-    // 수강 상태를 'cancelled'로 변경
-    const { error: updateError } = await supabase
+    
+    // 3. 강의 테이블의 학생 수 업데이트
+    // 현재 활성 등록 수 계산
+    const { count: activeCount, error: countError } = await supabase
       .from('enrollments')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString()
-      })
+      .select('*', { count: 'exact', head: true })
       .eq('lecture_id', lectureId)
-      .eq('user_id', user.id)
-
-    if (updateError) throw updateError;
-
-    // 수강생 수 업데이트
-    const { count, error: countError } = await supabase
-      .from('enrollments')
-      .select('*', { count: 'exact' })
-      .eq('lecture_id', lectureId)
-      .eq('status', 'active')
-
-    if (countError) throw countError;
-
-    const { error: lectureUpdateError } = await supabase
-      .from('lectures')
-      .update({ students: count || 0 })
-      .eq('id', lectureId);
-
-    if (lectureUpdateError) {
-      console.error('수강생 수 업데이트 실패:', lectureUpdateError);
-      // 수강생 수 업데이트 실패는 메인 기능에 영향을 주지 않음
+      .eq('status', 'active');
+    
+    if (!countError) {
+      // 학생 수 업데이트 (오류가 없는 경우에만)
+      await supabase
+        .from('lectures')
+        .update({ students: activeCount || 0 })
+        .eq('id', lectureId);
     }
-
+    
     return {
       success: true,
-      message: '수강 취소가 되었습니다.'
+      message: '수강 취소가 완료되었습니다.'
     };
+    
   } catch (error) {
-    console.error('수강 취소 실패:', error);
+    console.error('수강 취소 처리 중 예외 발생:', error);
     return {
       success: false,
       message: '수강 취소 중 오류가 발생했습니다.'
-    }
+    };
   }
 }

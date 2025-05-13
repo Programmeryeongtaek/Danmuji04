@@ -17,10 +17,12 @@ import {
   fetchAverageRating,
   getActiveEnrollment,
 } from '@/utils/services/knowledge/lectureService';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/auth';
 
 interface ReviewSectionProps {
   lectureId: number;
-  currentUserId: string;
+  currentUserId?: string | null;
 }
 
 const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
@@ -28,7 +30,10 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
   const [reviews, setReviews] = useState<ReviewProps[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasExistingReview, setHasExistingReview] = useState(false);
   const { showToast } = useToast();
+
+  const user = useAtomValue(userAtom);
 
   // 데이터 불러오기
   const loadReviews = async () => {
@@ -40,6 +45,21 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       ]);
       setReviews(reviewsData);
       setAverageRating(averageRating);
+
+      // 로그인 상태라면 사용자의 리뷰 존재 여부와 수강 상태 확인
+      if (user) {
+        const supabase = createClient();
+
+        // 리뷰 존재 여부 확인
+        const { data: existingReview } = await supabase
+          .from('reviews')
+          .select('id')
+          .eq('lecture_id', lectureId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        setHasExistingReview(!!existingReview);
+      }
     } catch (error) {
       showToast('수강평을 불러오는데 실패했습니다.', error as ToastType);
     } finally {
@@ -49,7 +69,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
 
   useEffect(() => {
     loadReviews();
-  }, [lectureId]);
+  }, [lectureId, user]);
 
   // reviews 상태 업데이트
   const handleDeleteReview = async (reviewId: number) => {
@@ -58,14 +78,14 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       loadReviews(); // 리뷰 목록 새로고침
     } catch (error) {
       console.error('Error deleting review:', error);
-      showToast('수강평을 삭제하지 못했습니다.', error as ToastType);
+      showToast('수강평을 삭제하지 못했습니다.', 'error');
     }
   };
 
   // 수강평 작성 버튼
   const handleReviewButtonClick = async () => {
     if (!currentUserId) {
-      showToast('로그인이 필요합니다.', 'warning' as ToastType);
+      showToast('로그인이 필요합니다.', 'error');
       return;
     }
 
@@ -79,10 +99,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       );
 
       if (!enrollment?.status) {
-        showToast(
-          '수강생만 수강평을 작성할 수 있습니다.',
-          'warning' as ToastType
-        );
+        showToast('수강생만 수강평을 작성할 수 있습니다.', 'error');
         return;
       }
 
@@ -95,7 +112,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
         .maybeSingle();
 
       if (existingReview) {
-        showToast('이미 수강평을 작성하였습니다.', 'warning' as ToastType);
+        showToast('이미 수강평을 작성하였습니다.', 'error');
         return;
       }
 
@@ -103,11 +120,15 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       setIsModalOpen(true);
     } catch (error) {
       console.error('Error checking review status:', error);
-      showToast(
-        '오류가 발생했습니다. 다시 시도해주세요.',
-        'error' as ToastType
-      );
+      showToast('오류가 발생했습니다. 다시 시도해주세요.', 'error');
     }
+
+    if (hasExistingReview) {
+      showToast('이미 수강평을 작성하였습니다.', 'error');
+      return;
+    }
+
+    setIsModalOpen(true);
   };
 
   return (
@@ -122,8 +143,11 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       </div>
       <div className="mt-4 flex items-center justify-between border-b border-t border-gray-200 py-4">
         <span className="text-gray-600">수강평을 남겨주세요.</span>
-        <Button onClick={handleReviewButtonClick}>
-          <span>수강평 남기기</span>
+        <Button
+          onClick={handleReviewButtonClick}
+          className="bg-gradient-to-r from-purple-500 to-indigo-600 px-3 py-1 hover:from-purple-600 hover:to-indigo-700"
+        >
+          <span>{user ? '작성' : '작성'}</span>
         </Button>
       </div>
 
@@ -135,7 +159,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       ) : reviews.length > 0 ? (
         <ReviewList
           reviews={reviews}
-          currentUserId={currentUserId}
+          currentUserId={user?.id || null}
           onDelete={handleDeleteReview}
         />
       ) : (
@@ -144,6 +168,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
         </div>
       )}
 
+      {/* 수강평 작성 모달 */}
       <ReviewModal
         lectureId={lectureId}
         isOpen={isModalOpen}

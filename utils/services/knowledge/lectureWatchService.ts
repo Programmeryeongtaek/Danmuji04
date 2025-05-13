@@ -149,16 +149,35 @@ export async function calculateEnrollmentProgress(
   try {
     const supabase = createClient();
 
-    // 1. 강의의 전체 아이템 수 조회
+    // 1. 해당 강의의 섹션 ID 목록 가져오기
+    const { data: sections, error: sectionError } = await supabase
+      .from('lecture_sections')
+      .select('id')
+      .eq('lecture_id', lectureId);
+
+    if (sectionError) {
+      console.error('섹션 조회 오류:', sectionError);
+      return 0;
+    }
+    if (!sections || sections.length === 0) return 0;
+
+    const sectionIds = sections.map(section => section.id);
+
+
+    // 2. 해당 섹션들의 모든 아이템 수 조회
     const { count: totalItems, error: countError } = await supabase
       .from('lecture_items')
       .select('*', { count: 'exact', head: true })
-      .eq('lecture_id', lectureId);
+      .in('section_id', sectionIds);
 
-    if (countError) throw countError;
+    if (countError) {
+      console.error('아이템 수 조회 오류:', countError);
+      return 0;
+    }
+    
     if (!totalItems || totalItems === 0) return 0;
 
-    // 2. 완료된 아이템 수 조회
+    // 3. 완료된 아이템 수 조회
     const { count: completedItems, error: completedError } = await supabase
       .from('lecture_progress')
       .select('*', { count: 'exact', head: true })
@@ -166,10 +185,13 @@ export async function calculateEnrollmentProgress(
       .eq('lecture_id', lectureId)
       .eq('completed', true);
 
-    if (completedError) throw completedError;
+    if (completedError) {
+      console.error('완료된 아이템 조회 오류:', completedError);
+      return 0;
+    }
     if (!completedItems) return 0;
 
-    // 3. 진행률 계산 (백분율)
+    // 4. 진행률 계산 (백분율)
     const progress = (completedItems / totalItems) * 100;
     
     // 소수점 둘째 자리에서 반올림

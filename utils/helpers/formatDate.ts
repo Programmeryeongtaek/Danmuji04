@@ -30,3 +30,29 @@ export function getRelativeTime(dateString: string): string {
   
   return formatDate(date);
 }
+
+export function getTodayTimeOrDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  // 년, 월, 일이 같은지 확인 (오늘인지)
+  const isToday = date.getDate() === now.getDate() &&
+                  date.getMonth() === now.getMonth() &&
+                  date.getFullYear() === now.getFullYear();
+  
+  if (isToday) {
+    // 오늘 작성된 글이면 시:분 형식으로 표시
+    return date.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false  // 24시간 형식 사용
+    }).replace(/\s/g, ''); // 공백 제거
+  } else {
+    // 오늘이 아니면 연.월.일 형식으로 표시
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\s/g, ''); // 공백 제거
+  }
+}

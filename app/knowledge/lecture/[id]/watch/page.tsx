@@ -9,9 +9,9 @@ import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 import { Lecture } from '@/app/types/knowledge/lecture';
 import { LectureItem, LectureSection } from '@/app/types/knowledge/lectureForm';
 import { createClient } from '@/utils/supabase/client';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, LogIn, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   getCompletedItems,
@@ -19,6 +19,11 @@ import {
   markItemAsCompleted,
   saveLastWatchedItem,
 } from '@/utils/services/knowledge/lectureWatchService';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/auth';
+import { getActiveEnrollment } from '@/utils/services/knowledge/lectureService';
+import Button from '@/components/common/Button/Button';
+import LoginModal from '@/components/home/LoginModal';
 
 // DB에서 불러온 섹션 데이터를 위한 타입
 interface DBLectureSection {
@@ -44,6 +49,8 @@ export default function LectureWatchPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const lectureId = params.id as string;
+  const router = useRouter();
+  const user = useAtomValue(userAtom);
   const { showToast } = useToast();
 
   // URL에서 시작 아이템 ID 확인
@@ -52,6 +59,9 @@ export default function LectureWatchPage() {
     : null;
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isEnrollmentChecking, setIsEnrollmentChecking] = useState(true);
   const [lecture, setLecture] = useState<Lecture | null>(null);
   const [sections, setSections] = useState<LectureSection[]>([]);
   const [currentItem, setCurrentItem] = useState<LectureItem | null>(null);
@@ -66,6 +76,32 @@ export default function LectureWatchPage() {
   // 업데이트 상태를 추적하는 ref - 상태 변경으로 리렌더링을 일으키지 않도록
   const isUpdatingRef = useRef(false);
   const lastWatchedItemRef = useRef<number | null>(null);
+
+  // 로그인 및 수강신청 상태 확인
+  useEffect(() => {
+    const checkEnrollmentStatus = async () => {
+      try {
+        setIsEnrollmentChecking(true);
+
+        // 로그인 상태 확인
+        if (!user) {
+          setIsEnrolled(false);
+          setIsEnrollmentChecking(false);
+          return;
+        }
+
+        // 수강 상태 확인
+        const response = await getActiveEnrollment(Number(lectureId), user.id);
+        setIsEnrolled(response.data?.status === 'active');
+      } catch (error) {
+        console.error('Error checking enrollment:', error);
+      } finally {
+        setIsEnrollmentChecking(false);
+      }
+    };
+
+    checkEnrollmentStatus();
+  }, [lectureId, user]);
 
   // 강의 데이터 로드
   useEffect(() => {
@@ -123,7 +159,7 @@ export default function LectureWatchPage() {
   // 진도 데이터 로드 - sections이 로드된 후 한 번만 실행하도록 수정
   useEffect(() => {
     const loadProgressData = async () => {
-      if (isLoading || allItems.length === 0) return;
+      if (isLoading || allItems.length === 0 || !user || !isEnrolled) return;
 
       try {
         // 완료된 아이템 목록 가져오기
@@ -140,12 +176,17 @@ export default function LectureWatchPage() {
     };
 
     loadProgressData();
-  }, [lectureId, isLoading, allItems.length]);
+  }, [lectureId, isLoading, allItems.length, user, isEnrolled]);
 
   // 초기 아이템 설정 - sections이 로드된 후 한 번만 실행
   useEffect(() => {
     const initializeCurrentItem = async () => {
-      if (isLoading || sections.length === 0 || allItems.length === 0) {
+      if (
+        isLoading ||
+        sections.length === 0 ||
+        allItems.length === 0 ||
+        !isEnrolled
+      ) {
         return;
       }
 
@@ -217,11 +258,19 @@ export default function LectureWatchPage() {
     };
 
     initializeCurrentItem();
-  }, [isLoading, sections, initialItemId, allItems, currentItem, lectureId]);
+  }, [
+    isLoading,
+    sections,
+    initialItemId,
+    allItems,
+    currentItem,
+    lectureId,
+    isEnrolled,
+  ]);
 
   // 현재 아이템이 변경될 때 이전/다음 아이템 설정 및 마지막 시청 위치 저장
   useEffect(() => {
-    if (!currentItem || allItems.length === 0) return;
+    if (!currentItem || allItems.length === 0 || !isEnrolled) return;
 
     const currentIndex = allItems.findIndex(
       (item) => item.id === currentItem.id
@@ -252,7 +301,7 @@ export default function LectureWatchPage() {
           isUpdatingRef.current = false;
         });
     }
-  }, [currentItem, allItems, lectureId]);
+  }, [currentItem, allItems, lectureId, isEnrolled]);
 
   // 아이템 선택 핸들러
   const handleItemSelect = (item: LectureItem) => {
@@ -302,7 +351,8 @@ export default function LectureWatchPage() {
 
   // 아이템 완료 처리 (서버 API 호출)
   const markItemComplete = async (itemId: number) => {
-    if (completedItems.includes(itemId) || isUpdatingRef.current) return;
+    if (completedItems.includes(itemId) || isUpdatingRef.current || !isEnrolled)
+      return;
 
     try {
       // 업데이트 중 플래그 설정
@@ -336,7 +386,7 @@ export default function LectureWatchPage() {
 
   // 비디오 완료 처리
   const handleVideoComplete = () => {
-    if (!currentItem) return;
+    if (!currentItem || !isEnrolled) return;
 
     // 아이템 완료 처리
     markItemComplete(currentItem.id);
@@ -351,7 +401,7 @@ export default function LectureWatchPage() {
 
   // 텍스트 완료 처리
   const handleTextComplete = () => {
-    if (!currentItem) return;
+    if (!currentItem || !isEnrolled) return;
 
     // 아이템 완료 처리
     markItemComplete(currentItem.id);
@@ -360,10 +410,64 @@ export default function LectureWatchPage() {
     setShowCompletionModal(true);
   };
 
-  if (isLoading) {
+  // 로그인 모달 관련 핸들러
+  const handleOpenLoginModal = () => {
+    handleGoToLecturePage();
+    setIsLoginModalOpen(true);
+  };
+
+  const handleCloseLoginModal = () => {
+    setIsLoginModalOpen(false);
+  };
+
+  // 수강신청 페이지로 이동
+  const handleGoToLecturePage = () => {
+    router.push(`/knowledge/lecture/${lectureId}`);
+  };
+
+  if (isLoading || isEnrollmentChecking) {
     return (
       <div className="flex h-screen items-center justify-center">
-        로딩 중...
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-purple-600"></div>
+        <span className="ml-3">로딩 중...</span>
+      </div>
+    );
+  }
+
+  // 로그인하지 않은 경우
+  if (!user) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center px-4 text-center">
+        <LogIn className="mb-4 h-16 w-16 text-purple-500" />
+        <h2 className="mb-2 text-2xl font-bold">로그인이 필요합니다</h2>
+        <p className="mb-6 text-gray-600">
+          강의를 시청하려면 로그인 후, 수강신청해야 합니다.
+        </p>
+
+        <Button
+          onClick={handleOpenLoginModal}
+          className="px-6 py-2 sm:flex-row"
+        >
+          강의페이지로 이동
+        </Button>
+
+        <LoginModal isOpen={isLoginModalOpen} onClose={handleCloseLoginModal} />
+      </div>
+    );
+  }
+
+  // 수강신청하지 않은 경우
+  if (!isEnrolled) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center px-4 text-center">
+        <ShoppingCart className="mb-4 h-16 w-16 text-purple-500" />
+        <h2 className="mb-2 text-2xl font-bold">수강신청이 필요합니다</h2>
+        <p className="mb-6 text-gray-600">
+          이 강의를 시청하려면 먼저 수강신청을 해주세요.
+        </p>
+        <Button onClick={handleGoToLecturePage} className="px-6 py-2">
+          수강신청
+        </Button>
       </div>
     );
   }
