@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useToast } from '../common/Toast/Context';
 import { cancelEnrollment } from '@/utils/services/knowledge/lectureService';
-import { ToastType } from '../common/Toast/type';
 import { AlertTriangle } from 'lucide-react';
 
 interface CancelEnrollmentButtonProps {
@@ -50,10 +49,11 @@ export default function CancelEnrollmentButton({
           onCancelSuccess();
         }
       } else {
-        showToast(message, 'error');
+        showToast(message || '수강 취소에 실패했습니다.', 'error');
       }
     } catch (error) {
-      showToast('수강 취소 중 오류가 발생했습니다.', error as ToastType);
+      console.error('수강 취소 처리 중 예외 발생:', error);
+      showToast('수강 취소 중 오류가 발생했습니다.', 'error');
     } finally {
       setIsLoading(false);
     }

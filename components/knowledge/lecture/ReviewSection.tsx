@@ -86,7 +86,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       loadReviews(); // 리뷰 목록 새로고침
     } catch (error) {
       console.error('Error deleting review:', error);
-      showToast('수강평을 삭제하지 못했습니다.', error as ToastType);
+      showToast('수강평을 삭제하지 못했습니다.', 'error');
     }
   };
 
@@ -97,12 +97,38 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       return;
     }
 
-    if (!isEnrolled) {
-      showToast(
-        '수강생만 수강평을 작성할 수 있습니다.',
-        'warning' as ToastType
+    const supabase = createClient();
+
+    try {
+      // 1. 수강 여부 확인
+      const { data: enrollment } = await getActiveEnrollment(
+        lectureId,
+        currentUserId
       );
-      return;
+
+      if (!enrollment?.status) {
+        showToast('수강생만 수강평을 작성할 수 있습니다.', 'error');
+        return;
+      }
+
+      // 2. 기존 수강평 확인
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('lecture_id', lectureId)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+
+      if (existingReview) {
+        showToast('이미 수강평을 작성하였습니다.', 'error');
+        return;
+      }
+
+      // 3. 모든 조건 통과시 모달 열기
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error('Error checking review status:', error);
+      showToast('오류가 발생했습니다. 다시 시도해주세요.', 'error');
     }
 
     if (hasExistingReview) {

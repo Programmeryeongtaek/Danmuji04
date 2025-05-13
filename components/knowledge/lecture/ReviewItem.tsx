@@ -7,8 +7,6 @@ import { FormEvent, useEffect, useState } from 'react';
 import { StarRating } from './StarRating';
 import { Heart, MessageCircle, Pencil, Trash2, X } from 'lucide-react';
 import { ReviewReply } from './ReviewReply';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { useTimeLimit } from '@/app/hooks/useTimeLimit';
 import {
   addReviewReply,
@@ -16,6 +14,7 @@ import {
   toggleReviewLike,
   updateReview,
 } from '@/utils/services/knowledge/reviewService';
+import { getTodayTimeOrDate } from '@/utils/helpers/formatDate';
 
 export function ReviewItem({
   review,
@@ -260,7 +259,7 @@ export function ReviewItem({
               {(
                 review.user_profile?.nickname?.[0] ||
                 review.user_profile?.name?.[0] ||
-                '익'
+                '익명'
               ).toUpperCase()}
             </div>
           )}
@@ -278,10 +277,7 @@ export function ReviewItem({
               <div className="flex items-center gap-2">
                 <StarRating rating={review.rating} size={16} readonly />
                 <span className="text-sm text-gray-500">
-                  {formatDistanceToNow(new Date(review.created_at), {
-                    addSuffix: true,
-                    locale: ko,
-                  })}
+                  {getTodayTimeOrDate(review.created_at)}
                 </span>
               </div>
             </div>
