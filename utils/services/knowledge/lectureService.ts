@@ -24,12 +24,11 @@ export async function fetchLectures(): Promise<Lecture[]> {
 export async function searchLectures(query: string): Promise<Lecture[]> {
   try {
     const supabase = createClient();
+    const searchPattern = `%${query}%`;
     const { data, error } = await supabase
       .from('lectures')
       .select('*')
-      .or(
-        `title.likes.%${query}%,keyword.ilike.%${query}%,category.ilike.%${query}%`
-      )
+      .or(`title.ilike.${searchPattern},keyword.ilike.${searchPattern},category.ilike.${searchPattern}`)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

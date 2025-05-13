@@ -452,40 +452,64 @@ export async function fetchBookmarkedPosts(
     if (bookmarkError) throw bookmarkError;
     if (!bookmarks || bookmarks.length === 0) return [];
 
-    // 타입 정의
-    type BookmarkRow = {
-      post_id: number;
-      created_at: string;
-      importance: number;
-      memo: string;
-    };
+    // 2. 게시글 ID 목록
+    const postIds = bookmarks.map(bookmark => bookmark.post_id);
 
-    // 2. 게시글 정보 가져오기
-    const posts = await Promise.all(
-      (bookmarks as BookmarkRow[]).map(async (bookmark) => {
-        try {
-          // fetchPostById 함수 활용
-          const post = await fetchPostById(bookmark.post_id);
-          
-          if (post) {
-            return {
-              ...post,
-              bookmark_created_at: bookmark.created_at, // 여기서 필드 이름 변경
-              importance: bookmark.importance,
-              memo: bookmark.memo,
-              is_bookmarked: true,
-            };
-          }
-          return null;
-        } catch (error) {
-          console.error(`Error fetching post ${bookmark.post_id}:`, error);
-          return null;
-        }
+    // 3. 게시글 상세 정보 가져오기
+    const { data: posts, error: postsError } = await supabase
+      .from('community_posts')
+      .select('*')
+      .in('id', postIds);
+
+    if (postsError) throw postsError;
+    if (!posts || posts.length === 0) return [];
+
+    // 4. 각 게시글에 추가 정보 포함
+    const result = await Promise.all(
+      posts.map(async (post) => {
+        // 해당 게시글의 북마크 정보 찾기
+        const bookmarkInfo = bookmarks.find(bm => bm.post_id === post.id);
+
+        if (!bookmarkInfo) return null; // 북마크 정보가 없다면 스킵
+
+        // 태그 조회
+        const { data: tagsData } = await supabase
+          .from('post_tags')
+          .select('tag')
+          .eq('post_id', post.id);
+
+        const tags = tagsData?.map(item => item.tag) || [];
+
+        // 좋아요 데이터 조회
+        const likesData = await getLikeDataForUser('post_likes', post.id, user.id, 'post_id');
+        
+        // 댓글 수 조회
+        const { count: commentsCount } = await supabase
+          .from('post_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', post.id);
+
+        // 작성자 정보 조회
+        const profile = await getProfileWithAvatar(post.author_id);
+
+        return {
+          ...post,
+          bookmark_created_at: bookmarkInfo.created_at,
+          importance: bookmarkInfo.importance || 0,
+          memo: bookmarkInfo.memo || '',
+          tags,
+          author_name: profile.name,
+          author_avatar: profile.avatar_url,
+          likes_count: likesData.likes_count,
+          comments_count: commentsCount || 0,
+          is_liked: likesData.is_liked,
+          is_bookmarked: true,
+        } as BookmarkedPost;
       })
     );
 
     // null 값 제거하고 반환
-    return posts.filter((post): post is BookmarkedPost => post !== null);
+    return result.filter((post): post is BookmarkedPost => post !== null);
   } catch (error) {
     console.error('북마크된 게시글 조회 실패:', error);
     throw error;

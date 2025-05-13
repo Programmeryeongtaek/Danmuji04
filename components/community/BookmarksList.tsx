@@ -17,9 +17,10 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useToast } from '../common/Toast/Context';
 import Button from '../common/Button/Button';
 import { BookmarkedPost } from '@/app/types/community/communityType';
-import { updateBookmarkImportance } from '@/utils/services/study/bookmarkService';
+
 import {
   deleteMultipleBookmarks,
+  updateBookmarkImportance,
   updateBookmarkMemo,
 } from '@/utils/services/community/bookmarkService';
 import { fetchBookmarkedPosts } from '@/utils/services/community/postService';
@@ -45,8 +46,12 @@ const CATEGORY_NAMES: Record<string, string> = {
 type FilterType = 'latest' | 'category' | 'importance';
 
 export default function BookmarksList() {
+  // 열림 중요도 드롭다운 ID 추적
+  const [openImportanceDropdown, setOpenImportanceDropdown] = useState<
+    number | null
+  >(null);
+
   // API 호출 상태 추적을 위한 플래그 추가
-  const [isInitialized, setIsInitialized] = useState(false);
   const { showToast } = useToast();
 
   // 선택 모드 관련 상태 추가
@@ -69,6 +74,19 @@ export default function BookmarksList() {
     memo: string;
   } | null>(null);
   const memoInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const toggleImportanceDropdown = (
+    postId: number,
+    e: MouseEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 열려 있으면 닫고, 아니면 열기
+    setOpenImportanceDropdown(
+      openImportanceDropdown === postId ? null : postId
+    );
+  };
 
   // 필터 타입 변경 핸들러
   const handleFilterTypeChange = (type: FilterType) => {
@@ -94,8 +112,6 @@ export default function BookmarksList() {
   ) => {
     e.preventDefault(); // 링크 이동 방지
     e.stopPropagation(); // 이벤트 버블링 방지
-
-    console.log('북마크 선택 토글:', postId); // 로깅 추가
 
     setSelectedBookmarks((prev) => {
       const newSelected = new Set(prev);
@@ -127,25 +143,20 @@ export default function BookmarksList() {
       setIsDeleting(true);
       const postIds = Array.from(selectedBookmarks);
 
-      console.log('삭제 요청 - 선택된 북마크 ID:', postIds);
-
       // API 호출 성공 여부 확인
       let deletedCount;
       try {
         deletedCount = await deleteMultipleBookmarks(postIds);
-        console.log('삭제 응답 - 삭제된 항목 수:', deletedCount);
       } catch (apiError) {
         console.error('API 호출 에러:', apiError);
         throw apiError;
       }
 
       // UI 상태 업데이트 (즉시 화면에 반영)
-      console.log('UI 상태 업데이트 전 북마크 수:', localBookmarks.length);
       setBookmarks((prev) => {
         const filtered = prev.filter(
           (bookmark) => !selectedBookmarks.has(bookmark.id)
         );
-        console.log('필터링 후 북마크 수:', filtered.length);
         return filtered;
       });
 
@@ -158,7 +169,6 @@ export default function BookmarksList() {
 
       // 데이터 새로고침 (UI 업데이트 후에 실행)
       setTimeout(() => {
-        console.log('데이터 새로고침 시작');
         reset();
       }, 500);
     } catch (error) {
@@ -170,20 +180,47 @@ export default function BookmarksList() {
   };
 
   // 북마크 중요도 업데이트 핸들러
-  const handleImportanceChange = async (postId: number, importance: number) => {
+  const handleImportanceChange = async (
+    postId: number,
+    importance: number,
+    e: MouseEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 기존 중요도 저장
+    const originalPost = localBookmarks.find(
+      (bookmark) => bookmark.id === postId
+    );
+    const originalImportance = originalPost?.importance || 0;
+
+    // 낙관적 UI 업데이트
+    setBookmarks((prev) =>
+      prev.map((bookmark) =>
+        bookmark.id === postId ? { ...bookmark, importance } : bookmark
+      )
+    );
+
+    // 드롭다운 닫기
+    setOpenImportanceDropdown(null);
+
     try {
+      // API 호출
       await updateBookmarkImportance(postId, importance);
-
-      // 현재 북마크 목록 업데이트
-      setBookmarks((prev) =>
-        prev.map((bookmark) =>
-          bookmark.id === postId ? { ...bookmark, importance } : bookmark
-        )
-      );
-
       showToast('중요도가 업데이트되었습니다.', 'success');
     } catch (error) {
       console.error('중요도 업데이트 실패:', error);
+      showToast('중요도 업데이트에 실패했습니다.', 'error');
+
+      // 실패 시 원래 상태로 롤백
+      setBookmarks((prev) =>
+        prev.map((bookmark) =>
+          bookmark.id === postId
+            ? { ...bookmark, importance: originalImportance }
+            : bookmark
+        )
+      );
+
       showToast('중요도 업데이트에 실패했습니다.', 'error');
     }
   };
@@ -197,10 +234,8 @@ export default function BookmarksList() {
     reset,
   } = useInfiniteScroll<BookmarkedPost>({
     fetchData: async (page) => {
-      console.log(`북마크 데이터 요청: 페이지 ${page}`);
       try {
         const result = await fetchBookmarkedPosts(page, 10);
-        console.log(`북마크 데이터 응답: ${result.length}개 항목`);
         return result;
       } catch (error) {
         console.error('북마크 데이터 로드 에러:', error);
@@ -209,24 +244,24 @@ export default function BookmarksList() {
     },
     pageSize: 10,
     initialPage: 1,
-    dependencies: [isInitialized],
+    dependencies: [],
   });
-
-  // 북마크 데이터가 변경될 때마다 내부 상태 업데이트
-  useEffect(() => {
-    setBookmarks(bookmarks);
-  }, [bookmarks]);
 
   // 컴포넌트 마운트 시 한 번만 초기화
   useEffect(() => {
-    if (!isInitialized) {
-      setIsInitialized(true);
-    }
-
     return () => {
       if (reset) reset();
     };
   }, []);
+
+  useEffect(() => {
+    // 데이터 중복 방지를 위해 ID 기반으로 중복 제거
+    const uniqueBookmarks = Array.from(
+      new Map(bookmarks.map((item) => [item.id, item])).values()
+    );
+
+    setBookmarks(uniqueBookmarks);
+  }, [bookmarks]);
 
   // 카테고리 목록 추출
   const categories = useMemo(() => {
@@ -239,7 +274,12 @@ export default function BookmarksList() {
 
   // 필터링 및 정렬된 북마크 계산
   const filteredBookmarks = useMemo(() => {
-    let result = [...localBookmarks];
+    // 중복 제거
+    const uniqueBookmarks = Array.from(
+      new Map([...localBookmarks].map((item) => [item.id, item])).values()
+    );
+
+    let result = uniqueBookmarks;
 
     // 필터 적용
     if (filterType === 'category' && categoryFilter) {
@@ -337,12 +377,15 @@ export default function BookmarksList() {
   // 메모 외부 클릭 감지
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        editingMemo &&
-        memoInputRef.current &&
-        !memoInputRef.current.contains(e.target as Node)
-      ) {
-        saveMemo();
+      // dropdown이 열려있고, 클릭한 요소가 dropdown 내부가 아닌 경우에만 닫기
+      if (openImportanceDropdown !== null) {
+        // 클릭된 요소가 dropdown 내부인지 확인
+        const dropdownElement = document.querySelector(
+          `[data-dropdown-id="${openImportanceDropdown}"]`
+        );
+        if (dropdownElement && !dropdownElement.contains(e.target as Node)) {
+          setOpenImportanceDropdown(null);
+        }
       }
     };
 
@@ -351,12 +394,12 @@ export default function BookmarksList() {
       handleClickOutside as unknown as EventListener
     );
     return () => {
-      document.addEventListener(
+      document.removeEventListener(
         'mousedown',
         handleClickOutside as unknown as EventListener
       );
     };
-  }, [editingMemo]);
+  }, [openImportanceDropdown]);
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -582,41 +625,45 @@ export default function BookmarksList() {
                   {/* 북마크 아이콘 및 중요도 표시 */}
                   <div className="flex items-center gap-2">
                     {!selectionMode && (
-                      <div className="group relative">
+                      <div className="relative">
                         <button
                           className="flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
+                          onClick={(e) => toggleImportanceDropdown(post.id, e)}
                         >
                           <Star
                             className={`h-5 w-5 ${post.importance > 0 ? 'fill-yellow-400 text-yellow-500' : 'text-gray-300'}`}
                           />
                         </button>
 
-                        {/* 중요도 선택 드롭다운 */}
-                        <div className="absolute right-0 top-full z-20 hidden w-40 flex-col rounded-lg border bg-white p-2 shadow-lg group-hover:flex">
-                          {IMPORTANCE_OPTIONS.map((option) => (
-                            <button
-                              key={option.value}
-                              className="flex items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-gray-100"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleImportanceChange(post.id, option.value);
-                              }}
-                            >
-                              <div
-                                className={`h-3 w-3 rounded-full ${option.color}`}
-                              ></div>
-                              <span>{option.label} 중요도</span>
-                              {post.importance === option.value && (
-                                <CheckSquare className="ml-auto h-4 w-4 text-green-500" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
+                        {/* 중요도 선택 드롭다운 - hover 대신 상태로 관리 */}
+                        {openImportanceDropdown === post.id && (
+                          <div
+                            className="absolute right-0 top-full z-20 w-40 flex-col rounded-lg border bg-white p-2 shadow-lg"
+                            data-dropdown-id={post.id}
+                          >
+                            {IMPORTANCE_OPTIONS.map((option) => (
+                              <button
+                                key={option.value}
+                                className="flex items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-gray-100"
+                                onClick={(e) =>
+                                  handleImportanceChange(
+                                    post.id,
+                                    option.value,
+                                    e
+                                  )
+                                }
+                              >
+                                <div
+                                  className={`h-3 w-3 rounded-full ${option.color}`}
+                                ></div>
+                                <span>{option.label} 중요도</span>
+                                {post.importance === option.value && (
+                                  <CheckSquare className="ml-auto h-4 w-4 text-green-500" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                     <span className="text-xs text-gray-500">
