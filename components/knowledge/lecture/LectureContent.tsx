@@ -406,6 +406,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   </Link>
                 </div>
               )}
+
             </div>
           </div>
 
