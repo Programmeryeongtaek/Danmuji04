@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { MouseEvent, useEffect, useState } from 'react';
 import EnrollBar from './EnrollBar';
 import ReviewSection from './ReviewSection';
 import { createClient } from '@/utils/supabase/client';
@@ -18,6 +18,9 @@ import {
   Users,
 } from 'lucide-react';
 import Image from 'next/image';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/auth';
+import { useToast } from '@/components/common/Toast/Context';
 
 interface LectureContentProps {
   lecture: Lecture;
@@ -39,29 +42,23 @@ interface LectureSection {
 }
 
 export default function LectureContent({ lecture }: LectureContentProps) {
-  const [currentUserId, setCurrentUserId] = useState('');
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [sections, setSections] = useState<LectureSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { showToast } = useToast();
+  const user = useAtomValue(userAtom);
+
   useEffect(() => {
-    const loadUserAndReviewData = async () => {
+    const loadData = async () => {
       try {
         const supabase = createClient();
 
-        // 1. 사용자 인증 확인
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-        if (authError) throw authError;
-
-        // 2. 로그인한 경우에만 북마크 확인
+        // 로그인한 경우 북마크 상태와 수강 상태 확인
         if (user) {
-          setCurrentUserId(user.id);
-
+          // 북마크 상태 확인
           const { data: bookmark } = await supabase
             .from('bookmarks')
             .select('id')
@@ -72,7 +69,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
           setIsBookmarked(!!bookmark);
         }
 
-        // 3. 수강평 정보 조회
+        // 수강평 정보 조회 (로그인 여부와 무관하게 처리)
         const { data: reviews, error: reviewError } = await supabase
           .from('reviews')
           .select('rating')
@@ -94,7 +91,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
           }
         }
 
-        // 4. 섹션 데이터 로드
+        // 섹션 데이터 로드
         const { data: sectionsData, error: sectionsError } = await supabase
           .from('lecture_sections')
           .select(
@@ -132,8 +129,15 @@ export default function LectureContent({ lecture }: LectureContentProps) {
       }
     };
 
-    loadUserAndReviewData();
-  }, [lecture.id]);
+    loadData();
+  }, [lecture.id, user]);
+
+  const handleWatchClick = (e: MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      showToast('수강신청이 필요합니다.', 'error');
+    }
+  };
 
   // 총 강의 시간 계산
   const getTotalDuration = () => {
@@ -235,12 +239,16 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   </div>
                 </div>
 
-                {currentUserId && (
+                {user ? (
                   <div className="mt-6 flex flex-wrap gap-3">
                     <BookmarkButton
                       lectureId={lecture.id}
                       initialIsBookmarked={isBookmarked}
                     />
+                    <ShareButton lectureId={lecture.id} />
+                  </div>
+                ) : (
+                  <div className="mt-6">
                     <ShareButton lectureId={lecture.id} />
                   </div>
                 )}
@@ -249,7 +257,10 @@ export default function LectureContent({ lecture }: LectureContentProps) {
               {/* 강의 썸네일/비디오 */}
               <div className="order-1 md:order-2">
                 <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-900 shadow-lg">
-                  <Link href={`/knowledge/lecture/${lecture.id}/watch`}>
+                  <Link
+                    href={`/knowledge/lecture/${lecture.id}/watch`}
+                    onClick={handleWatchClick}
+                  >
                     <div className="group relative h-full w-full">
                       {lecture.thumbnail_url ? (
                         <Image
@@ -385,28 +396,27 @@ export default function LectureContent({ lecture }: LectureContentProps) {
               </div>
 
               {/* 강의 시작하기 버튼 */}
-              <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
-                <Link
-                  href={`/knowledge/lecture/${lecture.id}/watch`}
-                  className="block w-full rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-center font-medium text-white shadow-md hover:from-purple-600 hover:to-indigo-700"
-                >
-                  학습하기
-                </Link>
-              </div>
+              {user && (
+                <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
+                  <Link
+                    href={`/knowledge/lecture/${lecture.id}/watch`}
+                    className="block w-full rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-center font-medium text-white shadow-md hover:from-purple-600 hover:to-indigo-700"
+                  >
+                    학습하기
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
           {/* 수강평 */}
           <div className="mt-12">
-            <ReviewSection
-              lectureId={lecture.id}
-              currentUserId={currentUserId}
-            />
+            <ReviewSection lectureId={lecture.id} />
           </div>
         </div>
 
-        {/* 수강신청 바는 로그인한 사용자에게만 표시 */}
-        {currentUserId && <EnrollBar lectureId={Number(lecture.id)} />}
+        {/* 수강신청 바 (항상 표시) */}
+        <EnrollBar lectureId={Number(lecture.id)} />
       </div>
     </>
   );

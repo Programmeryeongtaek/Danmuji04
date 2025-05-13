@@ -88,19 +88,19 @@ export interface FetchedReply {
 
 export interface ReviewListProps {
   reviews: ReviewProps[];
-  currentUserId: string;
+  currentUserId?: string | null;
   onDelete: (reviewId: number) => void;
 }
 
 export interface ReviewItemProps {
   review: ReviewProps;
-  currentUserId: string;
+  currentUserId?: string | null;
   onDelete: (reviewId: number) => void;
 }
 
 export interface ReviewReplyProps {
   reply: ReplyProps;
-  currentUserId: string;
+  currentUserId?: string | null;
   onDelete: (replyId: number) => void;
   onUpdate: (replyId: number, isLiked: boolean, likesCount: number) => void;
   onEdit: (replyId: number, content: string) => void;
