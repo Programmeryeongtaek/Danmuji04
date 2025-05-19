@@ -246,10 +246,10 @@ export default function InstructorApplicationsPage() {
                     }`}
                   >
                     {app.status === 'approved'
-                      ? '승인됨'
+                      ? '승인'
                       : app.status === 'rejected'
-                        ? '거부됨'
-                        : '대기중'}
+                        ? '거부'
+                        : '대기'}
                   </span>
                 </div>
                 <div className="col-span-2">

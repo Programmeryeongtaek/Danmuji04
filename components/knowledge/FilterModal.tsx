@@ -54,9 +54,9 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
 
   return (
     <Modal.Root isOpen={isOpen} onClose={onClose}>
-      <Modal.CloseButton className="absolute right-[100px] top-[150px]" />
+      <Modal.CloseButton />
       <Modal.Content>
-        <div className="px-2">
+        <div>
           <h2 className="text-xl font-bold">필터 선택</h2>
 
           <div className="mb-4 flex w-full gap-2 overflow-x-auto whitespace-nowrap border-b pb-2"></div>
@@ -129,7 +129,7 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
           </section>
 
           {/* 하단 버튼 */}
-          <div className="mt-6 flex justify-between gap-2">
+          <div className="mt-6 flex justify-end gap-2">
             <button
               onClick={handleReset}
               className="flex items-center gap-1 rounded-lg border border-gray-200 px-4 py-2 text-gray-600 hover:bg-gray-50"

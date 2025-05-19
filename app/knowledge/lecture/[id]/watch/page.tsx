@@ -9,7 +9,7 @@ import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 import { Lecture } from '@/app/types/knowledge/lecture';
 import { LectureItem, LectureSection } from '@/app/types/knowledge/lectureForm';
 import { createClient } from '@/utils/supabase/client';
-import { ChevronLeft, LogIn, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, LogIn, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -481,27 +481,23 @@ export default function LectureWatchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl pb-16 pt-4">
-      <div className="mx-auto max-w-6xl px-4">
-        {/* 상단 네비게이션 */}
-        <div className="mb-6 flex items-center gap-2">
-          <Link
-            href={`/knowledge/lecture/${lectureId}`}
-            className="flex items-center gap-1"
-          >
-            <ChevronLeft className="h-6 w-6 hover:text-gold-start" />
-          </Link>
-        </div>
-      </div>
-
+    <div className="mx-auto max-w-5xl py-12">
       {/* 제목 및 정보 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">{lecture.title}</h1>
-        <div className="mt-1 flex items-center gap-3 text-sm text-gray-600">
-          <span>{lecture.category}</span>
-          <span>•</span>
-          <span>{lecture.instructor}</span>
+      <div className="mb-6 flex justify-between">
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold text-gray-800">{lecture.title}</h1>
+          <div className="mt-1 flex items-center gap-3 text-sm text-gray-600">
+            <span>{lecture.category}</span>
+            <span>•</span>
+            <span>{lecture.instructor}</span>
+          </div>
         </div>
+        <Link
+          href={`/knowledge/lecture/${lectureId}`}
+          className="group flex items-center rounded-lg border px-3"
+        >
+          <ArrowLeft className="h-6 w-6 group-hover:text-gold-start" />
+        </Link>
       </div>
 
       {/* 비디오 플레이어 */}

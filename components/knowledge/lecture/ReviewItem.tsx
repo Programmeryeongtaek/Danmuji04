@@ -231,7 +231,7 @@ export function ReviewItem({
   };
 
   return (
-    <div className="border-b pb-6">
+    <div className="mt-2 border-b pb-4">
       <div className="flex items-start gap-4">
         {/* 프로필 이미지 부분 수정 */}
         <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">

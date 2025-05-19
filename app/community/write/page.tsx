@@ -8,6 +8,7 @@ import {
   createPost,
   fetchPopularTags,
 } from '@/utils/services/community/postService';
+import { isAdminUser } from '@/utils/supabase/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
 import { ChevronLeft, Plus, Upload, X } from 'lucide-react';
@@ -21,17 +22,14 @@ const communityCategories = [
   {
     id: 'chats',
     label: '자유게시판',
-    description: '다양한 주제로 자유롭게 대화해보세요',
-  },
-  {
-    id: 'study',
-    label: '스터디',
-    description: '함께 공부하고 성장할 스터디를 찾아보세요',
   },
   {
     id: 'faq',
     label: '질문 게시판',
-    description: '궁금한 점을 질문하고 답변을 받아보세요',
+  },
+  {
+    id: 'notice',
+    label: '공지사항',
   },
 ];
 
@@ -51,9 +49,22 @@ export default function WritePage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
+
+  // 사용자 권한 확인
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const admin = await isAdminUser();
+      setIsAdmin(admin);
+    };
+
+    if (user) {
+      checkAdminStatus();
+    }
+  }, [user]);
 
   // 인기 태그 로드
   useEffect(() => {
@@ -97,6 +108,11 @@ export default function WritePage() {
       router.push('/community');
     }
   }, [router, user]);
+
+  // 권한별 카테고리
+  const displayCategories = isAdmin
+    ? communityCategories
+    : communityCategories.filter((category) => category.id !== 'notice');
 
   // 태그 추가
   const addTag = () => {
@@ -247,6 +263,12 @@ export default function WritePage() {
       return;
     }
 
+    // 공지사항 권한 검증
+    if (category === 'notice' && !isAdmin) {
+      showToast('공지사항은 관리자만 작성 가능합니다.', 'error');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -320,7 +342,7 @@ export default function WritePage() {
             카테고리 <span className="text-red-500">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
-            {communityCategories.map((cat) => (
+            {displayCategories.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
@@ -405,7 +427,7 @@ export default function WritePage() {
               onChange={(e) => setNewTag(e.target.value)}
               placeholder="태그를 입력하세요"
               className="flex-1 rounded-l-lg border p-2 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
-              onKeyPress={(e) => {
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   addTag();

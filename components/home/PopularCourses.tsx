@@ -68,7 +68,7 @@ const PopularCourses = () => {
           href="/course"
           className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
         >
-          전체 테마 보기
+          전체 테마
         </Link>
       </div>
 
@@ -82,7 +82,7 @@ const PopularCourses = () => {
             <Link
               key={course.id}
               href={`/course/${course.category}/${course.id}`}
-              className="group flex flex-col rounded-xl border bg-white p-6 shadow-sm transition hover:shadow-md"
+              className="flex flex-col rounded-xl border bg-white p-6 shadow-sm transition hover:border-gold-start hover:bg-light hover:shadow-md"
             >
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -95,9 +95,7 @@ const PopularCourses = () => {
                 </div>
               </div>
 
-              <h3 className="mb-2 text-lg font-semibold group-hover:text-gold-start">
-                {course.title}
-              </h3>
+              <h3 className="mb-2 text-lg font-semibold">{course.title}</h3>
             </Link>
           ))}
         </div>

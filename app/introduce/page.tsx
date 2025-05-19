@@ -25,26 +25,27 @@ export default function IntroducePage() {
             와 함께하는 학습 여정
           </h1>
           <p className="mb-6 text-lg text-gray-600">
-            지식의 무지함을 끊고, 체계적인 학습을 통해 진정한 성장을
-            이루어보세요. 단무지는 다양한 분야의 지식을 탐색하고 배우며 함께
-            성장하는 온라인 학습 플랫폼입니다.
+            단무지는 다양한 분야의 지식을 탐색하고 배우며 <br />
+            함께 성장하는 온라인 학습 플랫폼입니다. <br />
+            지속적인 학습을 통해 지식을 정립하고 <br />
+            무지를 끊는 학습 공간입니다.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
               href="/knowledge"
-              className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-3 text-white hover:opacity-90"
+              className="rounded-lg border border-gray-300 bg-light px-6 py-3 hover:border-gold-start hover:bg-white hover:text-gold-start"
             >
               지식 탐색하기
             </Link>
             <Link
               href="/course"
-              className="rounded-lg border border-gray-300 px-6 py-3 hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 bg-light px-6 py-3 hover:border-gold-start hover:bg-white hover:text-gold-start"
             >
               코스 둘러보기
             </Link>
             <Link
               href="/study"
-              className="rounded-lg border border-gold-start px-6 py-3 text-gold-start hover:bg-gold-start/5"
+              className="rounded-lg border border-gray-300 bg-light px-6 py-3 hover:border-gold-start hover:bg-white hover:text-gold-start"
             >
               스터디 참여하기
             </Link>
@@ -78,47 +79,46 @@ export default function IntroducePage() {
         </div>
 
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border p-6 transition-shadow hover:shadow-md">
+          <div className="rounded-lg border p-6 transition-shadow hover:border-gold-start hover:shadow-md">
             <div className="mb-4 inline-block rounded-full bg-blue-100 p-3">
               <BookOpen className="h-7 w-7 text-blue-600" />
             </div>
             <h3 className="mb-2 text-xl font-semibold">다양한 지식</h3>
             <p className="text-gray-600">
-              인문학, 철학, 심리학, 경제학 등 다양한 분야의 강의를 제공합니다.
-              폭넓은 지식으로 시야를 넓혀보세요.
+              인문학, 철학, 심리학, 경제학 등 다양한 분야의 내용과 영상들을
+              제공합니다. 폭넓은 지식으로 시야를 넓혀보세요.
             </p>
           </div>
 
-          <div className="rounded-lg border p-6 transition-shadow hover:shadow-md">
+          <div className="rounded-lg border p-6 transition-shadow hover:border-gold-start hover:shadow-md">
             <div className="mb-4 inline-block rounded-full bg-green-100 p-3">
               <GraduationCap className="h-7 w-7 text-green-600" />
             </div>
             <h3 className="mb-2 text-xl font-semibold">체계적인 코스</h3>
             <p className="text-gray-600">
-              단계별로 구성된 코스를 통해 기초부터 심화 지식까지 체계적으로
-              학습할 수 있습니다.
+              주제별 선별된 영상을 통해 해당 주제에 대한 지식을 학습해보세요.
             </p>
           </div>
 
-          <div className="rounded-lg border p-6 transition-shadow hover:shadow-md">
+          <div className="rounded-lg border p-6 transition-shadow hover:border-gold-start hover:shadow-md">
             <div className="mb-4 inline-block rounded-full bg-purple-100 p-3">
               <LucideUsers className="h-7 w-7 text-purple-600" />
             </div>
             <h3 className="mb-2 text-xl font-semibold">함께하는 학습</h3>
             <p className="text-gray-600">
-              다른 학습자들과 의견을 나누고 토론하며 더 깊은 이해와 다양한
-              관점을 경험하세요.
+              다른 학습자들에게 도서를 추천하고 함께 스터디를 통해 성장을
+              도모해보세요.
             </p>
           </div>
 
-          <div className="rounded-lg border p-6 transition-shadow hover:shadow-md">
+          <div className="rounded-lg border p-6 transition-shadow hover:border-gold-start hover:shadow-md">
             <div className="mb-4 inline-block rounded-full bg-amber-100 p-3">
               <Users className="h-7 w-7 text-amber-600" />
             </div>
             <h3 className="mb-2 text-xl font-semibold">스터디 모임</h3>
             <p className="text-gray-600">
-              관심사가 비슷한 사람들과 함께 스터디 모임을 만들고 참여하며 지식을
-              넓히고 깊이 있는 토론을 나눠보세요.
+              관심 있는 주제를 함께 공부하고 성장하는 사람들과 함께
+              나아가보세요.
             </p>
           </div>
         </div>
@@ -262,13 +262,13 @@ export default function IntroducePage() {
           <div className="flex gap-4">
             <Link
               href="/"
-              className="rounded-lg bg-white px-4 py-2 font-medium text-gold-start"
+              className="rounded-lg border border-gray-600 bg-white/20 px-4 py-2 font-medium text-gray-600 hover:border-light hover:bg-light hover:text-black"
             >
               홈페이지 둘러보기
             </Link>
             <Link
               href="/signup"
-              className="rounded-lg border border-white px-4 py-2 font-medium text-white hover:bg-white/10"
+              className="rounded-lg border border-gray-600 bg-white/20 px-4 py-2 font-medium text-gray-600 hover:border-light hover:bg-light hover:text-black"
             >
               회원가입
             </Link>

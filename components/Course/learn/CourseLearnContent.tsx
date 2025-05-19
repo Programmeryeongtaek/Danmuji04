@@ -6,13 +6,12 @@ import {
   CourseWriting,
 } from '@/app/types/course/courseModel';
 import { createClient } from '@/utils/supabase/client';
-import { MessageSquare, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import WritingSection from './WritingSection';
 import { useToast } from '@/components/common/Toast/Context';
 import { markItemAsCompleted } from '@/utils/services/course/courseService';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
+import WritingSection from './WritingSection';
 
 interface CourseLearnContentProps {
   courseId: string;
@@ -30,13 +29,6 @@ export default function CourseLearnContent({
   const [userWriting, setUserWriting] = useState<CourseWriting | null>(null);
   const [otherWritings, setOtherWritings] = useState<CourseWriting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'강의영상' | '모든글보기'>(
-    '강의영상'
-  );
-  const [isEditingMyWriting, setIsEditingMyWriting] = useState(false);
-  const [editContent, setEditContent] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
   const { showToast } = useToast();
 
@@ -159,59 +151,6 @@ export default function CourseLearnContent({
     }
   };
 
-  // 내 글 수정하기
-  const handleUpdateMyWriting = async () => {
-    if (!userWriting || !editContent.trim()) return;
-
-    try {
-      setIsSaving(true);
-      const supabase = createClient();
-
-      const { data, error } = await supabase
-        .from('course_writings')
-        .update({
-          content: editContent,
-          is_public: isPublic,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userWriting.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // 업데이트 성공
-      setUserWriting(data);
-      setIsEditingMyWriting(false);
-    } catch (error) {
-      console.error('글 수정 중 오류:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // 내 글 삭제하기
-  const handleDeleteMyWriting = async () => {
-    if (!userWriting || !confirm('정말로 글을 삭제하시겠습니까?')) return;
-
-    try {
-      const supabase = createClient();
-
-      const { error } = await supabase
-        .from('course_writings')
-        .delete()
-        .eq('id', userWriting.id);
-
-      if (error) throw error;
-
-      // 삭제 성공
-      setUserWriting(null);
-      setEditContent('');
-    } catch (error) {
-      console.error('글 삭제 중 오류:', error);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -235,8 +174,7 @@ export default function CourseLearnContent({
   }
 
   return (
-    <div className="relative mx-auto max-w-4xl px-4 py-8">
-      {/* 강의 제목 */}
+    <div className="relative mx-auto max-w-4xl px-4 py-12">
       <h1 className="mb-2 text-xl font-bold">{currentItem.title}</h1>
 
       {/* 강의 영상 - 항상 표시 */}
@@ -260,132 +198,47 @@ export default function CourseLearnContent({
         </div>
       )}
 
-      {/* 탭 영역 - 강의 영상/모든 글 보기 */}
-      <div className="mb-4">
-        <div className="flex border-b">
-          <button
-            onClick={() => setActiveTab('강의영상')}
-            className={`px-4 py-2 ${
-              activeTab === '강의영상'
-                ? 'border-b-2 border-gold-start font-medium text-gold-start'
-                : 'text-gray-500 hover:text-gold-start'
-            }`}
-          >
-            강의 영상
-          </button>
-          <button
-            onClick={() => setActiveTab('모든글보기')}
-            className={`flex items-center px-4 py-2 ${
-              activeTab === '모든글보기'
-                ? 'border-b-2 border-gold-start font-medium text-gold-start'
-                : 'text-gray-500 hover:text-gold-start'
-            }`}
-          >
-            <MessageSquare size={16} className="mr-1" />
-            <span>모든 글 보기</span>
-            <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-              {otherWritings.length + (userWriting ? 1 : 0)}
-            </span>
-          </button>
-        </div>
-      </div>
+      {/* 내용 정리 섹션 - 항상 표시 */}
+      <div className="mt-8">
+        <h2 className="mb-4 text-xl font-semibold">내용 정리</h2>
 
-      {activeTab === '강의영상' ? (
-        // 나의 생각 정리하기 (강의 영상 탭)
+        {/* WritingSection 컴포넌트 */}
         <WritingSection
           courseId={courseId}
           itemId={itemId}
           userWriting={userWriting}
           onWritingSaved={(writing) => setUserWriting(writing)}
+          onWritingDeleted={() => setUserWriting(null)}
         />
-      ) : (
-        // 모든 글 보기 (모든 글 보기 탭)
-        <div className="space-y-6">
-          {userWriting && (
-            <div className="rounded-lg border bg-blue-50 p-4">
-              {isEditingMyWriting ? (
-                // 수정 모드
-                <div className="space-y-4">
-                  <h2 className="mb-2 text-lg font-semibold">내 글 수정</h2>
-                  <textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    className="h-48 w-full rounded-lg border p-3 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start"
-                    placeholder="강의를 보고 느낀 점이나 배운 내용을 정리해보세요."
-                  />
 
-                  <div className="flex items-center">
-                    <label className="flex cursor-pointer items-center">
-                      <input
-                        type="checkbox"
-                        checked={isPublic}
-                        onChange={(e) => setIsPublic(e.target.checked)}
-                        className="mr-2"
-                      />
-                      <span>다른 사람들에게 공개하기</span>
-                    </label>
-                  </div>
-
-                  <div className="flex justify-end space-x-2">
-                    <button
-                      onClick={() => {
-                        setIsEditingMyWriting(false);
-                        setEditContent(userWriting.content);
-                        setIsPublic(userWriting.is_public);
-                      }}
-                      className="rounded-lg border px-4 py-2"
-                      disabled={isSaving}
-                    >
-                      취소
-                    </button>
-                    <button
-                      onClick={handleUpdateMyWriting}
-                      className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
-                      disabled={isSaving || !editContent.trim()}
-                    >
-                      {isSaving ? '저장 중...' : '수정 완료'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // 보기 모드
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">작성</h2>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleDeleteMyWriting}
-                        className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 size={16} /> 삭제
-                      </button>
-                    </div>
-                  </div>
-                  <p className="whitespace-pre-wrap">{userWriting.content}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          <h2 className="text-lg font-semibold">다른 사람의 글</h2>
+        {/* 다른 사람의 글 섹션 */}
+        <div className="mt-8 border-t pt-4">
+          <h2 className="mb-4 text-lg font-semibold">
+            다른 사람의 글
+            <span className="ml-2 rounded-full bg-gold-start/10 px-2 py-0.5 text-sm text-gold-start">
+              {otherWritings.length}
+            </span>
+          </h2>
 
           {otherWritings.length === 0 ? (
             <p className="text-gray-500">공유된 글이 없습니다.</p>
           ) : (
-            otherWritings.map((writing) => (
-              <div key={writing.id} className="rounded-lg border p-4">
-                <div className="mb-2 flex justify-between">
-                  <span className="font-medium">{writing.user_name}</span>
-                  <span className="text-sm text-gray-500">
-                    {new Date(writing.created_at).toLocaleDateString()}
-                  </span>
+            <div className="space-y-4">
+              {otherWritings.map((writing) => (
+                <div key={writing.id} className="rounded-lg border p-4">
+                  <div className="mb-2 flex justify-between">
+                    <span className="font-medium">{writing.user_name}</span>
+                    <span className="text-sm text-gray-500">
+                      {new Date(writing.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-wrap">{writing.content}</p>
                 </div>
-                <p className="whitespace-pre-wrap">{writing.content}</p>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

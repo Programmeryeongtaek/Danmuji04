@@ -204,7 +204,7 @@ export default function BookList({
             <Link
               key={book.id}
               href={`/study/book/${book.id}`}
-              className="flex flex-col rounded-lg border bg-white p-5 shadow-sm transition hover:border-gold-start hover:shadow-md"
+              className="group flex flex-col rounded-lg border bg-white p-5 shadow-sm transition hover:border-gold-start hover:bg-light hover:shadow-md"
             >
               <div className="mb-4 flex h-[300px] justify-center">
                 {book.cover_url ? (
@@ -228,7 +228,7 @@ export default function BookList({
               <p className="mb-2 font-semibold text-gray-600">{book.author}</p>
 
               {book.description && (
-                <p className="mb-3 line-clamp-3 text-sm text-gray-500">
+                <p className="mb-3 line-clamp-3 text-sm text-gray-500 group-hover:text-black">
                   {book.description}
                 </p>
               )}
@@ -250,7 +250,7 @@ export default function BookList({
 
                 <div className="flex items-center gap-2">
                   <Users className="mr-1 h-4 w-4" />
-                  <span className="text-sm">
+                  <span className="text-sm group-hover:text-black">
                     {book.study_count !== undefined ? book.study_count : 0}개
                     스터디
                   </span>

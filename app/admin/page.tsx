@@ -204,7 +204,7 @@ export default function AdminDashboardPage() {
           <Link
             key={item.title}
             href={item.href}
-            className="flex items-start rounded-lg border bg-white p-5 shadow-sm transition hover:border-gold-start hover:shadow-md"
+            className="flex items-start rounded-lg border bg-white p-5 shadow-sm transition hover:border-gold-start hover:bg-light hover:shadow-md"
           >
             <div className="mr-4 rounded-full bg-gold-start/10 p-3">
               <item.icon className="h-6 w-6 text-gold-start" />

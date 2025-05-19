@@ -82,14 +82,10 @@ export default function CancelEnrollmentButton({
     <div className="flex flex-col gap-2 rounded-md border bg-red-50 p-2">
       <div className="flex items-center gap-2 text-red-600">
         <AlertTriangle className="h-4 w-4" />
-        <span className="text-sm font-medium">
-          정말 수강을 취소하시겠습니까?
-        </span>
+        <span className="text-sm font-medium">수강취소 하시겠습니까?</span>
       </div>
-      <p className="text-xs text-gray-600">
-        취소 후에는 복구할 수 없으며, 다시 수강신청해야 합니다.
-      </p>
-      <div className="mt-1 flex gap-2">
+      <p className="text-xs text-gray-600">취소 후에는 복구할 수 없습니다.</p>
+      <div className="mt-1 flex justify-end gap-2">
         <button
           onClick={() => setShowConfirm(false)}
           className="rounded-md bg-gray-200 px-3 py-1 text-xs"

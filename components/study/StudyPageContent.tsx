@@ -348,7 +348,7 @@ export default function StudyPageContent() {
                     <Link
                       key={study.id}
                       href={`/study/${study.id}`}
-                      className="flex flex-col rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-md"
+                      className="flex flex-col rounded-lg border p-4 shadow-sm transition hover:border-gold-start hover:bg-light hover:shadow-md"
                     >
                       <span
                         className={`mb-2 w-fit rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -402,17 +402,16 @@ export default function StudyPageContent() {
                     <Link
                       key={book.id}
                       href={`/study/book/${book.id}`}
-                      className="flex flex-col rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-md"
+                      className="group flex flex-col rounded-lg border p-4 shadow-sm transition hover:border-gold-start hover:bg-light hover:shadow-md"
                     >
                       <div className="mb-3 flex justify-center">
                         {book.cover_url ? (
-                          <div className="relative h-[200px] w-[140px] overflow-hidden rounded shadow">
+                          <div className="relative overflow-hidden rounded shadow">
                             <Image
                               src={book.cover_url}
                               alt={book.title}
-                              fill
-                              sizes="140px"
-                              className="object-cover"
+                              width={140}
+                              height={200}
                             />
                           </div>
                         ) : (
@@ -432,13 +431,13 @@ export default function StudyPageContent() {
                       <div className="mt-auto flex items-center justify-between">
                         <div className="flex items-center text-gray-600">
                           <ThumbsUp className="mr-1 h-4 w-4" />
-                          <span className="text-sm">
+                          <span className="text-sm group-hover:text-black">
                             {book.recommendation_count}명 추천
                           </span>
                         </div>
-                        <div className="flex items-center text-blue-600">
+                        <div className="flex items-center">
                           <Users className="mr-1 h-4 w-4" />
-                          <span className="text-sm">
+                          <span className="text-sm group-hover:text-black">
                             {book.study_count !== undefined
                               ? book.study_count
                               : 0}
@@ -459,7 +458,7 @@ export default function StudyPageContent() {
                   <Link
                     key={study.id}
                     href={`/study/${study.id}`}
-                    className="flex flex-col rounded-lg border bg-white p-5 shadow-sm transition hover:shadow-md"
+                    className="group flex flex-col rounded-lg border bg-white p-5 shadow-sm transition hover:border-gold-start hover:bg-light hover:shadow-md"
                   >
                     <div className="mb-2 flex justify-between">
                       <span
@@ -477,7 +476,7 @@ export default function StudyPageContent() {
                             ? '진행중'
                             : '완료'}
                       </span>
-                      <span className="border-b-2 border-gold-start text-sm text-gray-500">
+                      <span className="border-b-2 border-gold-start text-sm text-gray-500 group-hover:text-black">
                         {study.category}
                       </span>
                     </div>

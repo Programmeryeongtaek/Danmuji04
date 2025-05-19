@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Shield, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -11,18 +11,18 @@ const settingsMenu = [
     href: '/settings/profile',
     icon: User,
   },
-  {
-    title: '계정',
-    description: ' 비밀번호 변경 및 계정 관리',
-    href: '/settings/account',
-    icon: Shield,
-  },
-  {
-    title: '알림',
-    description: '알림, 구독 및 마케팅 정보 수신 설정',
-    href: 'settings/alerts',
-    icon: Bell,
-  },
+  // {
+  //   title: '계정',
+  //   description: ' 비밀번호 변경 및 계정 관리',
+  //   href: '/settings/account',
+  //   icon: Shield,
+  // },
+  // {
+  //   title: '알림',
+  //   description: '알림, 구독 및 마케팅 정보 수신 설정',
+  //   href: 'settings/alerts',
+  //   icon: Bell,
+  // },
 ];
 
 const SettingsPage = () => {
@@ -37,7 +37,7 @@ const SettingsPage = () => {
           <Link
             key={href}
             href={href}
-            className={`flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-gray-50 ${
+            className={`flex items-start gap-4 rounded-lg border p-4 transition-colors hover:border-gold-start hover:bg-light ${
               pathname === href
                 ? 'border-gold-start bg-gold-end/5'
                 : 'border-gray-200'

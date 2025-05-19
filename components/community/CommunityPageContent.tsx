@@ -218,17 +218,12 @@ export default function CommunityPageContent() {
         hour: '2-digit',
         minute: '2-digit',
       });
-    } else if (diffDays < 7) {
-      // 일주일 이내
-      return `${diffDays}일 전`;
-    } else {
-      // 일주일 이상
-      return date.toLocaleDateString('ko-Kr', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
     }
+    return date.toLocaleDateString('ko-Kr', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -374,7 +369,9 @@ export default function CommunityPageContent() {
           <div className="min-w-[80px] text-center">카테고리</div>
           <div>제목</div>
           <div className="min-w-[80px] text-center">작성자</div>
-          <div className="min-w-[80px] text-center">조회수</div>
+          <div className="min-w-[80px] text-center mobile:hidden tablet:block">
+            조회수
+          </div>
           <div className="min-w-[120px] text-center">작성일</div>
         </div>
 
@@ -396,9 +393,7 @@ export default function CommunityPageContent() {
                       ? 'bg-red-100 text-red-800'
                       : post.category === 'faq'
                         ? 'bg-blue-100 text-blue-800'
-                        : post.category === 'study'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                        : 'bg-gray-100 text-gray-800'
                   }`}
                 >
                   {
@@ -458,7 +453,7 @@ export default function CommunityPageContent() {
                 </div>
               </div>
               <div className="min-w-[80px] text-center text-sm text-gray-600">
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex items-center justify-end gap-1">
                   <div className="relative h-5 w-5 overflow-hidden rounded-full bg-gray-200">
                     {post.author_avatar ? (
                       <Image
@@ -479,7 +474,7 @@ export default function CommunityPageContent() {
                   <span>{post.author_name}</span>
                 </div>
               </div>
-              <div className="min-w-[80px] text-center text-sm text-gray-600">
+              <div className="min-w-[80px] text-center text-sm text-gray-600 mobile:hidden tablet:block">
                 {post.views}
               </div>
               <div className="min-w-[120px] text-center text-sm text-gray-600">

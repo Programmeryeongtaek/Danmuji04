@@ -2,7 +2,9 @@
 
 import { CourseWriting } from '@/app/types/course/courseModel';
 import Button from '@/components/common/Button/Button';
+import { useToast } from '@/components/common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
+import { Edit, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface WritingSectionProps {
@@ -10,6 +12,7 @@ interface WritingSectionProps {
   itemId: string;
   userWriting: CourseWriting | null;
   onWritingSaved: (writing: CourseWriting) => void;
+  onWritingDeleted: () => void;
 }
 
 export default function WritingSection({
@@ -17,6 +20,7 @@ export default function WritingSection({
   itemId,
   userWriting,
   onWritingSaved,
+  onWritingDeleted,
 }: WritingSectionProps) {
   const [content, setContent] = useState(userWriting?.content || '');
   const [isPublic, setIsPublic] = useState<boolean>(
@@ -25,6 +29,7 @@ export default function WritingSection({
   const [isEditing, setIsEditing] = useState(!userWriting);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
   async function handleSave() {
     if (!content.trim()) {
@@ -70,6 +75,7 @@ export default function WritingSection({
 
         if (updateError) throw updateError;
         onWritingSaved(data);
+        showToast('내용이 수정되었습니다.', 'success');
       } else {
         // 새 글 작성
         const { data, error: insertError } = await supabase
@@ -87,29 +93,55 @@ export default function WritingSection({
 
         if (insertError) throw insertError;
         onWritingSaved(data);
+        showToast('내용이 저장되었습니다.', 'success');
       }
 
       setIsEditing(false);
     } catch (error) {
       console.error('글 저장 중 오류:', error);
-      setError('글을 저장하는 중 오류가 발생했습니다.');
+      showToast('글을 저장하는 중 오류가 발생했습니다.', 'error');
     } finally {
       setIsSaving(false);
     }
   }
 
-  return (
-    <div className="mt-8 border-t pt-6">
-      <h2 className="mb-4 text-xl font-semibold">내용 정리하기</h2>
+  // 글 삭제 기능
+  const handleDelete = async () => {
+    if (!userWriting || !confirm('정말로 글을 삭제하시겠습니까?')) return;
 
+    try {
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from('course_writings')
+        .delete()
+        .eq('id', userWriting.id);
+
+      if (error) throw error;
+
+      onWritingDeleted();
+      showToast('글이 삭제되었습니다.', 'success');
+    } catch (error) {
+      console.error('글 삭제 중 오류:', error);
+      showToast('글 삭제 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  return (
+    <div className="flex flex-col">
       {isEditing ? (
-        <div className="space-y-4">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="h-64 w-full rounded-lg border p-4 focus:outline-none focus:ring-2 focus:ring-gold-start"
-            placeholder="느낀 점이나 알게 된 내용을 글로 정리해보세요."
-          />
+        <>
+          <div className="relative flex flex-col pb-6">
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="h-64 w-full rounded-lg border p-4 focus:bg-light focus:outline-none focus:ring-2 focus:ring-gold-start"
+              placeholder="느낀 점이나 알게 된 내용을 글로 정리해보세요."
+            />
+            {error && (
+              <span className="absolute -bottom-0 text-red-500">{error}</span>
+            )}
+          </div>
 
           <div className="flex justify-between">
             <label className="flex cursor-pointer items-center">
@@ -117,9 +149,9 @@ export default function WritingSection({
                 type="checkbox"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
-                className="mr-2"
+                className="mr-2 h-4 w-4 accent-gold-start"
               />
-              <span>내용 공개</span>
+              <span>공개</span>
             </label>
 
             <div className="flex justify-end space-x-2">
@@ -146,25 +178,25 @@ export default function WritingSection({
               </Button>
             </div>
           </div>
-
-          {error && <div className="text-red-500">{error}</div>}
-        </div>
+        </>
       ) : (
-        <div className="space-y-4">
-          <div className="rounded-lg border bg-gray-50 p-4">
-            <p className="whitespace-pre-wrap">{userWriting?.content}</p>
+        <div className="relative">
+          <div className="absolute -top-10 right-0 flex items-center gap-2">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="rounded-lg border border-blue-200 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50"
+            >
+              <Edit size={16} />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+            >
+              <Trash2 size={16} />
+            </button>
           </div>
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              {userWriting?.is_public
-                ? '다른 사람들에게 공개되었습니다.'
-                : '나만 볼 수 있습니다.'}
-            </div>
-
-            <Button onClick={() => setIsEditing(true)} className="px-4 py-2">
-              수정
-            </Button>
+          <div className="rounded-lg border bg-light p-4">
+            <p className="h-64 whitespace-pre-wrap">{userWriting?.content}</p>
           </div>
         </div>
       )}

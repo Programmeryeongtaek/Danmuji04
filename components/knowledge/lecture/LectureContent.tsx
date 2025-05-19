@@ -21,6 +21,7 @@ import Image from 'next/image';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
 import { useToast } from '@/components/common/Toast/Context';
+import { fetchAverageRating } from '@/utils/services/knowledge/lectureService';
 
 interface LectureContentProps {
   lecture: Lecture;
@@ -54,6 +55,11 @@ export default function LectureContent({ lecture }: LectureContentProps) {
   useEffect(() => {
     const loadData = async () => {
       try {
+        const [averageRating] = await Promise.all([
+          fetchAverageRating(lecture.id),
+        ]);
+        setAverageRating(averageRating);
+
         const supabase = createClient();
 
         // 로그인한 경우 북마크 상태와 수강 상태 확인
@@ -80,15 +86,6 @@ export default function LectureContent({ lecture }: LectureContentProps) {
         if (reviews) {
           const count = reviews.length;
           setReviewCount(count);
-
-          if (count >= 5) {
-            const total = reviews.reduce(
-              (sum, review) => sum + (review?.rating || 0),
-              0
-            );
-            const average = total / count;
-            setAverageRating(Math.round(average * 10) / 10);
-          }
         }
 
         // 섹션 데이터 로드
@@ -212,7 +209,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                     <User className="h-4 w-4" />
                     <span>{lecture.students}명 수강중</span>
                   </div>
-                  {reviewCount >= 5 ? (
+                  {reviewCount >= 1 ? (
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                       <span>
@@ -406,7 +403,6 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   </Link>
                 </div>
               )}
-
             </div>
           </div>
 

@@ -377,10 +377,10 @@ export default function NotificationsManagePage() {
                       key={template.id}
                       type="button"
                       onClick={() => handleTemplateSelect(template)}
-                      className={`rounded-lg px-3 py-1 text-sm transition ${
+                      className={`rounded-lg border px-3 py-1 text-sm transition ${
                         selectedTemplate?.id === template.id
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'border border-gray-300 hover:bg-gray-50'
+                          ? 'border-gold-start bg-light'
+                          : 'hover:border-gold-start hover:bg-light'
                       }`}
                     >
                       {template.title}
@@ -424,10 +424,10 @@ export default function NotificationsManagePage() {
                 <button
                   type="button"
                   onClick={() => setTargetAudience('all')}
-                  className={`flex items-center gap-1 rounded-lg px-3 py-1 text-sm transition ${
+                  className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm transition ${
                     targetAudience === 'all'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'border border-gray-300 hover:bg-gray-50'
+                      ? 'border-gold-start bg-light'
+                      : 'hover:border-gold-start hover:bg-light'
                   }`}
                 >
                   <Users className="h-4 w-4" />
@@ -439,8 +439,8 @@ export default function NotificationsManagePage() {
                   onClick={() => setTargetAudience('instructors')}
                   className={`flex items-center gap-1 rounded-lg px-3 py-1 text-sm transition ${
                     targetAudience === 'instructors'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'border border-gray-300 hover:bg-gray-50'
+                      ? 'border-gold-start bg-light'
+                      : 'hover:border-gold-start hover:bg-light'
                   }`}
                 >
                   <User className="h-4 w-4" />
@@ -452,8 +452,8 @@ export default function NotificationsManagePage() {
                   onClick={() => setTargetAudience('students')}
                   className={`flex items-center gap-1 rounded-lg px-3 py-1 text-sm transition ${
                     targetAudience === 'students'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'border border-gray-300 hover:bg-gray-50'
+                      ? 'border-gold-start bg-light'
+                      : 'hover:border-gold-start hover:bg-light'
                   }`}
                 >
                   <User className="h-4 w-4" />
@@ -466,8 +466,8 @@ export default function NotificationsManagePage() {
                     onClick={() => setCustomRolesOpen(!customRolesOpen)}
                     className={`flex items-center gap-1 rounded-lg px-3 py-1 text-sm transition ${
                       targetAudience === 'custom'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'border border-gray-300 hover:bg-gray-50'
+                        ? 'border-gold-start bg-light'
+                        : 'hover:border-gold-start hover:bg-light'
                     }`}
                   >
                     <User className="h-4 w-4" />

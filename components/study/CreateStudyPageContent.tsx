@@ -7,7 +7,7 @@ import { useToast } from '../common/Toast/Context';
 import { FormEvent, useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
-import { ArrowLeft, Book } from 'lucide-react';
+import { Book } from 'lucide-react';
 
 // 인터페이스 정의
 interface BookInfo {
@@ -176,11 +176,15 @@ export default function CreateStudyPageContent() {
     }
   };
 
+  const handleMeetingToggle = () => {
+    setIsOnline((prev) => !prev);
+  };
+
   // TODO: 스터디 설명 또는 참고 사진 추가할 수 있도록 구현
   return (
     <form
       onSubmit={handleSubmit}
-      className="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6 shadow-sm"
+      className="mx-auto my-12 max-w-3xl rounded-lg border bg-light shadow-sm"
     >
       {/* 도서 정보가 있는 경우 표시 (추가) */}
       {bookInfo && (
@@ -211,16 +215,8 @@ export default function CreateStudyPageContent() {
         </div>
       )}
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center">
-          <button
-            onClick={() => router.back()}
-            className="mr-4 rounded-full p-2 hover:bg-gray-100 hover:text-gold-start"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-2xl font-bold">스터디 개설하기</h1>
-        </div>
-        <div>
+        <h1 className="mb-6 text-2xl font-bold">개설하기</h1>
+        <div className="mobile:mb-2 tablet:mb-4 laptop:mb-6">
           <label htmlFor="title" className="mb-1 block font-medium">
             스터디 제목 <span className="text-red-500">*</span>
           </label>
@@ -229,13 +225,13 @@ export default function CreateStudyPageContent() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="스터디 제목을 입력해주세요"
+            placeholder="스터디 제목을 입력해주세요."
             className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
             required
           />
         </div>
 
-        <div>
+        <div className="mobile:mb-2 tablet:mb-4 laptop:mb-6">
           <label htmlFor="description" className="mb-1 block font-medium">
             스터디 설명 <span className="text-red-500">*</span>
           </label>
@@ -243,15 +239,15 @@ export default function CreateStudyPageContent() {
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="스터디에 대한 설명을 작성해주세요"
+            placeholder="스터디에 대한 설명을 작성해주세요."
             rows={4}
-            className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+            className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20 mobile:h-[150px] tablet:h-[250px] laptop:h-[300px]"
             required
           ></textarea>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
+        <div className="grid gap-6 mobile:mb-3 md:grid-cols-2 tablet:mb-2 laptop:mb-4">
+          <div className="mobile:-mb-2">
             <label htmlFor="category" className="mb-1 block font-medium">
               카테고리 <span className="text-red-500">*</span>
             </label>
@@ -272,7 +268,7 @@ export default function CreateStudyPageContent() {
 
           <div>
             <label htmlFor="maxParticipants" className="mb-1 block font-medium">
-              최대 참여 인원 <span className="text-red-500">*</span>
+              최대 인원 <span className="text-red-500">*</span>
             </label>
             <input
               id="maxParticipants"
@@ -287,8 +283,8 @@ export default function CreateStudyPageContent() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
+        <div className="grid gap-6 mobile:mb-3 md:grid-cols-2 tablet:mb-2 laptop:mb-4">
+          <div className="mobile:-mb-1">
             <label htmlFor="startDate" className="mb-1 block font-medium">
               시작일 <span className="text-red-500">*</span>
             </label>
@@ -318,48 +314,37 @@ export default function CreateStudyPageContent() {
           </div>
         </div>
 
-        <div>
-          <div className="mb-2 font-medium">
-            진행 방식 <span className="text-red-500">*</span>
-          </div>
+        <div className="flex gap-1">
           <div className="flex gap-4">
-            <label className="flex items-center">
-              <input
-                type="radio"
-                checked={isOnline}
-                onChange={() => setIsOnline(true)}
-                className="mr-2"
-              />
-              온라인
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                checked={!isOnline}
-                onChange={() => setIsOnline(false)}
-                className="mr-2"
-              />
-              오프라인
+            <label className="relative flex flex-col items-center justify-between rounded-lg p-3">
+              <span className="font-medium">온라인</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={isOnline}
+                  onChange={handleMeetingToggle}
+                  className="peer sr-only"
+                />
+                <div className="h-5 w-10 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-gold-start peer-checked:after:translate-x-5"></div>
+              </div>
             </label>
           </div>
-        </div>
 
-        {!isOnline && (
-          <div>
-            <label htmlFor="location" className="mb-1 block font-medium">
-              오프라인 장소 <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="location"
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="스터디 장소를 입력해주세요"
-              className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
-              required={!isOnline}
-            />
-          </div>
-        )}
+          {!isOnline && (
+            <div className="flex flex-1 flex-col justify-center">
+              <label htmlFor="location" className="font-medium"></label>
+              <input
+                id="location"
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="장소를 입력해주세요."
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+                required={!isOnline}
+              />
+            </div>
+          )}
+        </div>
 
         <div className="flex justify-end space-x-4 pt-4">
           <button

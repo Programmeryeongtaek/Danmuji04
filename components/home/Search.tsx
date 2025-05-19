@@ -1,6 +1,7 @@
 'use client';
 
 import { SearchIcon } from 'lucide-react';
+import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 
 const phrases = [
@@ -67,15 +68,15 @@ const Search = () => {
           </form>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-sm text-gray-500">추천 검색어:</span>
+            <span className="text-sm text-black">추천 검색어:</span>
             {['인문학', '철학', '심리학', '자기계발', '리더십'].map((tag) => (
-              <a
+              <Link
                 key={tag}
                 href={`/knowledge?category=search&q=${encodeURIComponent(tag)}`}
                 className="rounded-full bg-white px-3 py-1 text-sm hover:bg-gray-50"
               >
                 {tag}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

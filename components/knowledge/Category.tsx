@@ -157,8 +157,8 @@ const Category = ({ selectedCategory, onCategoryClick }: CategoryProps) => {
           onClick={() => handleCategoryClick(id)}
           className={`flex min-w-[80px] select-none flex-col items-center justify-center py-4 ${
             selectedCategory === id
-              ? 'border-b-2 border-blue-500 text-blue-500'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'border-b-2 border-gold-start text-gold-start'
+              : 'text-gray-700 hover:text-gold-start'
           }`}
         >
           <Icon className="mb-1 h-6 w-6" />

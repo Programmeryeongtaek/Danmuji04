@@ -27,7 +27,9 @@ export default function Root({ children, isOpen, onClose }: ModalRootProps) {
         onClick={handleOverlayClick}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
-        <div className="h-2/3 w-11/12 rounded-lg bg-[#FDF6E3]">{children}</div>
+        <div className="relative h-[550px] w-[600px] rounded-lg bg-light px-16 py-20">
+          {children}
+        </div>
       </div>
     </ModalContext.Provider>
   );

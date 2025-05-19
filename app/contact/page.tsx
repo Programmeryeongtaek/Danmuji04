@@ -201,7 +201,7 @@ export default function ContactPage() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+                  className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:bg-light focus:outline-none focus:ring-2 focus:ring-gold-start/20"
                   required
                 />
               </div>
@@ -215,7 +215,7 @@ export default function ContactPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+                  className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:bg-light focus:outline-none focus:ring-2 focus:ring-gold-start/20"
                   required
                 />
               </div>
@@ -230,7 +230,7 @@ export default function ContactPage() {
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:bg-light focus:outline-none focus:ring-2 focus:ring-gold-start/20"
                 required
               />
             </div>
@@ -244,7 +244,7 @@ export default function ContactPage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={6}
-                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:bg-light focus:outline-none focus:ring-2 focus:ring-gold-start/20"
                 required
               ></textarea>
             </div>

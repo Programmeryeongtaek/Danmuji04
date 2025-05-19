@@ -5,7 +5,8 @@ import BookSearch from '@/components/study/BookSearch';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
-import { ArrowLeft, Book, Upload } from 'lucide-react';
+import { Book, Search, Upload } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 
@@ -158,14 +159,8 @@ export default function RecommendBookPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center">
-        <button
-          onClick={() => router.back()}
-          className="mr-4 rounded-full p-2 hover:bg-gray-100"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-2xl font-bold">새 도서 추천하기</h1>
+      <div className="mx-auto mb-6 flex max-w-2xl justify-between">
+        <h1 className="text-2xl font-bold">도서추천</h1>
       </div>
 
       {isSearchMode ? (
@@ -185,15 +180,16 @@ export default function RecommendBookPage() {
         // 직접 입력 모드
         <form
           onSubmit={handleSubmit}
-          className="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6 shadow-sm"
+          className="mx-auto max-w-2xl space-y-6 rounded-lg border border-gold-start bg-light p-6 shadow-sm"
         >
           <div className="mb-4 flex justify-end">
             <button
               type="button"
               onClick={() => setIsSearchMode(true)}
-              className="text-sm text-blue-600 hover:underline"
+              className="flex items-center gap-1 text-lg text-black hover:underline"
             >
-              도서 검색으로 정보 가져오기
+              <Search />
+              <span>도서 검색</span>
             </button>
           </div>
 
@@ -207,8 +203,8 @@ export default function RecommendBookPage() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="도서 제목을 입력해주세요"
-                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+                placeholder="도서 제목을 입력해주세요."
+                className="w-full rounded-lg border-2 border-gray-300 p-2 focus:border-2 focus:border-gold-start focus:outline-none"
                 required
               />
             </div>
@@ -222,8 +218,8 @@ export default function RecommendBookPage() {
                 type="text"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder="저자명을 입력해주세요"
-                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+                placeholder="저자명을 입력해주세요."
+                className="w-full rounded-lg border-2 border-gray-300 p-2 focus:border-2 focus:border-gold-start focus:outline-none"
                 required
               />
             </div>
@@ -239,8 +235,8 @@ export default function RecommendBookPage() {
                 type="text"
                 value={isbn}
                 onChange={(e) => setIsbn(e.target.value)}
-                placeholder="ISBN을 입력해주세요"
-                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+                placeholder="ISBN을 입력해주세요."
+                className="w-full rounded-lg border-2 border-gray-300 p-2 focus:border-2 focus:border-gold-start focus:outline-none"
               />
             </div>
 
@@ -253,23 +249,23 @@ export default function RecommendBookPage() {
                 type="text"
                 value={publisher}
                 onChange={(e) => setPublisher(e.target.value)}
-                placeholder="출판사를 입력해주세요"
-                className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+                placeholder="출판사를 입력해주세요."
+                className="w-full rounded-lg border-2 border-gray-300 p-2 focus:border-2 focus:border-gold-start focus:outline-none"
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="description" className="mb-1 block font-medium">
-              도서 설명
+              설명
             </label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="도서에 대한 간략한 설명을 적어주세요"
+              placeholder="도서에 대한 간략한 설명을 적어주세요."
               rows={4}
-              className="w-full rounded-lg border border-gray-300 p-2 focus:border-gold-start focus:outline-none"
+              className="h-[200px] w-full rounded-lg border-2 border-gray-300 p-2 focus:border-2 focus:border-gold-start focus:outline-none"
             ></textarea>
           </div>
 
@@ -278,9 +274,11 @@ export default function RecommendBookPage() {
             <div className="flex items-start gap-4">
               {coverPreview ? (
                 <div className="relative h-48 w-32 overflow-hidden rounded-lg border">
-                  <img
+                  <Image
                     src={coverPreview}
                     alt="표지 미리보기"
+                    width={32}
+                    height={48}
                     className="h-full w-full object-cover"
                   />
                   <button
@@ -290,7 +288,7 @@ export default function RecommendBookPage() {
                       setCoverUrl(null);
                       setCoverPreview(null);
                     }}
-                    className="absolute right-1 top-1 rounded-full bg-white p-1 shadow hover:bg-gray-100"
+                    className="absolute right-1 top-1 rounded-full bg-white p-1 shadow"
                   >
                     <svg
                       className="h-4 w-4"
@@ -308,7 +306,7 @@ export default function RecommendBookPage() {
                   </button>
                 </div>
               ) : (
-                <div className="flex h-48 w-32 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50">
+                <div className="flex h-48 w-32 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white">
                   <Book className="mb-2 h-8 w-8 text-gray-400" />
                   <p className="text-center text-xs text-gray-500">
                     표지 이미지를
@@ -321,10 +319,10 @@ export default function RecommendBookPage() {
               <div className="flex-1">
                 <label
                   htmlFor="cover-upload"
-                  className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+                  className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-gold-start px-4 py-2 text-sm hover:border-gold-start hover:bg-white"
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  이미지 선택하기
+                  이미지 선택
                 </label>
                 <input
                   id="cover-upload"
@@ -353,7 +351,7 @@ export default function RecommendBookPage() {
               disabled={isSubmitting}
               className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-2 text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? '등록 중...' : '도서 추천하기'}
+              {isSubmitting ? '등록 중...' : '등록'}
             </button>
           </div>
         </form>
