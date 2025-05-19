@@ -385,6 +385,24 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   </p>
                 </div>
               </div>
+
+              {/* 강의 정보 카드 */}
+              <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
+                <h2 className="mb-4 text-lg font-bold">강의 정보</h2>
+                <div className="space-y-3">{/* 정보 내용 */}</div>
+              </div>
+
+              {/* 강의 시작하기 버튼 */}
+              {user && (
+                <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
+                  <Link
+                    href={`/knowledge/lecture/${lecture.id}/watch`}
+                    className="block w-full rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-center font-medium text-white shadow-md hover:from-purple-600 hover:to-indigo-700"
+                  >
+                    학습하기
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 

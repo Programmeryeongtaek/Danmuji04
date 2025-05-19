@@ -20,6 +20,7 @@ import { BookmarkedPost } from '@/app/types/community/communityType';
 import {
   deleteMultipleBookmarks,
   updateBookmarkImportance,
+
   updateBookmarkMemo,
 } from '@/utils/services/community/bookmarkService';
 import { fetchBookmarkedPosts } from '@/utils/services/community/postService';
