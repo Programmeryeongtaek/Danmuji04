@@ -227,6 +227,14 @@ const ProfileSettingsPage = () => {
     }
   };
 
+  const handleAddInterest = () => {
+    if (newInterest.trim() && !selectedInterests.includes(newInterest.trim())) {
+      setSelectedInterests((prev) => [...prev, newInterest.trim()]);
+      setNewInterest('');
+      setIsEditing(true);
+    }
+  };
+
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
       prev.includes(interest)
@@ -396,12 +404,12 @@ const ProfileSettingsPage = () => {
                   setCurrentNickname(e.target.value);
                   setIsEditing(true);
                 }}
-                className={`w-full rounded-lg border p-2 ${
+                className={`w-full rounded-lg border p-2 focus:bg-light ${
                   nicknameError
                     ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
                     : 'border-gray-300 focus:border-gold-start focus:ring-gold-start/20'
                 }`}
-                placeholder="닉네임을 입력해주세요"
+                placeholder="닉네임을 입력해주세요."
               />
               {isCheckingNickname && (
                 <p className="text-sm text-gray-500">중복 확인 중...</p>
@@ -495,8 +503,14 @@ const ProfileSettingsPage = () => {
                 type="text"
                 value={newInterest}
                 onChange={(e) => setNewInterest(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 p-2 pr-20"
-                placeholder="기타 관심 분야 입력"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddInterest();
+                  }
+                }}
+                className="w-full rounded-lg border border-gray-300 p-2 pr-20 focus:bg-light"
+                placeholder="기타 관심 분야 입력를 입력해주세요."
                 maxLength={10}
               />
               <button
@@ -525,7 +539,7 @@ const ProfileSettingsPage = () => {
               {selectedInterests.map((interest) => (
                 <div
                   key={interest}
-                  className="flex items-center gap-1 rounded-full bg-gold-start px-4 py-2 text-sm text-white"
+                  className="flex items-center rounded-full bg-light px-4 py-2 text-sm text-black"
                 >
                   <span>{interest}</span>
                   <button
@@ -536,7 +550,7 @@ const ProfileSettingsPage = () => {
                       );
                       setIsEditing(true);
                     }}
-                    className="ml-1 rounded-full p-0.5 text-white opacity-60 hover:opacity-100"
+                    className="ml-1 rounded-full p-0.5 text-black opacity-60 hover:opacity-100"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -559,7 +573,7 @@ const ProfileSettingsPage = () => {
             disabled={loading || !isEditing || Boolean(nicknameError)}
             className="w-1/2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end py-2 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? '저장 중...' : '변경사항 저장'}
+            {loading ? '저장 중...' : '저장'}
           </button>
         </div>
       </form>

@@ -228,7 +228,7 @@ const LectureSection = ({
         </div>
 
         {/* 드롭다운 영역 - 더 높은 z-index 값 부여 */}
-        <div className="relative z-40">
+        <div className="relative z-40 hover:bg-light">
           <Dropdown.Root onSort={handleSort}>
             <Dropdown.Trigger />
             <Dropdown.Context />

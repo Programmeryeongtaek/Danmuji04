@@ -46,7 +46,7 @@ const FeaturedBooks = () => {
           href="/study?category=book"
           className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
         >
-          전체 도서 보기
+          전체 도서
         </Link>
       </div>
 
@@ -60,7 +60,7 @@ const FeaturedBooks = () => {
             <Link
               key={book.id}
               href={`/study/book/${book.id}`}
-              className="group flex flex-col rounded-xl border bg-white p-4 shadow-sm transition hover:shadow-md"
+              className="flex flex-col rounded-xl border bg-white p-4 shadow-sm transition hover:border-gold-start hover:bg-light hover:shadow-md"
             >
               <div className="mb-4 flex justify-center">
                 {book.cover_url ? (
@@ -81,7 +81,7 @@ const FeaturedBooks = () => {
                 )}
               </div>
 
-              <h3 className="mb-1 line-clamp-2 text-lg font-semibold group-hover:text-gold-start">
+              <h3 className="mb-1 line-clamp-2 text-lg font-semibold">
                 {book.title}
               </h3>
 
@@ -92,7 +92,7 @@ const FeaturedBooks = () => {
                   <ThumbsUp className="h-4 w-4" />
                   <span>{book.recommendation_count}</span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 text-black">
                   <Users className="h-4 w-4" />
                   <span>{book.study_count || 0}개 스터디</span>
                 </div>

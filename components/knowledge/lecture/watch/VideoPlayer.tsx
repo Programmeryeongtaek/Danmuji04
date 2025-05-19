@@ -179,7 +179,7 @@ export default function VideoPlayer({
             }}
             className="mt-4 h-10 w-full rounded-lg px-4 py-2 text-white"
           >
-            학습 완료 표시하기
+            학습 완료
           </Button>
         ) : (
           <div className="mt-4 h-10"></div>

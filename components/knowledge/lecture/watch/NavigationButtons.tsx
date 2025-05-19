@@ -25,7 +25,7 @@ export default function NavigationButtons({
       <Button
         onClick={onPrevious}
         disabled={!hasPrevious}
-        className={`flex items-center ${
+        className={`flex items-center px-2 py-1 ${
           !hasPrevious ? 'cursor-not-allowed opacity-50' : ''
         }`}
       >

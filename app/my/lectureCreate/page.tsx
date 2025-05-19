@@ -9,9 +9,11 @@ import {
   LectureFormData,
   LectureSectionFormData,
 } from '@/app/types/knowledge/lectureForm';
-import { X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import Image from 'next/image';
+import Button from '@/components/common/Button/Button';
 
 export default function CreateLectureForm() {
   const router = useRouter();
@@ -19,6 +21,8 @@ export default function CreateLectureForm() {
     useLectureForm();
   const [sections, setSections] = useState<LectureSectionFormData[]>([]);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState(true);
+  const [isFree, setIsFree] = useState(true);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -97,12 +101,12 @@ export default function CreateLectureForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-4xl space-y-8 p-6">
+    <form onSubmit={handleSubmit} className="mx-auto my-6 max-w-4xl space-y-8">
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">새 강의 등록</h1>
+        <h1 className="text-2xl font-bold">강의 등록</h1>
 
         {/* 기본 정보 */}
-        <div className="space-y-4">
+        <div className="space-y-4 rounded-lg border bg-light p-6">
           <div>
             <label className="mb-1 block text-sm font-medium">강의 제목</label>
             <input
@@ -152,7 +156,7 @@ export default function CreateLectureForm() {
               name="keyword"
               required
               className="w-full rounded-lg border p-2"
-              placeholder="키워드를 입력해주세요 (쉼표로 구분)"
+              placeholder="키워드를 입력해주세요. (쉼표로 구분)"
             />
           </div>
 
@@ -161,9 +165,11 @@ export default function CreateLectureForm() {
             <div className="space-y-2">
               {thumbnailPreview && (
                 <div className="relative h-32 w-48">
-                  <img
+                  <Image
                     src={thumbnailPreview}
                     alt="썸네일 미리보기"
+                    width={48}
+                    height={32}
                     className="h-full w-full rounded-lg object-cover"
                   />
                   <button
@@ -208,8 +214,14 @@ export default function CreateLectureForm() {
           <div className="space-y-4">
             <div>
               <label className="flex items-center gap-2">
-                <input type="checkbox" name="is_public" value="true" />
-                <span className="text-sm">공개 강의로 설정</span>
+                <input
+                  type="checkbox"
+                  name="is_public"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  value="true"
+                />
+                <span className="text-sm">공개 강의</span>
               </label>
             </div>
 
@@ -218,8 +230,10 @@ export default function CreateLectureForm() {
                 <input
                   type="checkbox"
                   name="is_free"
+                  checked={isFree}
                   value="true"
                   onChange={(e) => {
+                    setIsFree(e.target.checked);
                     const priceInput = document.querySelector(
                       'input[name="price"]'
                     ) as HTMLInputElement;
@@ -231,7 +245,7 @@ export default function CreateLectureForm() {
                     }
                   }}
                 />
-                <span className="text-sm">무료 강의로 설정</span>
+                <span className="text-sm">무료 강의</span>
               </label>
             </div>
 
@@ -253,101 +267,101 @@ export default function CreateLectureForm() {
               </p>
             </div>
           </div>
-        </div>
 
-        {/* 섹션 목록 */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">강의 섹션</h2>
-            <button
-              type="button"
-              onClick={addSection}
-              className="rounded-lg bg-blue-500 px-4 py-2 text-white"
-            >
-              섹션 추가
-            </button>
-          </div>
+          {/* 섹션 목록 */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">강의 섹션</h2>
+              <Button type="button" onClick={addSection} className="px-4 py-2">
+                <Plus className="h-5 w-5" />
+              </Button>
+            </div>
 
-          {sections.map((section, sectionIndex) => (
-            <div key={sectionIndex} className="rounded-lg border p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <input
-                  type="text"
-                  value={section.title}
-                  onChange={(e) => {
-                    const newSections = [...sections];
-                    newSections[sectionIndex].title = e.target.value;
-                    setSections(newSections);
-                  }}
-                  className="flex-1 rounded border p-2"
-                  placeholder="섹션 제목"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newSections = sections.filter(
-                      (_, i) => i !== sectionIndex
-                    );
-                    setSections(newSections);
-                  }}
-                  className="rounded-full p-1 text-red-500 hover:bg-red-50"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* 아이템 목록 */}
-              <div className="mb-4 space-y-4">
-                {section.items.map((item, itemIndex) => (
-                  <LectureItemForm
-                    key={itemIndex}
-                    sectionIndex={sectionIndex}
-                    itemIndex={itemIndex}
-                    item={item}
-                    onUpdate={(sectionIndex, itemIndex, updatedItem) => {
+            {sections.map((section, sectionIndex) => (
+              <div
+                key={sectionIndex}
+                className="rounded-lg border bg-white p-4"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <input
+                    type="text"
+                    value={section.title}
+                    onChange={(e) => {
                       const newSections = [...sections];
-                      newSections[sectionIndex].items[itemIndex] = updatedItem;
+                      newSections[sectionIndex].title = e.target.value;
                       setSections(newSections);
                     }}
-                    onDelete={(sectionIndex, itemIndex) => {
-                      const newSections = [...sections];
-                      newSections[sectionIndex].items = section.items.filter(
-                        (_, i) => i !== itemIndex
+                    className="flex-1 rounded border p-2"
+                    placeholder="섹션 제목"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newSections = sections.filter(
+                        (_, i) => i !== sectionIndex
                       );
                       setSections(newSections);
                     }}
-                  />
-                ))}
+                    className="rounded-full p-1 text-red-500 hover:bg-red-50"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* 아이템 목록 */}
+                <div className="mb-4 space-y-4">
+                  {section.items.map((item, itemIndex) => (
+                    <LectureItemForm
+                      key={itemIndex}
+                      sectionIndex={sectionIndex}
+                      itemIndex={itemIndex}
+                      item={item}
+                      onUpdate={(sectionIndex, itemIndex, updatedItem) => {
+                        const newSections = [...sections];
+                        newSections[sectionIndex].items[itemIndex] =
+                          updatedItem;
+                        setSections(newSections);
+                      }}
+                      onDelete={(sectionIndex, itemIndex) => {
+                        const newSections = [...sections];
+                        newSections[sectionIndex].items = section.items.filter(
+                          (_, i) => i !== itemIndex
+                        );
+                        setSections(newSections);
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* 아이템 추가 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => addItem(sectionIndex)}
+                  className="w-full rounded-lg border-2 border-dashed py-2 text-gray-500 hover:bg-gray-50"
+                >
+                  + 강의 추가
+                </button>
               </div>
+            ))}
+          </div>
 
-              {/* 아이템 추가 버튼 */}
-              <button
-                type="button"
-                onClick={() => addItem(sectionIndex)}
-                className="w-full rounded-lg border-2 border-dashed py-2 text-gray-500 hover:bg-gray-50"
-              >
-                + 강의 추가
-              </button>
-            </div>
-          ))}
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="rounded-lg border bg-white px-6 py-2 hover:bg-gray-50"
+            >
+              취소
+            </button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-lg px-6 py-2 disabled:opacity-50"
+            >
+              {isSubmitting ? '등록 중...' : '등록'}
+            </Button>
+          </div>
         </div>
-      </div>
-
-      <div className="flex justify-end gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-lg border px-6 py-2"
-        >
-          취소
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="rounded-lg bg-blue-500 px-6 py-2 text-white disabled:opacity-50"
-        >
-          {isSubmitting ? '등록 중...' : '강의 등록'}
-        </button>
       </div>
     </form>
   );

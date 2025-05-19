@@ -108,19 +108,19 @@ export default function MyLearningPage() {
 
   return (
     <div className="mx-auto max-w-7xl p-6">
-      <h1 className="mb-8 text-2xl font-bold">내 학습</h1>
+      <h1 className="mb-8 text-2xl font-bold">학습 현황</h1>
 
       {enrolledLectures.length > 0 ? (
         <div className="space-y-8">
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">진행 중인 강의</h2>
+            <h2 className="text-xl font-semibold">수강 중인 강의</h2>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {enrolledLectures.map((lecture) => (
                 <div key={lecture.id} className="flex flex-col">
                   <Card {...lecture} showBookmark={false} />
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span>진도율</span>
+                      <span>수강율</span>
                       <span
                         className={
                           lecture.progress >= 20
@@ -149,7 +149,7 @@ export default function MyLearningPage() {
                           false
                         } /* prefetch 비활성화 - 동적 데이터가 있는 페이지에서 유용 */
                       >
-                        이어서 학습하기
+                        학습하기
                       </Link>
                       {lecture.progress < 20 ? (
                         <CancelEnrollmentButton

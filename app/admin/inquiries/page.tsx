@@ -262,7 +262,7 @@ export default function InquiriesManagePage() {
                 {filteredInquiries.map((inquiry) => (
                   <div
                     key={inquiry.id}
-                    className={`cursor-pointer p-4 transition hover:bg-gray-50 ${
+                    className={`cursor-pointer p-4 transition hover:border-gold-start hover:bg-light ${
                       selectedInquiry?.id === inquiry.id ? 'bg-gray-50' : ''
                     }`}
                     onClick={() => setSelectedInquiry(inquiry)}

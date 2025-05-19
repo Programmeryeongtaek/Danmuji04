@@ -83,7 +83,7 @@ const BookmarkButton = ({
   return (
     <button onClick={handleBookmark} className="flex items-center gap-2 p-2">
       <Bookmark
-        className={`h-5 w-5 ${isBookmarked ? 'fill-gold-start text-gold-start' : ''}`}
+        className={`h-5 w-5 hover:text-gold-start ${isBookmarked ? 'fill-gold-start text-gold-start' : ''}`}
       />
     </button>
   );

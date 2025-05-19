@@ -13,6 +13,7 @@ import {
   updateComment,
 } from '@/utils/services/community/commentService';
 import {
+  deletePost,
   fetchPostById,
   fetchRelatedPosts,
   isPostBookmarked,
@@ -25,26 +26,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
-
-// 커뮤니티 카테고리 정의
-const communityCategories = [
-  {
-    id: 'all',
-    label: '전체',
-  },
-  {
-    id: 'notice',
-    label: '공지사항',
-  },
-  {
-    id: 'chats',
-    label: '자유게시판',
-  },
-  {
-    id: 'faq',
-    label: '질문 게시판',
-  },
-];
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -478,6 +459,37 @@ export default function PostDetailPage() {
       });
   };
 
+  // 게시글 수정 함수
+  const handleEditPost = () => {
+    if (!post) return;
+    router.push(`/community/post/${post.id}/edit`);
+  };
+
+  // 게시글 삭제 처리
+  const handleDeletePost = async () => {
+    if (!post) return;
+    if (!window.confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
+
+    try {
+      setIsLoading(true);
+
+      // 게시글 삭제 API 호출
+      const success = await deletePost(post.id);
+
+      if (success) {
+        showToast('게시글이 성공적으로 삭제되었습니다.', 'success');
+        router.push('/community');
+      } else {
+        throw new Error('게시글 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('게시글 삭제 실패:', error);
+      showToast('게시글 삭제에 실패했습니다.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 날짜 포맷팅 함수
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -524,23 +536,7 @@ export default function PostDetailPage() {
 
       {/* 게시글 헤더 */}
       <div className="mb-8">
-        {/* 카테고리 및 제목 */}
-        <div className="mb-4">
-          <span
-            className={`rounded-full px-2 py-1 text-xs ${
-              post.category === 'notice'
-                ? 'bg-red-100 text-red-800'
-                : post.category === 'faq'
-                  ? 'bg-blue-100 text-blue-800'
-                  : post.category === 'study'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
-            }`}
-          >
-            {communityCategories.find((c) => c.id === post.category)?.label}
-          </span>
-          <h1 className="mt-2 text-2xl font-bold sm:text-3xl">{post.title}</h1>
-        </div>
+        <h1 className="mb-4 text-2xl font-bold sm:text-3xl">{post.title}</h1>
 
         {/* 작성자 정보 및 게시 정보 */}
         <div className="mb-6 flex flex-wrap items-center justify-between border-b pb-4">
@@ -606,7 +602,23 @@ export default function PostDetailPage() {
       </div>
 
       {/* 게시글 본문 */}
-      <div className="mb-8 whitespace-pre-line text-gray-800">
+      <div className="relative mb-8 whitespace-pre-line text-gray-800">
+        {user && user.id === post.author_id && (
+          <div className="absolute -top-5 right-0 flex gap-2">
+            <button
+              onClick={handleEditPost}
+              className="rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              수정
+            </button>
+            <button
+              onClick={handleDeletePost}
+              className="rounded-md border border-red-300 px-3 py-1 text-sm text-red-700 hover:bg-red-50"
+            >
+              삭제
+            </button>
+          </div>
+        )}
         {renderPostContent(post.content)}
       </div>
 
@@ -665,8 +677,8 @@ export default function PostDetailPage() {
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="댓글을 작성해주세요"
-            className="mb-2 h-24 w-full resize-none rounded-lg border p-3 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+            placeholder="댓글을 작성해주세요."
+            className="mb-2 h-24 w-full resize-none rounded-lg border p-3 focus:border-gold-start focus:bg-light focus:outline-none focus:ring-1 focus:ring-gold-start"
           />
           <div className="flex justify-end">
             <Button type="submit" className="px-4 py-2">

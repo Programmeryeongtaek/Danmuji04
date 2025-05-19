@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
-  Eye,
   Filter,
   MessageSquare,
   Search,
@@ -32,10 +31,6 @@ const communityCategories = [
   {
     id: 'chats',
     label: '자유게시판',
-  },
-  {
-    id: 'study',
-    label: '스터디',
   },
   {
     id: 'faq',
@@ -170,17 +165,12 @@ export default function CommunitySearchPageContent() {
         hour: '2-digit',
         minute: '2-digit',
       });
-    } else if (diffDays < 7) {
-      // 일주일 이내
-      return `${diffDays}일 전`;
-    } else {
-      // 일주일 이상
-      return date.toLocaleDateString('ko-Kr', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
     }
+    return date.toLocaleDateString('ko-Kr', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
   // 이미지 URL 추출 (최대 3개)
@@ -225,13 +215,10 @@ export default function CommunitySearchPageContent() {
   return (
     <div className="mx-auto max-w-6xl p-4 md:p-6">
       {/* 뒤로가기 버튼 */}
+
       <div className="mb-6">
-        <Link
-          href="/community"
-          className="flex items-center text-gray-600 hover:text-gray-900"
-        >
-          <ChevronLeft className="mr-1 h-5 w-5" />
-          <span>커뮤니티로 돌아가기</span>
+        <Link href="/community" className="text-gray-600 hover:text-gray-900">
+          <ChevronLeft className="h-6 w-6" />
         </Link>
       </div>
 
@@ -420,7 +407,7 @@ export default function CommunitySearchPageContent() {
       {/* 검색 결과 */}
       {isLoading ? (
         <div className="py-12 text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
+          <div className="group inline-block h-8 w-8 animate-spin rounded-full border-4 border-gold-start border-b-transparent"></div>
           <p className="mt-2 text-gray-600">검색 중...</p>
         </div>
       ) : currentResults.length > 0 ? (
@@ -434,7 +421,7 @@ export default function CommunitySearchPageContent() {
             return (
               <div
                 key={post.id}
-                className="rounded-lg border p-4 hover:border-gold-start hover:bg-gray-50"
+                className="group rounded-lg border p-4 hover:border-gold-start hover:bg-light"
               >
                 <Link href={`/community/post/${post.id}`}>
                   <div className="mb-2 flex items-center justify-between">
@@ -454,7 +441,7 @@ export default function CommunitySearchPageContent() {
                           ?.label
                       }
                     </span>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 group-hover:text-black">
                       {formatDate(post.created_at)}
                     </div>
                   </div>
@@ -540,11 +527,7 @@ export default function CommunitySearchPageContent() {
                       <span className="text-sm">{post.author_name}</span>
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Eye className="h-4 w-4" />
-                        <span>{post.views}</span>
-                      </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500 group-hover:text-black">
                       <div className="flex items-center gap-1">
                         <MessageSquare className="h-4 w-4" />
                         <span>{post.comments_count || 0}</span>

@@ -17,7 +17,6 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useToast } from '../common/Toast/Context';
 import Button from '../common/Button/Button';
 import { BookmarkedPost } from '@/app/types/community/communityType';
-
 import {
   deleteMultipleBookmarks,
   updateBookmarkImportance,

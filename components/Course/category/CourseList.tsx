@@ -74,67 +74,70 @@ export default function CourseList({ category }: CourseListProps) {
         return (
           <div
             key={course.id}
-            className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white pt-4 shadow-sm transition-shadow hover:border-gold-start hover:shadow-md"
+            className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:border-gold-start hover:bg-light hover:shadow-md"
           >
-            {/* 관리자 기능 - 관리자에게만 표시 */}
-            {isAdmin && (
-              <div className="absolute right-1 top-1 z-10 flex gap-1 rounded-md p-1 shadow-sm backdrop-blur-sm">
-                <CourseActions
-                  courseId={course.id}
-                  category={course.category}
-                  onSuccess={handleDeleteSuccess}
-                />
-              </div>
-            )}
-
             <Link href={targetUrl} className="flex flex-1 flex-col">
-              <div className="flex flex-1 flex-col p-4">
-                <div className="flex h-[80px] border-b">
-                  <h3 className="mb-2 line-clamp-2 flex text-lg font-medium">
+              <div className="flex flex-1 flex-col gap-2 p-4">
+                <div className="flex justify-between">
+                  <div className="mt-auto flex items-center justify-between text-sm text-gray-500">
+                    {/* 학습 상태 표시 */}
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
+                          progress.completed
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        <Check
+                          className={`h-3 w-3 ${progress.completed ? 'text-green-600' : 'text-gray-400'}`}
+                        />
+                        <span>
+                          {progress.completed ? '학습 완료' : '미수강'}
+                        </span>
+                      </div>
+
+                      <div
+                        className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
+                          progress.writingCompleted
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        <Edit
+                          className={`h-3 w-3 ${progress.writingCompleted ? 'text-blue-600' : 'text-gray-400'}`}
+                        />
+                        <span>
+                          {progress.writingCompleted
+                            ? '글작성 완료'
+                            : '글작성 미완료'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 관리자 기능 - 관리자에게만 표시 */}
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <CourseActions
+                        courseId={course.id}
+                        category={course.category}
+                        onSuccess={handleDeleteSuccess}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex h-[60px] border-b">
+                  <h3 className="line-clamp-2 flex text-lg font-medium group-hover:font-semibold">
                     {course.title}
                   </h3>
                 </div>
 
                 {course.description && (
-                  <p className="my-4 line-clamp-3 text-sm text-gray-600">
+                  <p className="line-clamp-3 text-sm text-gray-600 group-hover:text-black">
                     {course.description}
                   </p>
                 )}
-
-                <div className="mt-auto flex items-center justify-between text-sm text-gray-500">
-                  {/* 학습 상태 표시 */}
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
-                        progress.completed
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      <Check
-                        className={`h-3 w-3 ${progress.completed ? 'text-green-600' : 'text-gray-400'}`}
-                      />
-                      <span>{progress.completed ? '학습 완료' : '미수강'}</span>
-                    </div>
-
-                    <div
-                      className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
-                        progress.writingCompleted
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      <Edit
-                        className={`h-3 w-3 ${progress.writingCompleted ? 'text-blue-600' : 'text-gray-400'}`}
-                      />
-                      <span>
-                        {progress.writingCompleted
-                          ? '글작성 완료'
-                          : '글작성 미완료'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </Link>
           </div>

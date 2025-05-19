@@ -12,6 +12,8 @@ import {
   updateCourse,
 } from '@/utils/services/course/courseService';
 import { CourseFormData } from '@/app/types/course/courseModel';
+import Button from '../common/Button/Button';
+import { ChevronDown } from 'lucide-react';
 
 interface CourseEditFormProps {
   courseId: string;
@@ -86,30 +88,15 @@ export default function CourseEditForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label htmlFor="title" className="mb-1 block font-medium">
-          강의 제목 <span className="text-red-500">*</span>
+          제목 <span className="text-red-500">*</span>
         </label>
         <input
           id="title"
           type="text"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          className="w-full rounded-lg border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-gray-300 p-2 hover:bg-light focus:border-gold-start focus:bg-light focus:outline-none focus:ring-1 focus:ring-gold-start"
           required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="description" className="mb-1 block font-medium">
-          강의 설명
-        </label>
-        <textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
-          rows={5}
-          className="w-full rounded-lg border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
 
@@ -117,26 +104,46 @@ export default function CourseEditForm({
         <label htmlFor="category" className="mb-1 block font-medium">
           카테고리 <span className="text-red-500">*</span>
         </label>
-        <select
-          id="category"
-          value={formData.category}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              category: e.target.value as CourseCategory,
-            })
-          }
-          className="w-full rounded-lg border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          {CATEGORY_IDS.map((catId) => (
-            <option key={catId} value={catId}>
-              {COURSE_CATEGORIES[catId].title}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            id="category"
+            value={formData.category}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                category: e.target.value as CourseCategory,
+              })
+            }
+            className="w-full appearance-none rounded-lg border border-gray-300 p-2 pr-10 hover:bg-light focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+          >
+            {CATEGORY_IDS.map((catId) => (
+              <option key={catId} value={catId}>
+                {COURSE_CATEGORIES[catId].title}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+            <ChevronDown className="h-5 w-5 text-gray-400" />
+          </div>
+        </div>
       </div>
 
-      <div className="flex justify-end gap-4 pt-4">
+      <div>
+        <label htmlFor="description" className="mb-1 block font-medium">
+          설명
+        </label>
+        <textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) =>
+            setFormData({ ...formData, description: e.target.value })
+          }
+          rows={10}
+          className="w-full rounded-lg border border-gray-300 p-2 hover:bg-light focus:border-gold-start focus:bg-light focus:outline-none focus:ring-1 focus:ring-gold-start"
+        />
+      </div>
+
+      <div className="flex justify-end gap-4">
         <button
           type="button"
           onClick={() => window.history.back()}
@@ -145,13 +152,13 @@ export default function CourseEditForm({
         >
           취소
         </button>
-        <button
+        <Button
           type="submit"
-          className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+          className="px-4 py-2 text-white disabled:opacity-50"
           disabled={isSubmitting}
         >
-          {isSubmitting ? '수정 중...' : '강의 수정하기'}
-        </button>
+          {isSubmitting ? '수정 중...' : '수정'}
+        </Button>
       </div>
     </form>
   );

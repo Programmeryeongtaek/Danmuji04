@@ -141,18 +141,14 @@ const KeywordSelector = () => {
       {/* 버튼 */}
       <button
         onClick={openModal}
-        className={`flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm transition-colors hover:border-gold-start ${
+        className={`flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm transition-colors hover:border-gold-start hover:bg-light hover:text-black ${
           selectedKeywords.length > 0
-            ? 'border-gold-start bg-gray-50 text-gold-start'
+            ? 'font-medium text-black'
             : 'text-gray-700'
         }`}
       >
         <Tag className="h-4 w-4" />
-        <span>
-          {selectedKeywords.length > 0
-            ? `키워드 ${selectedKeywords.length}개`
-            : '키워드'}
-        </span>
+        <span>키워드</span>
       </button>
 
       {/* 모달 - 직접 구현으로 변경 */}

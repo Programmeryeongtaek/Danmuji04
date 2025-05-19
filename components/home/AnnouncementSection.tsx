@@ -51,18 +51,18 @@ const AnnouncementSection = () => {
     }).format(date);
   };
 
-  // 새로운 공지인지 확인 (7일 이내 등록된 공지)
+  // 새로운 공지인지 확인 (30일 이내 등록된 공지)
   const isNewAnnouncement = (dateString: string) => {
     const postDate = new Date(dateString);
     const now = new Date();
     const differenceInDays = Math.ceil(
       (now.getTime() - postDate.getTime()) / (1000 * 60 * 60 * 24)
     );
-    return differenceInDays <= 7;
+    return differenceInDays <= 30;
   };
 
   return (
-    <section className="rounded-xl border bg-gold-start/40 p-6 shadow-sm">
+    <section className="rounded-xl border bg-light p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bell className="h-5 w-5 text-gold-start" />
@@ -78,7 +78,7 @@ const AnnouncementSection = () => {
 
       {isLoading ? (
         <div className="flex h-40 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-start border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-end/40 border-t-transparent"></div>
         </div>
       ) : announcements.length > 0 ? (
         <ul className="divide-y">
@@ -92,7 +92,7 @@ const AnnouncementSection = () => {
                   {isNewAnnouncement(item.created_at) && (
                     <span className="inline-block h-2 w-2 rounded-full bg-red-500"></span>
                   )}
-                  <span className="group-hover:text-gold-start">
+                  <span className="group-hover:font-semibold group-hover:text-black">
                     {item.title}
                   </span>
                 </div>

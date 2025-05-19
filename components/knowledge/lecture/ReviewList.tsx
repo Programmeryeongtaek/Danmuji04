@@ -9,7 +9,7 @@ export function ReviewList({
   onDelete,
 }: ReviewListProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {reviews.map((review) => (
         <ReviewItem
           key={review.id}

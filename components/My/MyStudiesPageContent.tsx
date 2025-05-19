@@ -7,16 +7,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from '../common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
-import {
-  Book,
-  Calendar,
-  ExternalLink,
-  Filter,
-  Plus,
-  Search,
-  Users,
-  X,
-} from 'lucide-react';
+import { Book, Calendar, Filter, Plus, Search, Users, X } from 'lucide-react';
 
 // 스터디 타입 정의
 interface Study {
@@ -477,9 +468,10 @@ export default function MyStudiesPageContent() {
       ) : filteredStudies.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredStudies.map((study) => (
-            <div
+            <Link
+              href={`/study/${study.id}`}
               key={study.id}
-              className="flex flex-col rounded-lg border bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+              className="group flex flex-col rounded-lg border bg-white p-6 shadow-sm transition-shadow hover:border-gold-start hover:bg-light hover:shadow-md"
             >
               <div className="mb-2 flex items-center justify-between">
                 <span
@@ -497,7 +489,9 @@ export default function MyStudiesPageContent() {
                       ? '진행중'
                       : '완료'}
                 </span>
-                <span className="text-sm text-gray-500">{study.category}</span>
+                <span className="px-2 text-sm text-gray-500 group-hover:bg-white group-hover:text-black">
+                  {study.category}
+                </span>
               </div>
 
               <h2 className="mb-2 text-lg font-semibold">{study.title}</h2>
@@ -508,7 +502,9 @@ export default function MyStudiesPageContent() {
               {study.book_title && (
                 <div className="mb-3 flex items-center gap-2 text-sm">
                   <Book className="h-4 w-4 text-amber-500" />
-                  <span className="text-gray-700">{study.book_title}</span>
+                  <span className="text-gray-700 group-hover:text-black">
+                    {study.book_title}
+                  </span>
                 </div>
               )}
 
@@ -516,7 +512,7 @@ export default function MyStudiesPageContent() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-gray-600">
                     <Users className="mr-1 h-4 w-4" />
-                    <span>
+                    <span className="group-hover:text-black">
                       {study.approved_participants}/{study.max_participants}명
                     </span>
                   </div>
@@ -524,7 +520,7 @@ export default function MyStudiesPageContent() {
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         study.role === 'owner'
-                          ? 'bg-amber-100 text-amber-800'
+                          ? 'bg-amber-100 text-amber-800 group-hover:bg-white group-hover:text-black'
                           : study.participant_status === 'approved'
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-gray-100 text-gray-800'
@@ -540,21 +536,13 @@ export default function MyStudiesPageContent() {
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Calendar className="mr-1 h-4 w-4" />
-                  <span>
+                  <span className="group-hover:text-black">
                     {formatDate(study.start_date)} ~{' '}
                     {formatDate(study.end_date)}
                   </span>
                 </div>
               </div>
-
-              <Link
-                href={`/study/${study.id}`}
-                className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-gray-300 py-2 text-sm font-medium hover:bg-gray-50"
-              >
-                <ExternalLink className="h-4 w-4" />
-                스터디 바로가기
-              </Link>
-            </div>
+            </Link>
           ))}
         </div>
       ) : (

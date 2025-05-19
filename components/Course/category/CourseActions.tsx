@@ -52,7 +52,7 @@ export default function CourseActions({
     <>
       <Link
         href={`/course/edit/${courseId}?category=${category}`}
-        className="rounded p-1 text-blue-500 hover:bg-blue-50"
+        className="rounded-full p-1 text-blue-500 hover:bg-blue-50"
         onClick={(e) => e.stopPropagation()}
       >
         <Edit className="h-4 w-4" />
@@ -61,7 +61,7 @@ export default function CourseActions({
       <button
         onClick={handleDelete}
         disabled={isDeleting}
-        className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
+        className="rounded-full p-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
       >
         <Trash2 className="h-4 w-4" />
       </button>

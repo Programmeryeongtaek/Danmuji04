@@ -222,7 +222,7 @@ export default function InstructorRegisterPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 rounded-lg border bg-white p-6 shadow-sm"
+        className="space-y-6 rounded-lg border bg-light p-6 shadow-sm"
       >
         <div>
           <label htmlFor="name" className="mb-1 block font-medium">
@@ -359,7 +359,7 @@ export default function InstructorRegisterPage() {
                 </button>
               </div>
             ) : (
-              <div className="flex h-48 w-40 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50">
+              <div className="flex h-48 w-40 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white">
                 <Upload className="mb-2 h-8 w-8 text-gray-400" />
                 <p className="text-center text-xs text-gray-500">
                   자격증 또는 경력을
@@ -374,10 +374,10 @@ export default function InstructorRegisterPage() {
             <div className="flex-1">
               <label
                 htmlFor="certificate-upload"
-                className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+                className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
               >
                 <Upload className="mr-2 h-4 w-4" />
-                이미지 선택하기
+                이미지 선택
               </label>
               <input
                 id="certificate-upload"

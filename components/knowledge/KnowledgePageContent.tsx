@@ -22,11 +22,12 @@ export default function KnowledgePageContent() {
   }, [queryCategory]);
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <Category
         selectedCategory={selectedCategory}
         onCategoryClick={setSelectedCategory}
       />
+
       <LectureSection
         selectedCategory={selectedCategory}
         searchQuery={searchQuery || ''}

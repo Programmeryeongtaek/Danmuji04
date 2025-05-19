@@ -10,7 +10,8 @@ import {
 } from '@/utils/services/knowledge/lectureService';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
-import { BookOpen, CheckCircle } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 interface EnrollBarProps {
@@ -106,13 +107,13 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-light shadow-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex flex-col">
             <span className="font-medium">{lectureInfo?.title || '강의'}</span>
             <span className="text-sm text-gray-500">
               {enrollmentStatus === 'active' ? (
-                <span className="flex items-center text-green-600">
+                <span className="flex items-center text-purple-600">
                   <CheckCircle className="mr-1 h-4 w-4" />
                   학습 중
                 </span>
@@ -127,24 +128,18 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
           </div>
 
           <Button
-            onClick={handleEnroll}
-            disabled={isLoading || enrollmentStatus === 'active'}
+            onClick={enrollmentStatus === 'active' ? undefined : handleEnroll}
+            disabled={enrollmentStatus !== 'active' && isLoading}
             className={`flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-white transition-all hover:from-purple-600 hover:to-indigo-700 ${
-              isLoading ? 'bg-gray-400' : enrollmentStatus === 'active'
+              enrollmentStatus !== 'active' && isLoading ? 'bg-gray-400' : ''
             }`}
           >
-            {isLoading ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                <span>처리 중...</span>
-              </>
-            ) : enrollmentStatus === 'active' ? (
-              <>
-                <BookOpen className="h-5 w-5" />
-                <span>학습중</span>
-              </>
+            {enrollmentStatus === 'active' ? (
+              <Link href={`/knowledge/lecture/${lectureId}/watch`}>
+                학습하기
+              </Link>
             ) : (
-              <span>수강신청</span>
+              '수강신청'
             )}
           </Button>
         </div>

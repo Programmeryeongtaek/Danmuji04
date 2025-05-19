@@ -84,8 +84,13 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
 
   // 수강평 작성 버튼
   const handleReviewButtonClick = async () => {
-    if (!currentUserId) {
+    if (!user?.id) {
       showToast('로그인이 필요합니다.', 'error');
+      return;
+    }
+
+    if (hasExistingReview) {
+      showToast('이미 수강평을 작성하였습니다.', 'error');
       return;
     }
 
@@ -95,7 +100,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       // 1. 수강 여부 확인
       const { data: enrollment } = await getActiveEnrollment(
         lectureId,
-        currentUserId
+        user.id
       );
 
       if (!enrollment?.status) {
@@ -123,32 +128,28 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       showToast('오류가 발생했습니다. 다시 시도해주세요.', 'error');
     }
 
-    if (hasExistingReview) {
-      showToast('이미 수강평을 작성하였습니다.', 'error');
-      return;
-    }
-
     setIsModalOpen(true);
   };
 
   return (
-    <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-gray-800">수강평</h3>
-        <div className="flex items-center gap-2">
+    <div className="mb-12 flex flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between">
+          <div className="flex gap-1">
+            <h3 className="text-xl font-bold text-gray-800">수강평</h3>
+            <span className="text-gray-600">{reviews.length}개</span>
+          </div>
+          <Button
+            onClick={handleReviewButtonClick}
+            className="bg-gradient-to-r from-purple-500 to-indigo-600 px-3 py-1 hover:from-purple-600 hover:to-indigo-700"
+          >
+            <span>작성</span>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 border-b pb-2">
           <StarRating rating={averageRating} readonly size={20} />
           <span className="font-medium">({averageRating.toFixed(1)})</span>
-          <span className="text-gray-600">{reviews.length}개</span>
         </div>
-      </div>
-      <div className="mt-4 flex items-center justify-between border-b border-t border-gray-200 py-4">
-        <span className="text-gray-600">수강평을 남겨주세요.</span>
-        <Button
-          onClick={handleReviewButtonClick}
-          className="bg-gradient-to-r from-purple-500 to-indigo-600 px-3 py-1 hover:from-purple-600 hover:to-indigo-700"
-        >
-          <span>{user ? '작성' : '작성'}</span>
-        </Button>
       </div>
 
       {/* 수강평 목록 */}
@@ -176,7 +177,7 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
         onSubmit={() => {
           loadReviews(); // 수강평 목록 새로고침
           setIsModalOpen(false);
-          showToast('수강평이 등록되었습니다.', 'success' as ToastType);
+          showToast('수강평이 등록되었습니다.', 'success');
         }}
       />
     </div>

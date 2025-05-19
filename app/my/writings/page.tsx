@@ -4,10 +4,9 @@ import { useToast } from '@/components/common/Toast/Context';
 import { COURSE_CATEGORIES } from '@/app/types/course/categories';
 import { CourseWriting } from '@/app/types/course/courseModel';
 import { fetchAllUserWritings } from '@/utils/services/course/writingService';
-import { Book, Calendar, ExternalLink } from 'lucide-react';
+import { Book, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import Button from '@/components/common/Button/Button';
 
 interface WritingWithDetails extends CourseWriting {
   course: {
@@ -126,65 +125,59 @@ export default function MyWritingsPage() {
             {groupedByDate[date].map((writing) => (
               <div
                 key={writing.id}
-                className="rounded-lg border bg-white p-4 shadow-sm"
+                className="rounded-lg border bg-white p-4 shadow-sm hover:border-gold-start hover:bg-light"
               >
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">
-                        {COURSE_CATEGORIES[
-                          writing.course
-                            ?.category as keyof typeof COURSE_CATEGORIES
-                        ]?.title || writing.course?.category}
-                      </span>
-                      <h3 className="overflow-hidden text-ellipsis break-normal font-medium">
-                        {writing.course?.title.length > 30
-                          ? `${writing.course?.title.substring(0)}...`
-                          : writing.course?.title}
-                      </h3>
+                <Link
+                  href={`/course/${writing.course?.category}/${writing.course?.id}/learn/${writing.item?.id}`}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">
+                          {COURSE_CATEGORIES[
+                            writing.course
+                              ?.category as keyof typeof COURSE_CATEGORIES
+                          ]?.title || writing.course?.category}
+                        </span>
+                        <h3 className="overflow-hidden text-ellipsis break-normal font-medium">
+                          {writing.course?.title.length > 30
+                            ? `${writing.course?.title.substring(0)}...`
+                            : writing.course?.title}
+                        </h3>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="rounded-lg bg-gray-50 p-3">
-                  {writing.content.length > 200 ? (
-                    <>
-                      <p className="whitespace-pre-wrap">
-                        {writing.expanded
-                          ? writing.content
-                          : `${writing.content.substring(0, 200)}...`}
-                      </p>
-                      <button
-                        onClick={() => {
-                          setWritings((prev) =>
-                            prev.map((item) =>
-                              item.id === writing.id
-                                ? { ...item, expanded: !item.expanded }
-                                : item
-                            )
-                          );
-                        }}
-                        className="mt-2 text-sm text-blue-500 hover:underline"
-                      >
-                        {writing.expanded ? '접기' : '더 보기'}
-                      </button>
-                    </>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{writing.content}</p>
-                  )}
-                </div>
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    {writing.content.length > 200 ? (
+                      <>
+                        <p className="whitespace-pre-wrap">
+                          {writing.expanded
+                            ? writing.content
+                            : `${writing.content.substring(0, 200)}...`}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setWritings((prev) =>
+                              prev.map((item) =>
+                                item.id === writing.id
+                                  ? { ...item, expanded: !item.expanded }
+                                  : item
+                              )
+                            );
+                          }}
+                          className="mt-2 text-sm text-blue-500 hover:underline"
+                        >
+                          {writing.expanded ? '접기' : '더 보기'}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{writing.content}</p>
+                    )}
+                  </div>
 
-                <div className="mt-3 flex justify-end">
-                  <Button>
-                    <Link
-                      href={`/course/${writing.course?.category}/${writing.course?.id}/learn/${writing.item?.id}`}
-                      className="flex items-center gap-1 rounded-lg px-3 py-1 text-base text-white"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      이동
-                    </Link>
-                  </Button>
-                </div>
+                  <div className="mt-3 flex justify-end"></div>
+                </Link>
               </div>
             ))}
           </div>

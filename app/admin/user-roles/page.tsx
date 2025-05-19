@@ -144,10 +144,7 @@ export default function UserRolesManagePage() {
       setIsLoading(true);
       const supabase = createClient();
 
-      // 권한 변경 요청
-      console.log(`사용자 ID ${userId}의 권한을 ${newRole}로 변경 시도...`);
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ role: newRole })
         .eq('id', userId)
@@ -159,8 +156,6 @@ export default function UserRolesManagePage() {
         return;
       }
 
-      console.log('권한 변경 응답:', data);
-
       // 데이터베이스 업데이트 확인
       const { data: checkData, error: checkError } = await supabase
         .from('profiles')
@@ -171,8 +166,6 @@ export default function UserRolesManagePage() {
       if (checkError) {
         console.error('권한 확인 오류:', checkError);
       } else {
-        console.log('새 권한 확인:', checkData.role);
-
         if (checkData.role !== newRole) {
           console.warn('권한이 예상대로 변경되지 않았습니다:', checkData.role);
           showToast(

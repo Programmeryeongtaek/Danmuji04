@@ -8,7 +8,7 @@ export default function CloseButton({ className }: ModalCloseButtonProps) {
   return (
     <button
       onClick={onClose}
-      className={`text-gray-500 hover:text-gray-700 ${className}`}
+      className={`absolute right-[30px] top-[30px] rounded-full border p-1 text-gray-500 hover:border-black hover:text-black ${className}`}
     >
       <X size={20} />
     </button>

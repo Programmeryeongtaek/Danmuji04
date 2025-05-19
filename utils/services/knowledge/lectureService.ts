@@ -24,6 +24,7 @@ export async function fetchLectures(): Promise<Lecture[]> {
 export async function searchLectures(query: string): Promise<Lecture[]> {
   try {
     const supabase = createClient();
+    
     const searchPattern = `%${query}%`;
     const { data, error } = await supabase
       .from('lectures')

@@ -515,3 +515,108 @@ export async function fetchBookmarkedPosts(
     throw error;
   }
 }
+
+// 게시글 삭제
+export async function deletePost(postId: number): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const user = await requireAuth();
+
+    // 게시글 작성자 확인
+    const { data: post} = await supabase
+      .from('community_posts')
+      .select('author_id')
+      .eq('id', postId)
+      .single();
+
+    if (!post) return false;
+
+    // 작성자 확인
+    if (post.author_id !== user.id) {
+      throw new Error('게식들 삭제 권한이 없습니다.');
+    }
+
+    // 게시글 삭제
+    const { error } = await supabase
+      .from('community_posts')
+      .delete()
+      .eq('id', postId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('게시글 삭제 실패:', error);
+    throw error;
+  }
+}
+
+// 게시글 수정
+export async function updatePost(postId: number, data: {
+  title: string;
+  content: string;
+  category: string;
+  tags?: string[];
+}): Promise<Post> {
+  try {
+    const supabase = createClient();
+    const user = await requireAuth();
+
+    // 게시글 작성자 확인
+    const { data: post, error: checkError } = await supabase
+      .from('community_posts')
+      .select('author_id')
+      .eq('id', postId)
+      .single();
+    
+    if (checkError) throw checkError;
+    if (!post) throw new Error('게시글을 찾을 수 없습니다.');
+    
+    // 작성자 확인 (자신의 게시글만 수정 가능)
+    if (post.author_id !== user.id) {
+      throw new Error('게시글 수정 권한이 없습니다.');
+    }
+    
+    // 1. 게시글 업데이트
+    const { data: updatedPost, error: updateError } = await supabase
+      .from('community_posts')
+      .update({
+        title: data.title,
+        content: data.content,
+        category: data.category,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', postId)
+      .select()
+      .single();
+    
+    if (updateError) throw updateError;
+    
+    // 2. 기존 태그 삭제
+    const { error: deleteTagsError } = await supabase
+      .from('post_tags')
+      .delete()
+      .eq('post_id', postId);
+    
+    if (deleteTagsError) throw deleteTagsError;
+    
+    // 3. 새 태그 추가 (태그가 있는 경우에만)
+    if (data.tags && data.tags.length > 0) {
+      const tagData = data.tags.map(tag => ({
+        post_id: postId,
+        tag: tag.trim()
+      }));
+      
+      const { error: insertTagsError } = await supabase
+        .from('post_tags')
+        .insert(tagData);
+      
+      if (insertTagsError) throw insertTagsError;
+    }
+    
+    // 4. 업데이트된 게시글 정보 반환
+    return updatedPost as Post;
+  } catch (error) {
+    console.error('게시글 수정 실패:', error);
+    throw error;
+  }
+}

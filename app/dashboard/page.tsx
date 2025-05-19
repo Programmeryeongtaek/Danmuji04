@@ -298,7 +298,12 @@ const DashboardPage = () => {
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 학습 현황 */}
         <div className="col-span-2 rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold">학습 현황</h2>
+          <div className="mb-4 flex justify-between">
+            <h2 className="text-lg font-bold">학습 현황</h2>
+            <div className="flex items-center rounded-lg border border-gold-start bg-light px-2 text-center text-sm font-medium text-black hover:bg-gold-start hover:text-white">
+              <Link href="/my/certificates">전체보기</Link>
+            </div>
+          </div>
 
           <div className="mb-6">
             <div className="mb-2 flex items-center justify-between">
@@ -337,20 +342,16 @@ const DashboardPage = () => {
               </p>
             </div>
           </div>
-
-          <div className="mt-4">
-            <Link
-              href="/my/learning"
-              className="text-sm font-medium text-blue-500 hover:underline"
-            >
-              수강 중인 강의 보기 →
-            </Link>
-          </div>
         </div>
 
         {/* 수료증 */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold">코스 수료증</h2>
+          <div className="mb-4 flex justify-between">
+            <h2 className="text-lg font-bold">코스 수료증</h2>
+            <div className="flex items-center rounded-lg border border-gold-start bg-light px-2 text-center text-sm font-medium text-black hover:bg-gold-start hover:text-white">
+              <Link href="/my/certificates">전체보기</Link>
+            </div>
+          </div>
 
           {certificates && certificates.length > 0 ? (
             <div className="space-y-4">
@@ -369,15 +370,6 @@ const DashboardPage = () => {
                   </div>
                 </div>
               ))}
-
-              <div className="mt-4">
-                <Link
-                  href="/my/certificates"
-                  className="text-sm font-medium text-blue-500 hover:underline"
-                >
-                  모든 수료증 →
-                </Link>
-              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-6 text-center text-gray-500">
@@ -401,7 +393,7 @@ const DashboardPage = () => {
               <Link
                 key={study.id}
                 href={`/study/${study.id}`}
-                className="block rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                className="block rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:border-gold-start hover:bg-light hover:shadow-md"
               >
                 <div className="mb-2 flex items-start justify-between">
                   <h3 className="w-4/5 font-medium">{study.title}</h3>
@@ -445,13 +437,13 @@ const DashboardPage = () => {
                   href="/study"
                   className="mr-4 rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
                 >
-                  스터디 둘러보기
+                  둘러보기
                 </Link>
                 <Link
                   href="/study/create"
                   className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:bg-gradient-to-l"
                 >
-                  스터디 개설
+                  개설하기
                 </Link>
               </div>
             </div>
@@ -469,7 +461,7 @@ const DashboardPage = () => {
               <Link
                 key={lecture.id}
                 href={`/knowledge/lecture/${lecture.id}/watch`}
-                className="block rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                className="block rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:border-gold-start hover:bg-light hover:shadow-md"
               >
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="font-medium">{lecture.title}</h3>

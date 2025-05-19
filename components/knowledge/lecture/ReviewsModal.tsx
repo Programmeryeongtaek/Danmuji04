@@ -63,33 +63,31 @@ export default function ReviewModal({
       <div className="w-[500px] rounded-lg bg-white p-6">
         <h2 className="mb-4 text-xl font-bold">수강평 작성</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <div className="mb-2">평점</div>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="transition-colors"
-                >
-                  <Star
-                    className={
-                      star <= rating
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
-                    }
-                  />
-                </button>
-              ))}
-            </div>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setRating(star)}
+                className="transition-colors"
+              >
+                <Star
+                  className={
+                    star <= rating
+                      ? 'fill-yellow-400 text-yellow-400'
+                      : 'text-gray-300'
+                  }
+                />
+              </button>
+            ))}
           </div>
+
           <div>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="h-32 w-full rounded border p-2"
-              placeholder="수강평을 작성해주세요"
+              className="h-[250px] w-full rounded border p-2"
+              placeholder="수강평을 작성해주세요."
               required
             />
           </div>
@@ -104,9 +102,9 @@ export default function ReviewModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+              className="rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-2 text-white hover:from-purple-600 hover:to-indigo-700"
             >
-              작성하기
+              작성
             </button>
           </div>
         </form>
