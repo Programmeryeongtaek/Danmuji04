@@ -2,7 +2,8 @@
 
 import { useToast } from '@/components/common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
-import { Check, ExternalLink, FileImage, X } from 'lucide-react';
+import { ArrowLeft, Check, ExternalLink, FileImage, X } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -161,11 +162,18 @@ export default function InstructorApplicationsPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="mb-8 text-2xl font-bold">강사 신청 관리</h1>
-
+    <div className="mx-auto py-12 mobile:mb-10 mobile:px-4 tablet:mb-0 tablet:px-6">
+      <div className="flex justify-between mobile:mb-4 tablet:mb-6 laptop:mb-8">
+        <h1 className="text-2xl font-bold">강사 신청 관리</h1>
+        <Link
+          href="/admin"
+          className="rounded-lg border border-gray-300 px-4 py-2 hover:border-gold-start hover:bg-gold-start hover:text-black"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+      </div>
       <div className="mb-4 overflow-hidden rounded-lg border">
-        <div className="grid grid-cols-12 gap-4 bg-gray-100 p-4 font-medium text-gray-700">
+        <div className="gap-4 bg-gray-100 p-4 font-medium text-gray-700 mobile:hidden tablet:block tablet:grid tablet:grid-cols-12">
           <div className="col-span-2">신청자</div>
           <div className="col-span-1">분야</div>
           <div className="col-span-2">경력</div>
@@ -182,7 +190,10 @@ export default function InstructorApplicationsPage() {
         ) : (
           <div className="divide-y">
             {applications.map((app) => (
-              <div key={app.id} className="grid grid-cols-12 gap-4 p-4">
+              <div
+                key={app.id}
+                className="grid gap-4 p-4 mobile:grid-cols-3 tablet:grid-cols-12"
+              >
                 <div className="col-span-2">
                   <div className="font-medium">{app.name}</div>
                   <div className="text-sm text-gray-500">{app.email}</div>
@@ -190,7 +201,9 @@ export default function InstructorApplicationsPage() {
                     {app.phone_number}
                   </div>
                 </div>
-                <div className="col-span-1">{app.specialty}</div>
+                <div className="col-span-1 mobile:hidden tablet:block">
+                  {app.specialty}
+                </div>
                 <div className="col-span-2 whitespace-pre-wrap text-sm">
                   {app.experience.length > 100
                     ? `${app.experience.substring(0, 100)}...`
@@ -202,12 +215,12 @@ export default function InstructorApplicationsPage() {
                     자세히 보기
                   </button>
                 </div>
-                <div className="col-span-2 whitespace-pre-wrap text-sm">
+                <div className="col-span-2 whitespace-pre-wrap text-sm mobile:hidden tablet:block">
                   {app.motivation.length > 100
                     ? `${app.motivation.substring(0, 100)}...`
                     : app.motivation}
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-2 mobile:hidden tablet:block">
                   {app.social_links && (
                     <div className="mb-2">
                       <a
@@ -220,8 +233,7 @@ export default function InstructorApplicationsPage() {
                         rel="noopener noreferrer"
                         className="flex items-center text-sm text-blue-500 hover:underline"
                       >
-                        <ExternalLink className="mr-1 h-3 w-3" />
-                        소셜/포트폴리오 링크
+                        소셜/포트폴리오
                       </a>
                     </div>
                   )}
@@ -230,8 +242,7 @@ export default function InstructorApplicationsPage() {
                       className="flex items-center text-sm text-blue-500 hover:underline"
                       onClick={() => openImageModal(app)}
                     >
-                      <FileImage className="mr-1 h-3 w-3" />
-                      자격증 이미지 보기
+                      자격증 보기
                     </button>
                   )}
                 </div>
@@ -280,17 +291,33 @@ export default function InstructorApplicationsPage() {
 
       {/* 상세 정보 모달 */}
       {isDetailsModalOpen && selectedApplication && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-6 shadow-lg">
-            <h3 className="mb-4 text-xl font-bold">신청자 상세 정보</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 mobile:px-4">
+          <div className="min-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-light p-6 shadow-lg">
+            <div className="mb-4 flex justify-between">
+              <h3 className="text-xl font-bold">신청자 정보</h3>
+              <button onClick={() => setIsDetailsModalOpen(false)}>
+                <X className="h-5 w-5 rounded-full bg-gold-start" />
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium">신청자 정보</h4>
-                <p>이름: {selectedApplication.name}</p>
-                <p>이메일: {selectedApplication.email}</p>
-                <p>연락처: {selectedApplication.phone_number}</p>
-                <p>전문 분야: {selectedApplication.specialty}</p>
+                <p>
+                  <strong>이름: </strong>
+                  {selectedApplication.name}
+                </p>
+                <p>
+                  <strong>이메일: </strong>
+                  {selectedApplication.email}
+                </p>
+                <p>
+                  <strong>연락처: </strong>
+                  {selectedApplication.phone_number}
+                </p>
+                <p>
+                  <strong>전문 분야: </strong>
+                  {selectedApplication.specialty}
+                </p>
               </div>
 
               <div>
@@ -307,49 +334,42 @@ export default function InstructorApplicationsPage() {
                 </p>
               </div>
 
-              {selectedApplication.social_links && (
-                <div>
-                  <h4 className="font-medium">소셜/포트폴리오 링크</h4>
-                  <a
-                    href={
-                      selectedApplication.social_links.includes('http')
-                        ? selectedApplication.social_links
-                        : `https://${selectedApplication.social_links}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center rounded-lg border bg-blue-50 px-3 py-1 text-blue-600 hover:bg-blue-100"
-                  >
-                    <ExternalLink className="mr-1 h-4 w-4" />
-                    링크 방문하기
-                  </a>
-                </div>
-              )}
+              <div className="grid grid-cols-2">
+                {selectedApplication.social_links && (
+                  <div>
+                    <h4 className="font-medium">소셜/포트폴리오</h4>
+                    <a
+                      href={
+                        selectedApplication.social_links.includes('http')
+                          ? selectedApplication.social_links
+                          : `https://${selectedApplication.social_links}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center rounded-lg border bg-gray-100 px-3 py-1 text-black hover:bg-gold-start"
+                    >
+                      <ExternalLink className="mr-1 h-4 w-4" />
+                      방문
+                    </a>
+                  </div>
+                )}
 
-              {selectedApplication.certificate_url && (
-                <div>
-                  <h4 className="font-medium">자격증 이미지</h4>
-                  <button
-                    onClick={() => {
-                      setIsDetailsModalOpen(false);
-                      setIsImageModalOpen(true);
-                    }}
-                    className="inline-flex items-center rounded-lg border bg-blue-50 px-3 py-1 text-blue-600 hover:bg-blue-100"
-                  >
-                    <FileImage className="mr-1 h-4 w-4" />
-                    이미지 보기
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setIsDetailsModalOpen(false)}
-                className="rounded-lg border px-4 py-2 hover:bg-gray-50"
-              >
-                닫기
-              </button>
+                {selectedApplication.certificate_url && (
+                  <div>
+                    <h4 className="font-medium">자격증</h4>
+                    <button
+                      onClick={() => {
+                        setIsDetailsModalOpen(false);
+                        setIsImageModalOpen(true);
+                      }}
+                      className="hover:bg-gold inline-flex items-center rounded-lg border bg-gray-100 px-3 py-1 text-black hover:bg-gold-start"
+                    >
+                      <FileImage className="mr-1 h-4 w-4" />
+                      확인
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

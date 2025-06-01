@@ -20,7 +20,7 @@ export default function CoursePage() {
   const { isAdmin, isLoading } = useCoursePermission();
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6">
+    <div className="mx-auto max-w-7xl py-12 mobile:px-4 tablet:px-6">
       {/* 명언 섹션 유지 */}
       <QuoteSection />
 
@@ -38,7 +38,7 @@ export default function CoursePage() {
               className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
             >
               <PlusCircle className="h-5 w-5" />
-              코스 만들기
+              코스 개설
             </Link>
           )}
         </div>
@@ -49,7 +49,7 @@ export default function CoursePage() {
         </p>
 
         {/* 카테고리 섹션 */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 mobile:grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
           {featuredCategories.map(({ id, icon: Icon }) => {
             const category = COURSE_CATEGORIES[id];
 
@@ -60,7 +60,7 @@ export default function CoursePage() {
                 className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-gold-start hover:shadow-lg"
               >
                 <div className="flex h-32 items-center justify-center bg-gray-50 p-6 transition-colors group-hover:bg-gold-start/5">
-                  <Icon className="h-16 w-16 text-gray-400 transition-colors group-hover:text-gold-start" />
+                  <Icon className="h-16 w-16 text-gold-start transition-colors group-hover:text-gold-start" />
                 </div>
 
                 <div className="flex flex-1 flex-col p-4">

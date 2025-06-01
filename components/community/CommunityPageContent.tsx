@@ -6,14 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '../common/Toast/Context';
 import { FormEvent, useEffect, useState } from 'react';
 import {
-  Bell,
   ChevronDown,
   ChevronUp,
   Eye,
-  HelpCircle,
   ListFilter,
-  Logs,
-  MessageCircle,
   MessageSquare,
   PlusCircle,
   Search,
@@ -33,26 +29,18 @@ const communityCategories = [
   {
     id: 'all',
     label: '전체',
-    icon: Logs,
-    description: '모든 게시글을 확인하세요',
   },
   {
     id: 'notice',
     label: '공지사항',
-    icon: Bell,
-    description: '중요한 공지사항을 확인하세요',
   },
   {
     id: 'chats',
     label: '자유게시판',
-    icon: MessageCircle,
-    description: '다양한 주제로 자유롭게 대화해보세요',
   },
   {
     id: 'faq',
-    label: '질문 게시판',
-    icon: HelpCircle,
-    description: '궁금한 점을 질문하고 답변을 받아보세요',
+    label: '질문게시판',
   },
 ];
 
@@ -227,21 +215,21 @@ export default function CommunityPageContent() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-6">
-      <div className="mb-8">
+    <div className="mx-auto max-w-6xl py-12 mobile:mb-10 mobile:px-4 tablet:mb-0 tablet:px-6">
+      <div className="mobile:mb-4 tablet:mb-6 laptop:mb-8">
         <h1 className="mb-2 text-3xl font-bold">커뮤니티</h1>
       </div>
 
       {/* 카테고리 탭 */}
-      <div className="mb-8 flex overflow-x-auto rounded-lg border">
+      <div className="flex overflow-x-auto rounded-lg border mobile:mb-4 tablet:mb-6 laptop:mb-8">
         {communityCategories.map((category) => (
           <button
             key={category.id}
             onClick={() => handleCategoryChange(category.id)}
-            className={`flex min-w-[120px] flex-1 items-center justify-center gap-1 p-4 transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1 transition-colors mobile:min-w-[60px] mobile:p-2 mobile:text-sm sm:min-w-[120px] sm:p-4 sm:text-base ${
               selectedCategory === category.id
-                ? 'bg-gold-start/10 text-gold-start'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
+                ? 'bg-gold-start text-black'
+                : 'bg-white hover:bg-gold-start'
             }`}
           >
             <span>{category.label}</span>
@@ -250,7 +238,7 @@ export default function CommunityPageContent() {
       </div>
 
       {/* 검색 및 작성 버튼 */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 tablet:flex-row tablet:items-center tablet:justify-between">
         <form onSubmit={handleSearch} className="relative w-full max-w-md">
           <input
             type="text"
@@ -314,7 +302,7 @@ export default function CommunityPageContent() {
           <h3 className="font-medium">인기 태그</h3>
           <button
             onClick={() => setShowTagSection(!showTagSection)}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gold-start"
           >
             {showTagSection ? (
               <ChevronUp className="h-5 w-5" />
@@ -332,8 +320,8 @@ export default function CommunityPageContent() {
                 onClick={() => handleTagClick(tag.name)}
                 className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${
                   selectedTag === tag.name
-                    ? 'bg-gold-start text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                    ? 'bg-gold-start text-black'
+                    : 'bg-white text-gray-700 hover:bg-gold-start hover:text-black'
                 }`}
               >
                 #{tag.name}
@@ -349,8 +337,8 @@ export default function CommunityPageContent() {
       {/* 선택된 필터 표시 */}
       {selectedTag && (
         <div className="mb-4 flex items-center">
-          <span className="mr-2 text-sm text-gray-600">적용된 필터:</span>
-          <div className="flex items-center gap-1 rounded-full bg-gold-start px-3 py-1 text-xs text-white">
+          <span className="mr-2 text-sm text-gray-600">태그:</span>
+          <div className="flex items-center gap-1 rounded-full bg-gold-start px-3 py-1 text-xs text-black">
             #{selectedTag}
             <button
               onClick={() => handleTagClick(selectedTag)}
@@ -368,11 +356,15 @@ export default function CommunityPageContent() {
         <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-4 border-b bg-gray-50 p-4 font-medium text-gray-700">
           <div className="min-w-[80px] text-center">카테고리</div>
           <div>제목</div>
-          <div className="min-w-[80px] text-center">작성자</div>
+          <div className="min-w-[80px] text-center mobile:hidden tablet:block">
+            작성자
+          </div>
           <div className="min-w-[80px] text-center mobile:hidden tablet:block">
             조회수
           </div>
-          <div className="min-w-[120px] text-center">작성일</div>
+          <div className="min-w-[120px] text-center mobile:hidden tablet:block">
+            작성일
+          </div>
         </div>
 
         {isLoading ? (
@@ -384,7 +376,7 @@ export default function CommunityPageContent() {
           currentPosts.map((post) => (
             <div
               key={post.id}
-              className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-4 border-b p-4 hover:bg-gray-50"
+              className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-4 border-b p-4 hover:bg-light"
             >
               <div className="min-w-[80px] text-center">
                 <span
@@ -402,14 +394,12 @@ export default function CommunityPageContent() {
                   }
                 </span>
               </div>
-              <div className="font-medium">
+              <div className="font-medium mobile:flex-1 tablet:flex-none">
                 <Link
                   href={`/community/post/${post.id}`}
                   className="group flex items-start gap-2"
                 >
-                  <span className="group-hover:text-gold-start">
-                    {post.title}
-                  </span>
+                  <span>{post.title}</span>
 
                   {/* 태그 목록 (모바일에서는 숨김) */}
                   <div className="hidden sm:flex sm:flex-wrap sm:gap-1">
@@ -418,7 +408,7 @@ export default function CommunityPageContent() {
                       post.tags.map((tag, idx) => (
                         <span
                           key={idx}
-                          className="rounded bg-gray-100 px-1.5 text-xs text-gray-600"
+                          className="rounded bg-gray-100 px-1.5 text-xs text-gray-600 group-hover:text-black"
                           onClick={(e) => {
                             e.preventDefault();
                             handleTagClick(tag);
@@ -452,7 +442,7 @@ export default function CommunityPageContent() {
                   </div>
                 </div>
               </div>
-              <div className="min-w-[80px] text-center text-sm text-gray-600">
+              <div className="min-w-[80px] text-center text-sm text-gray-600 mobile:hidden tablet:block">
                 <div className="flex items-center justify-end gap-1">
                   <div className="relative h-5 w-5 overflow-hidden rounded-full bg-gray-200">
                     {post.author_avatar ? (
@@ -477,7 +467,7 @@ export default function CommunityPageContent() {
               <div className="min-w-[80px] text-center text-sm text-gray-600 mobile:hidden tablet:block">
                 {post.views}
               </div>
-              <div className="min-w-[120px] text-center text-sm text-gray-600">
+              <div className="min-w-[120px] text-center text-sm text-gray-600 mobile:hidden tablet:block">
                 {formatDate(post.created_at)}
               </div>
             </div>

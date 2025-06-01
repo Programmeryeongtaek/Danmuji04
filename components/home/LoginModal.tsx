@@ -34,9 +34,7 @@ const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
           단무지
         </h1>
 
-        <div className="flex flex-col gap-1">
-          <LoginForm onSubmit={handleLogin} />
-        </div>
+        <LoginForm onSubmit={handleLogin} />
 
         {/* <div className="flex justify-center gap-3">
           <button className="border-b border-gray-500 text-gray-700">

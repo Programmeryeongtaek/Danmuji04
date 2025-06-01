@@ -21,7 +21,14 @@ import {
   togglePostLike,
 } from '@/utils/services/community/postService';
 import { useAtomValue } from 'jotai';
-import { BookmarkPlus, ChevronLeft, Share2, ThumbsUp } from 'lucide-react';
+import {
+  BookmarkPlus,
+  ChevronLeft,
+  Edit,
+  Share2,
+  ThumbsUp,
+  Trash2,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -734,19 +741,18 @@ export default function PostDetailPage() {
 
                     {/* 수정/삭제 버튼 추가 - 작성자일 경우만 표시 */}
                     {user && user.id === comment.author_id && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleEditComment(comment)}
                           className="text-sm text-gray-500 hover:text-blue-500"
                         >
-                          수정
+                          <Edit className="h-4 w-4" />
                         </button>
-                        <span className="text-gray-300">|</span>
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
                           className="text-sm text-gray-500 hover:text-red-500"
                         >
-                          삭제
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     )}
@@ -778,9 +784,7 @@ export default function PostDetailPage() {
                         type="submit"
                         className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-3 py-1 text-sm text-white"
                       >
-                        저장재시도Claude가 메시지 길이 제한에 도달하여 응답을
-                        일시 중지했습니다. 계속하기를 입력하시면 대화를 이어갈
-                        수 있습니다.✖P계속편집typescript{' '}
+                        완료
                       </button>
                     </div>
                   </form>
@@ -812,7 +816,7 @@ export default function PostDetailPage() {
                       onClick={() => setReplyMode(comment.id)}
                       className="text-sm text-gray-500 hover:text-gold-start"
                     >
-                      답글 달기
+                      답글
                     </button>
                   )}
                 </div>
@@ -828,12 +832,12 @@ export default function PostDetailPage() {
                       onChange={(e) =>
                         setNewReply({ ...newReply, content: e.target.value })
                       }
-                      placeholder="답글을 작성해주세요"
+                      placeholder="답글을 작성해주세요."
                       className="mb-2 h-20 w-full resize-none rounded-lg border p-3 text-sm focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
                     />
                     <div className="flex justify-end">
                       <Button type="submit" className="px-3 py-1 text-sm">
-                        답글 등록
+                        작성
                       </Button>
                     </div>
                   </form>
@@ -891,14 +895,14 @@ export default function PostDetailPage() {
 
                             {/* 수정/삭제 버튼 추가 - 작성자일 경우만 표시 */}
                             {user && user.id === reply.author_id && (
-                              <div className="flex items-center gap-1 text-xs">
+                              <div className="flex items-center gap-2 text-xs">
                                 <button
                                   onClick={() => handleEditComment(reply, true)}
                                   className="text-gray-500 hover:text-blue-500"
                                 >
-                                  수정
+                                  <Edit className="h-4 w-4" />
                                 </button>
-                                <span className="text-gray-300">|</span>
+
                                 <button
                                   onClick={() =>
                                     handleDeleteComment(
@@ -909,7 +913,7 @@ export default function PostDetailPage() {
                                   }
                                   className="text-gray-500 hover:text-red-500"
                                 >
-                                  삭제
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
                             )}

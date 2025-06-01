@@ -169,13 +169,9 @@ export default function InstructorsManagePage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-bold">강사 관리</h1>
-          <p className="text-gray-600">등록된 강사 목록을 관리합니다</p>
-        </div>
-
+    <div className="mx-auto py-12 mobile:mb-10 mobile:px-4 tablet:mb-0 tablet:px-6">
+      <div className="flex justify-between mobile:mb-4 tablet:mb-6 laptop:mb-8">
+        <h1 className="text-2xl font-bold">강사 관리</h1>
         <Link
           href="/admin"
           className="rounded-lg border border-gray-300 px-4 py-2 hover:border-gold-start hover:bg-gold-start hover:text-black"
@@ -192,7 +188,7 @@ export default function InstructorsManagePage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="이름 또는 이메일로 검색"
-          className="flex-1 border-none bg-transparent p-1 focus:outline-none"
+          className="flex-1 border-none bg-transparent p-1 focus:border-gold-start focus:outline-none focus:ring-gold-start"
         />
       </div>
 
@@ -208,7 +204,7 @@ export default function InstructorsManagePage() {
 
         {filteredInstructors.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            {searchQuery ? '검색 결과가 없습니다' : '등록된 강사가 없습니다'}
+            {searchQuery ? '검색 결과가 없습니다.' : '등록된 강사가 없습니다.'}
           </div>
         ) : (
           <div className="divide-y">
@@ -252,7 +248,7 @@ export default function InstructorsManagePage() {
                 <div className="col-span-3 flex justify-end gap-2">
                   <button
                     onClick={() => {
-                      // 프로필 상세 보기 (미구현)
+                      //TODO: 프로필 상세 보기 (미구현)
                       showToast('준비 중인 기능입니다.', 'info');
                     }}
                     className="rounded-lg border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"

@@ -227,13 +227,9 @@ export default function UserRolesManagePage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-bold">사용자 권한 관리</h1>
-          <p className="text-gray-600">사용자 권한을 설정하고 관리합니다</p>
-        </div>
-
+    <div className="mx-auto mobile:mb-10 mobile:px-4 mobile:py-12 tablet:mb-0 tablet:px-6">
+      <div className="flex justify-between mobile:mb-4 tablet:mb-6 laptop:mb-8">
+        <h1 className="text-2xl font-bold">사용자 관리</h1>
         <Link
           href="/admin"
           className="rounded-lg border border-gray-300 px-4 py-2 hover:border-gold-start hover:bg-gold-start hover:text-black"
@@ -256,7 +252,7 @@ export default function UserRolesManagePage() {
 
       {/* 사용자 목록 */}
       <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
-        <div className="grid grid-cols-12 items-center gap-4 bg-gray-50 p-4 font-medium text-gray-700">
+        <div className="items-center gap-4 bg-gray-50 p-4 font-medium text-gray-700 mobile:hidden tablet:grid tablet:grid-cols-12">
           <div className="col-span-1">#</div>
           <div className="col-span-3">사용자</div>
           <div className="col-span-3">이메일</div>
@@ -273,9 +269,11 @@ export default function UserRolesManagePage() {
             {filteredUsers.map((user, index) => (
               <div
                 key={user.id}
-                className="grid grid-cols-12 items-center gap-4 p-4"
+                className="grid items-center gap-4 p-4 tablet:grid-cols-12"
               >
-                <div className="col-span-1">{index + 1}</div>
+                <div className="col-span-1 mobile:hidden tablet:block">
+                  {index + 1}
+                </div>
                 <div className="col-span-3">
                   <div className="flex items-center">
                     <div className="mr-3 h-10 w-10 overflow-hidden rounded-full bg-gray-200">

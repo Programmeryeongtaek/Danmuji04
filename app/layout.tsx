@@ -41,6 +41,9 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const editLecture = pathname === '/my/lectures/[id]/edit';
   const learning = pathname === '/my/learning';
   const isCoursePage = pathname?.includes('/course/');
+  const studyPage = pathname?.includes('/study');
+  const communityPostPage = pathname?.includes('/community/post/');
+  const communityCreatePage = pathname?.includes('/community/write');
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
 
@@ -90,13 +93,16 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             <NotificationSubscriptionWrapper>
               <div className="flex min-h-screen flex-col">
                 <Header />
-                <main className="pb-[60px] md:pb-0">{children}</main>
+                <main className="pb-[60px] mobile:pb-0">{children}</main>
                 {!isLecturePage &&
                   !isSettingsPage &&
                   !lectureCreate &&
                   !editLecture &&
                   !learning &&
-                  !isCoursePage && <Navbar />}
+                  !isCoursePage &&
+                  !studyPage &&
+                  !communityPostPage &&
+                  !communityCreatePage && <Navbar />}
               </div>
             </NotificationSubscriptionWrapper>
           </NotificationProvider>

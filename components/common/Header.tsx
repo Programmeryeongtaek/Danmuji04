@@ -244,7 +244,7 @@ const Header = () => {
       )}
 
       <header className="border-title sticky top-0 z-50 flex h-[50px] w-full items-center border-t bg-light">
-        <nav className="flex w-full items-center justify-between px-4 md:px-8">
+        <nav className="flex w-full items-center justify-between px-4 tablet:px-8">
           {/* 왼쪽: 로고 및 네비게이션 링크 */}
           <div className="flex min-w-fit flex-shrink-0 items-center">
             {/* 모바일에서만 표시되는 검색 버튼 */}
@@ -264,7 +264,7 @@ const Header = () => {
             </Link>
 
             {/* 데스크톱 메뉴 - 모바일에서는 숨김 */}
-            <div className="ml-6 hidden items-center space-x-4 whitespace-nowrap md:ml-10 md:flex md:space-x-6">
+            <div className="ml-4 hidden items-center space-x-4 whitespace-nowrap tablet:ml-7 tablet:flex tablet:space-x-4 laptop:ml-10 laptop:space-x-6">
               <Link href={'/introduce'} className="hover:text-gold-start">
                 소개
               </Link>
@@ -292,7 +292,7 @@ const Header = () => {
           </div>
 
           {/* 중앙 로고 - 모바일에서만 표시 */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:hidden">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 tablet:hidden">
             <Link
               href="/"
               className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-transparent"
@@ -304,7 +304,7 @@ const Header = () => {
           {/* 가운데 꽉 차는 검색창 - 중간 크기 이상에서만 표시 */}
           <form
             onSubmit={handleSearch}
-            className="mx-4 hidden w-full max-w-xl md:block"
+            className="hidden w-full max-w-xl tablet:mx-2 tablet:block laptop:mx-4"
           >
             <div className="relative w-full">
               <input

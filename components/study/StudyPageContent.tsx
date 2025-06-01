@@ -253,8 +253,8 @@ export default function StudyPageContent() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
+    <div className="mx-auto py-12 mobile:px-4 tablet:px-6">
+      <div className="mobile:mb-4 tablet:mb-6 laptop:mb-8">
         <h1 className="mb-2 text-2xl font-bold">스터디</h1>
         <p className="text-gray-600">
           함께 배우고 성장하는 모임을 살펴보고 참여하세요.
@@ -262,27 +262,27 @@ export default function StudyPageContent() {
       </div>
 
       {/* 카테고리 탭 */}
-      <div className="mb-8 flex">
+      <div className="flex mobile:mb-4 tablet:mb-6 laptop:mb-8">
         <button
           onClick={() => handleTabChange('study')}
-          className={`flex items-center rounded-l-lg border px-6 py-3 ${
+          className={`flex items-center rounded-l-lg border border-r-0 mobile:px-4 mobile:py-1 tablet:px-6 tablet:py-3 ${
             activeTab === 'study'
               ? 'bg-gold-start text-white'
               : 'bg-white text-gray-700 hover:bg-gray-50'
           }`}
         >
-          <Users className="mr-2 h-5 w-5" />
+          <Users className="mobile:mr-1 mobile:h-4 mobile:w-4 tablet:mr-2 tablet:h-5 tablet:w-5" />
           스터디
         </button>
         <button
           onClick={() => handleTabChange('book')}
-          className={`flex items-center rounded-r-lg border border-l-0 px-6 py-3 ${
+          className={`flex items-center rounded-r-lg border border-l-0 mobile:px-4 mobile:py-1 tablet:px-6 tablet:py-3 ${
             activeTab === 'book'
               ? 'bg-gold-start text-white'
               : 'bg-white text-gray-700 hover:bg-gray-50'
           }`}
         >
-          <Book className="mr-2 h-5 w-5" />
+          <Book className="mobile:mr-1 mobile:h-4 mobile:w-4 tablet:mr-2 tablet:h-5 tablet:w-5" />
           도서
         </button>
       </div>
@@ -308,9 +308,9 @@ export default function StudyPageContent() {
             </div>
           </div>
 
-          <Button className="px-4 py-2 text-white">
+          <Button className="text-white mobile:px-2 mobile:py-1 tablet:px-4 tablet:py-2">
             <Link href="/study/create" className="flex items-center">
-              스터디 개설
+              개설
             </Link>
           </Button>
         </div>

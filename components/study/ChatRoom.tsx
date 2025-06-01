@@ -588,7 +588,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         ref={messagesContainerRef}
         style={{ overscrollBehavior: 'contain' }}
         onTouchMove={(e) => e.stopPropagation()}
-        className="flex-1 overflow-y-auto p-4"
+        className="flex-1 overflow-y-auto bg-light p-4"
       >
         {/* 로딩 인디케이터 */}
         {isLoadingMore && (
@@ -686,9 +686,9 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         ) : (
           <div className="flex h-full flex-col items-center justify-center py-10 text-center text-gray-500">
             <MessageSquare className="mb-3 h-10 w-10 text-gray-300" />
-            <p className="font-medium">채팅이 없습니다</p>
+            <p className="font-medium">채팅이 없습니다.</p>
             <p className="mt-1 text-sm">
-              실시간으로 팀원들과 소통하고 의견을 나눠보세요
+              실시간으로 팀원들과 소통하고 의견을 나눠보세요.
             </p>
           </div>
         )}
@@ -740,18 +740,18 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="메시지를 입력하세요..."
-            className="flex-1 rounded-full border border-gray-300 bg-gray-50 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="flex-1 rounded-full border border-gray-300 bg-gray-50 px-4 py-2 focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start"
             disabled={isSending}
           />
           <button
             type="submit"
             disabled={isSending || (!newMessage.trim() && !uploadedImage)}
-            className="flex-shrink-0 rounded-full bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:opacity-50"
+            className="flex-shrink-0 rounded-full bg-gold-start p-2 text-white hover:bg-gold-start disabled:opacity-50"
           >
             {isSending ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="bg-gold h-5 w-5" />
             )}
           </button>
         </div>

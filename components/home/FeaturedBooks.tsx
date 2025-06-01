@@ -55,7 +55,7 @@ const FeaturedBooks = () => {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-start border-t-transparent"></div>
         </div>
       ) : books.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 mobile:grid-cols-1 sm:grid-cols-2 tablet:grid-cols-3 laptop:grid-cols-4">
           {books.map((book) => (
             <Link
               key={book.id}

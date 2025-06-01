@@ -70,7 +70,7 @@ const AnnouncementSection = () => {
         </div>
         <Link
           href="/community?category=notice"
-          className="flex items-center text-sm text-gray-500 hover:text-gold-start"
+          className="flex items-center text-sm text-gray-500 hover:font-semibold hover:text-gold-start"
         >
           더보기 <ChevronRight className="h-4 w-4" />
         </Link>

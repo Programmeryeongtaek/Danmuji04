@@ -177,22 +177,24 @@ export default function LectureContent({ lecture }: LectureContentProps) {
       <div className="min-h-screen bg-gray-50">
         {/* 상단 배너 영역 */}
         <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
-          <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:py-12">
-            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2">
+          <div className="mx-auto max-w-6xl px-4 py-8 tablet:px-6 laptop:py-12">
+            <div className="grid grid-cols-1 items-center tablet:grid-cols-2 tablet:gap-8">
               {/* 강의 정보 */}
-              <div className="order-2 md:order-1">
+              <div className="order-2 tablet:order-1">
                 <div className="mb-1 flex items-center space-x-2 text-blue-200">
                   <span>{lecture.category}</span>
                   <ChevronRight className="h-4 w-4" />
                   <span>{lecture.depth}</span>
                 </div>
-                <h1 className="mb-4 text-2xl font-bold leading-tight md:text-3xl lg:text-4xl">
+                <h1 className="mb-4 text-2xl font-bold leading-tight tablet:text-3xl laptop:text-4xl">
                   {lecture.title}
                 </h1>
 
-                <p className="mb-6 text-lg text-blue-100">{lecture.keyword}</p>
+                <p className="text-lg text-blue-100 mobile:mb-2 tablet:mb-4 laptop:mb-6">
+                  {lecture.keyword}
+                </p>
 
-                <div className="mb-6 flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-4 text-sm mobile:mb-2 tablet:mb-4 laptop:mb-6">
                   {!isLoading && (
                     <>
                       <div className="flex items-center gap-1">
@@ -223,36 +225,17 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                     </div>
                   )}
                 </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <span>
-                      <span className="font-semibold">
-                        {lecture.instructor}
-                      </span>{' '}
-                      강사
-                    </span>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  <span>
+                    <span className="font-semibold">{lecture.instructor}</span>{' '}
+                    강사
+                  </span>
                 </div>
-
-                {user ? (
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <BookmarkButton
-                      lectureId={lecture.id}
-                      initialIsBookmarked={isBookmarked}
-                    />
-                    <ShareButton lectureId={lecture.id} />
-                  </div>
-                ) : (
-                  <div className="mt-6">
-                    <ShareButton lectureId={lecture.id} />
-                  </div>
-                )}
               </div>
 
               {/* 강의 썸네일/비디오 */}
-              <div className="order-1 md:order-2">
+              <div className="order-1 tablet:order-2">
                 <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-900 shadow-lg">
                   <Link
                     href={`/knowledge/lecture/${lecture.id}/watch`}
@@ -280,15 +263,30 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                     </div>
                   </Link>
                 </div>
+                <div className="flex justify-end">
+                  {user ? (
+                    <div className="flex flex-wrap gap-3">
+                      <BookmarkButton
+                        lectureId={lecture.id}
+                        initialIsBookmarked={isBookmarked}
+                      />
+                      <ShareButton lectureId={lecture.id} />
+                    </div>
+                  ) : (
+                    <div className="mt-6">
+                      <ShareButton lectureId={lecture.id} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="mx-auto max-w-6xl px-4 py-8 tablet:px-6">
+          <div className="grid grid-cols-1 gap-8 laptop:grid-cols-3">
             {/* 왼쪽 섹션: 강의 설명 및 커리큘럼 */}
-            <div className="lg:col-span-2">
+            <div className="laptop:col-span-2">
               {/* 강의 소개 */}
               <div className="mb-8 rounded-lg border bg-white p-6 shadow-sm">
                 <h2 className="mb-4 text-xl font-bold">강의 소개</h2>
@@ -363,7 +361,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
             </div>
 
             {/* 오른쪽 섹션: 강사 정보 및 기타 정보 */}
-            <div className="hidden lg:block">
+            <div className="hidden laptop:block">
               {/* 강사 정보 */}
               <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
                 <h2 className="mb-4 text-lg font-bold">강사 소개</h2>
@@ -385,24 +383,6 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   </p>
                 </div>
               </div>
-
-              {/* 강의 정보 카드 */}
-              <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
-                <h2 className="mb-4 text-lg font-bold">강의 정보</h2>
-                <div className="space-y-3">{/* 정보 내용 */}</div>
-              </div>
-
-              {/* 강의 시작하기 버튼 */}
-              {user && (
-                <div className="mb-6 rounded-lg border bg-white p-6 shadow-sm">
-                  <Link
-                    href={`/knowledge/lecture/${lecture.id}/watch`}
-                    className="block w-full rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-center font-medium text-white shadow-md hover:from-purple-600 hover:to-indigo-700"
-                  >
-                    학습하기
-                  </Link>
-                </div>
-              )}
             </div>
           </div>
 

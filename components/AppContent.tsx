@@ -22,11 +22,11 @@ export default function AppContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <main className="flex-1">
+      <main>
         <HomeSlide />
         <Search />
 
-        <div className="container mx-auto px-4 py-8">
+        <div className="mx-auto py-8 mobile:px-6 tablet:px-8 laptop:px-10">
           {/* 공지사항 섹션 */}
           <AnnouncementSection />
 
@@ -43,7 +43,7 @@ export default function AppContent() {
       </main>
 
       {/* Footer는 태블릿과 데스크탑에서만 보임 */}
-      <div className="hidden md:block">
+      <div className="hidden tablet:block">
         <Footer />
       </div>
 

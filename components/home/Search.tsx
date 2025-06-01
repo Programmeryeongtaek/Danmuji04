@@ -36,12 +36,12 @@ const Search = () => {
   };
 
   return (
-    <section className="relative bg-gradient-to-r from-amber-50 to-yellow-50 py-16">
-      <div className="container mx-auto px-4">
+    <section className="bg-gradient-to-r from-amber-50 to-yellow-50 py-16 mobile:-m-5 mobile:h-[250px] tablet:m-0 tablet:h-[300px]">
+      <div className="mx-auto px-4 mobile:w-[300px] sm:w-[500px] tablet:w-[640px]">
         <div className="flex flex-col items-center justify-center">
-          <div className="mb-6 h-10 text-center">
+          <div className="h-10 text-center mobile:mb-2 tablet:mb-4 laptop:mb-6">
             <h2
-              className={`text-xl font-medium text-gray-800 transition-all duration-500 md:text-2xl ${
+              className={`font-bold text-gray-800 transition-all duration-500 mobile:text-xl tablet:text-2xl ${
                 isAnimating
                   ? '-translate-y-5 transform opacity-0'
                   : 'transform opacity-100'
@@ -57,17 +57,17 @@ const Search = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="공부하고 싶은 키워드를 입력해보세요."
-              className="w-full rounded-full border border-gray-300 bg-white px-6 py-4 pr-12 shadow-md focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+              className="w-full rounded-full border border-gray-300 bg-white pr-12 shadow-md focus:border-gold-start focus:outline-none focus:ring-2 focus:ring-gold-start/20 mobile:px-4 mobile:py-2 mobile:text-sm tablet:px-6 tablet:py-4 tablet:text-lg"
             />
             <button
               type="submit"
-              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-gold-start p-2 text-white transition-colors hover:bg-gold-end"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-gold-start p-2 text-white transition-colors hover:bg-gold-end mobile:hidden sm:block"
             >
-              <SearchIcon className="h-5 w-5" />
+              <SearchIcon className="mobile:h-3 mobile:w-3 tablet:h-5 tablet:w-5" />
             </button>
           </form>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 mobile:mt-3 tablet:mt-6">
             <span className="text-sm text-black">추천 검색어:</span>
             {['인문학', '철학', '심리학', '자기계발', '리더십'].map((tag) => (
               <Link

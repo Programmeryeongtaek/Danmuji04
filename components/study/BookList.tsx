@@ -160,26 +160,25 @@ export default function BookList({
     <div>
       <div className="flex justify-between">
         {/* 검색창 */}
-        <div className="mb-6 flex w-6/12">
+        <div className="mobile:4/12 mb-6 flex tablet:w-6/12">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="도서 제목 또는 저자를 입력하세요."
-            className="flex-1 rounded-l-lg border border-gray-300 px-4 py-2 focus:border-gold-start focus:outline-none"
+            placeholder="도서명 또는 저자를 입력하세요."
+            className="flex-1 rounded-l-lg border border-gray-300 focus:border-gold-start focus:outline-none mobile:px-2 mobile:py-1 mobile:text-sm tablet:px-4 tablet:py-2 tablet:text-base"
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
           <button
             onClick={handleSearch}
             disabled={isLoading}
-            className="flex items-center rounded-r-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white"
+            className="flex items-center rounded-r-lg bg-gradient-to-r from-gold-start to-gold-end text-white mobile:px-2 mobile:py-1 tablet:px-4 tablet:py-2"
           >
             {isLoading ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
             ) : (
               <>
-                <Search className="mr-2 h-5 w-5" />
-                검색
+                <Search className="mobile:h-4 mobile:w-4 tablet:h-5 tablet:w-5" />
               </>
             )}
           </button>
@@ -189,17 +188,17 @@ export default function BookList({
         <div className="mb-6 flex justify-end">
           <Link
             href="/study/book/recommend"
-            className="flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
+            className="flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end text-white transition hover:bg-gradient-to-l mobile:px-2 mobile:py-1 tablet:px-4 tablet:py-2"
           >
-            <Book className="mr-2 h-5 w-5" />
-            도서추천
+            <Book className="mobile:mr-1 mobile:h-4 mobile:w-4 tablet:mr-2 tablet:h-5 tablet:w-5" />
+            추천
           </Link>
         </div>
       </div>
 
       {/* 도서 목록 */}
       {books.length > 0 ? (
-        <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 tablet:grid-cols-3 laptop:grid-cols-4">
           {books.map((book) => (
             <Link
               key={book.id}
