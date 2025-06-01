@@ -121,7 +121,7 @@ const HomeSlide = () => {
   const slide = slideData[currentSlide];
 
   return (
-    <div className="relative h-[500px] w-full overflow-hidden rounded-lg shadow-md">
+    <div className="relative w-full overflow-hidden rounded-lg shadow-md mobile:h-[300px] tablet:h-[400px] laptop:h-[500px]">
       {/* 현재 슬라이드 번호 표시 */}
       <div className="absolute right-4 top-4 z-10 rounded bg-black/50 px-2 py-1 text-sm text-white">
         {currentSlide + 1} / {slideData.length}
@@ -143,13 +143,13 @@ const HomeSlide = () => {
           <div className="absolute inset-0 bg-black/40" />
 
           {/* 텍스트 내용 (z-10으로 위에 올림) */}
-          <h2 className="z-10 mb-4 text-6xl font-bold text-white">
+          <h2 className="z-10 mb-4 font-bold text-white mobile:text-2xl tablet:text-4xl laptop:text-6xl">
             {slide.title}
           </h2>
-          <p className="z-10 mb-6 flex h-[70px] max-w-md items-center whitespace-pre-line text-center text-xl text-white">
+          <p className="z-10 mb-6 flex max-w-md items-center whitespace-pre-line text-center text-white mobile:h-[50px] mobile:text-base tablet:h-[70px] tablet:text-lg laptop:text-xl">
             {slide.description}
           </p>
-          <div className="z-10 rounded-full bg-gradient-to-r from-gold-start to-gold-end px-6 py-2 text-lg text-white">
+          <div className="z-10 rounded-full bg-gradient-to-r from-gold-start to-gold-end py-2 text-white mobile:px-2 mobile:text-base tablet:px-6 tablet:text-lg laptop:px-6">
             {slide.buttonText}
           </div>
         </div>
@@ -166,7 +166,7 @@ const HomeSlide = () => {
             }}
             className={`h-3 w-3 rounded-full transition-all ${
               index === currentSlide
-                ? 'w-[50px] bg-gold-start'
+                ? 'bg-gold-start mobile:w-[30px] tablet:w-[40px] laptop:w-[50px]'
                 : 'bg-gray-400 hover:bg-gray-600'
             }`}
             aria-label={`슬라이드 ${index + 1}`}

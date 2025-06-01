@@ -93,7 +93,7 @@ export function CategoryDynamicContent({
     : 'reading';
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6">
+    <div className="mx-auto max-w-7xl py-12 mobile:px-4 tablet:px-6">
       {/* 명언 섹션 유지 - 유효한 카테고리만 전달 */}
       <QuoteSection
         category={isValidCategory(category) ? category : undefined}
@@ -109,7 +109,7 @@ export function CategoryDynamicContent({
               className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
             >
               <PlusCircle className="h-5 w-5" />
-              코스 만들기
+              코스 개설
             </Link>
           )}
         </div>

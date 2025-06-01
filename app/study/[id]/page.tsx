@@ -731,16 +731,13 @@ export default function StudyDetailPage() {
     const isOwner = study.owner_id === user.id;
     const actionText = isOwner ? '해체' : '나가기';
 
-    // 방장 권한 확인
-    if (study.owner_id !== user.id) {
-      showToast('스터디 방장만 해체할 수 있습니다.', 'error');
-      return;
-    }
-
-    // 모집중 상태만 해체 가능
-    if (study.status !== 'recruiting') {
-      showToast('진행 중이거나 완료된 스터디는 해체할 수 없습니다.', 'error');
-      return;
+    // 방장인 경우에만 해체 관련 검증 수행
+    if (isOwner) {
+      // 모집중 상태만 해체 가능
+      if (study.status !== 'recruiting') {
+        showToast('진행 중이거나 완료된 스터디는 해체할 수 없습니다.', 'error');
+        return;
+      }
     }
 
     // 확인 메시지 표시
@@ -1017,7 +1014,7 @@ export default function StudyDetailPage() {
 
   if (!study) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
+      <div className="mx-auto py-12 text-center mobile:px-4 tablet:px-6">
         <h2 className="mb-4 text-xl font-semibold">
           스터디를 찾을 수 없습니다.
         </h2>
@@ -1025,25 +1022,24 @@ export default function StudyDetailPage() {
           href="/study"
           className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          돌아가기
+          <ArrowLeft className="mobile:h-4 mobile:w-4 tablet:h-6 tablet:w-6" />
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="mx-auto py-12 mobile:px-4 tablet:px-6">
       <Link
         href="/study"
-        className="mb-6 inline-flex items-center text-gray-600 hover:text-gold-start"
+        className="inline-flex items-center text-gray-600 hover:text-gold-start mobile:mb-2 tablet:mb-4 laptop:mb-4"
       >
-        <ArrowLeft className="mr-1 h-6 w-6" />
+        <ArrowLeft className="mobile:h-4 mobile:w-4 tablet:h-6 tablet:w-6" />
       </Link>
 
-      <div className="grid gap-8 md:grid-cols-3">
+      <div className="grid tablet:grid-cols-3 tablet:gap-4 laptop:gap-8">
         {/* 메인 컨텐츠 영역 */}
-        <div className="md:col-span-2">
+        <div className="tablet:col-span-2">
           {/* 상태 배지 및 제목 */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -1062,33 +1058,73 @@ export default function StudyDetailPage() {
           </div>
 
           {/* 탭 네비게이션 */}
-          <div className="mb-4 flex border-b">
-            <button
-              onClick={() => setActiveTab('info')}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2 font-medium ${
-                activeTab === 'info'
-                  ? 'border-gold-start text-gold-start'
-                  : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <User className="h-4 w-4" />
-              스터디 정보
-            </button>
-            {isParticipant &&
-              participants.find((p) => p.user_id === user?.id)?.status ===
-                'approved' && (
-                <button
-                  onClick={() => setActiveTab('chat')}
-                  className={`flex items-center gap-2 border-b-2 px-4 py-2 font-medium ${
-                    activeTab === 'chat'
-                      ? 'border-gold-start text-gold-start'
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  }`}
+          <div className="mb-4 flex justify-between">
+            <div className="flex border-b">
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`flex items-center gap-2 border-b-2 px-4 py-2 font-medium ${
+                  activeTab === 'info'
+                    ? 'border-gold-start text-gold-start'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <User className="h-4 w-4" />
+                스터디 정보
+              </button>
+              {isParticipant &&
+                participants.find((p) => p.user_id === user?.id)?.status ===
+                  'approved' && (
+                  <button
+                    onClick={() => setActiveTab('chat')}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-2 font-medium ${
+                      activeTab === 'chat'
+                        ? 'border-gold-start text-gold-start'
+                        : 'border-transparent text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    실시간 토론
+                  </button>
+                )}
+            </div>
+            {/* 방장만 볼 수 있는 편집 버튼 */}
+            {user && study.owner_id === user.id && (
+              <div className="flex justify-end gap-2">
+                {/* 상태 변경 */}
+                <select
+                  value={study.status}
+                  onChange={(e) =>
+                    handleChangeStudyStatus(
+                      e.target.value as
+                        | 'recruiting'
+                        | 'in_progress'
+                        | 'completed'
+                    )
+                  }
+                  disabled={study.status === 'completed' || isLoading}
+                  className="cursor-pointer rounded border bg-white p-1 text-sm hover:border-gold-start hover:bg-gold-start"
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  실시간 토론
-                </button>
-              )}
+                  <option value="recruiting">모집중</option>
+                  <option value="in_progress">진행중</option>
+                  <option value="completed">완료</option>
+                </select>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsEditMode(true)}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-1 text-sm hover:border-gold-start hover:bg-gold-start hover:text-black"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteStudy()}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-1 text-sm hover:border-gold-start hover:bg-gold-start hover:text-black"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 탭 컨텐츠 */}
@@ -1113,57 +1149,11 @@ export default function StudyDetailPage() {
                   />
                 ) : (
                   <>
-                    <div className="mb-4 flex justify-between">
+                    <div className="mb-4 flex flex-col">
                       <h1 className="text-2xl font-bold">{study.title}</h1>
-
-                      {/* 방장만 볼 수 있는 편집 버튼 */}
-                      {user && study.owner_id === user.id && (
-                        <div className="flex gap-2">
-                          {/* 상태 변경 */}
-                          <div className="flex items-center rounded-lg border p-2 hover:border-gold-start hover:bg-gold-start hover:text-black">
-                            <span className="mr-2 text-sm font-medium">
-                              스터디 상태:
-                            </span>
-                            <select
-                              value={study.status}
-                              onChange={(e) =>
-                                handleChangeStudyStatus(
-                                  e.target.value as
-                                    | 'recruiting'
-                                    | 'in_progress'
-                                    | 'completed'
-                                )
-                              }
-                              disabled={
-                                study.status === 'completed' || isLoading
-                              }
-                              className="cursor-pointer rounded border bg-white p-1 text-sm"
-                            >
-                              <option value="recruiting">모집중</option>
-                              <option value="in_progress">진행중</option>
-                              <option value="completed">완료</option>
-                            </select>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setIsEditMode(true)}
-                              className="flex items-center gap-2 rounded-lg border px-3 py-1 text-sm hover:border-gold-start hover:bg-gold-start hover:text-black"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStudy()}
-                              className="flex items-center gap-2 rounded-lg border px-3 py-1 text-sm hover:border-gold-start hover:bg-gold-start hover:text-black"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
-                    <div className="mb-6 grid gap-4 rounded-lg bg-gray-50 p-4 text-sm md:grid-cols-2">
+                    <div className="mb-6 grid gap-4 rounded-lg bg-light p-4 text-sm md:grid-cols-2">
                       <div className="flex items-center">
                         <User className="mr-3 h-5 w-5 text-gray-500" />
                         <div>
@@ -1198,7 +1188,7 @@ export default function StudyDetailPage() {
                       <div className="flex items-center">
                         <CalendarClock className="mr-3 h-5 w-5 text-gray-500" />
                         <div>
-                          <p className="text-gray-500">스터디 기간</p>
+                          <p className="text-gray-500">기간</p>
                           <p className="font-medium">
                             {formatDate(study.start_date)} ~{' '}
                             {formatDate(study.end_date)}
@@ -1215,12 +1205,7 @@ export default function StudyDetailPage() {
                           <p className="text-gray-500">장소</p>
                           <p className="font-medium">
                             {study.is_online ? (
-                              <span className="flex items-center">
-                                온라인{' '}
-                                <span className="ml-1 text-blue-500">
-                                  (화상미팅)
-                                </span>
-                              </span>
+                              <span>온라인 </span>
                             ) : (
                               study.location
                             )}
@@ -1230,19 +1215,27 @@ export default function StudyDetailPage() {
                     </div>
 
                     <div className="mb-6">
-                      <h2 className="mb-3 text-lg font-medium">스터디 소개</h2>
-                      <div className="whitespace-pre-wrap rounded-lg border p-4 text-gray-700">
+                      <h2 className="mb-3 text-lg font-medium">소개</h2>
+                      <div className="whitespace-pre-wrap rounded-lg border bg-light p-4 text-gray-700">
                         {study.description}
                       </div>
                     </div>
 
                     {/* 연결된 도서 정보 표시 */}
                     {bookInfo && (
-                      <div className="mb-6 rounded-lg bg-blue-50 p-4">
-                        <h2 className="mb-3 flex items-center text-lg font-medium">
-                          <Book className="mr-2 h-5 w-5 text-blue-800" />
-                          스터디 도서
-                        </h2>
+                      <div className="mb-6 rounded-lg bg-light p-4">
+                        <div className="flex justify-between">
+                          <h2 className="mb-3 flex items-center text-lg font-medium">
+                            <Book className="mr-2 h-5 w-5 text-black" />
+                            스터디 도서
+                          </h2>
+                          <Link
+                            href={`/study/book/${bookInfo.id}`}
+                            className="flex items-center rounded-xl bg-gold-start px-2 text-sm text-black"
+                          >
+                            <span>도서정보</span>
+                          </Link>
+                        </div>
                         <div className="flex items-start">
                           <div className="mr-4 h-24 w-16 overflow-hidden rounded-lg bg-white shadow-sm">
                             {bookInfo.cover_url ? (
@@ -1265,12 +1258,6 @@ export default function StudyDetailPage() {
                             <p className="text-sm text-gray-600">
                               {bookInfo.author}
                             </p>
-                            <Link
-                              href={`/study/book/${bookInfo.id}`}
-                              className="mt-2 inline-block text-sm text-blue-600 hover:underline"
-                            >
-                              도서 상세정보
-                            </Link>
                           </div>
                         </div>
                       </div>
@@ -1280,7 +1267,7 @@ export default function StudyDetailPage() {
               </div>
             ) : (
               // 실시간 토론 탭
-              <div className="h-[600px]">
+              <div className="mobile:h-[400px] tablet:h-[600px]">
                 <ChatRoom studyId={studyId} />
               </div>
             )}
@@ -1294,7 +1281,7 @@ export default function StudyDetailPage() {
             {isParticipant && (
               <div className="rounded-lg border bg-white p-4 shadow-sm">
                 <h3 className="mb-3 font-medium">참여 상태</h3>
-                <div className="rounded-lg bg-gray-50 p-3">
+                <div className="rounded-lg bg-light p-3">
                   {(() => {
                     const userStatus = participants.find(
                       (p) => p.user_id === user?.id
@@ -1305,26 +1292,26 @@ export default function StudyDetailPage() {
                         return (
                           <div className="flex items-center text-green-600">
                             <CheckCircle className="mr-2 h-5 w-5" />
-                            <p>참여가 확정되었습니다</p>
+                            <p>참여가 확정되었습니다.</p>
                           </div>
                         );
                       case 'pending':
                         return (
                           <div className="flex items-center text-amber-600">
                             <Clock className="mr-2 h-5 w-5" />
-                            <p>승인 대기 중입니다</p>
+                            <p>승인 대기 중입니다.</p>
                           </div>
                         );
                       case 'rejected':
                         return (
                           <div className="flex items-center text-red-600">
                             <XCircle className="mr-2 h-5 w-5" />
-                            <p>참여가 거절되었습니다</p>
+                            <p>참여가 거절되었습니다.</p>
                           </div>
                         );
                       default:
                         return (
-                          <p className="text-gray-600">상태 정보가 없습니다</p>
+                          <p className="text-gray-600">상태 정보가 없습니다.</p>
                         );
                     }
                   })()}
@@ -1492,7 +1479,7 @@ export default function StudyDetailPage() {
                     disabled={isJoining}
                     className="mt-4 w-full rounded-lg bg-gradient-to-r from-gold-start to-gold-end py-2 font-medium text-white transition hover:bg-gradient-to-l disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isJoining ? '신청 중...' : '스터디 참여하기'}
+                    {isJoining ? '신청 중...' : '스터디 참여'}
                   </button>
                 )}
 
@@ -1521,7 +1508,7 @@ export default function StudyDetailPage() {
                   onClick={handleLeaveStudy}
                   className="w-full rounded-lg border border-red-500 bg-white py-2 font-medium text-red-500 transition hover:bg-red-50"
                 >
-                  {study.owner_id === user?.id ? '해체하기' : '나가기'}
+                  {study.owner_id === user?.id ? '스터디 해체' : '나가기'}
                 </button>
               </div>
             )}

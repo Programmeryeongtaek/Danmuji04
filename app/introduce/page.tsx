@@ -14,17 +14,17 @@ import Link from 'next/link';
 
 export default function IntroducePage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12 md:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-4 py-12 tablet:px-6 laptop:px-8">
       {/* 히어로 섹션 */}
-      <section className="mb-16 flex flex-col items-center justify-between gap-8 md:flex-row">
+      <section className="mb-16 flex flex-col items-center justify-between tablet:flex-row tablet:gap-6 laptop:gap-8">
         <div className="flex-1">
-          <h1 className="mb-4 text-4xl font-bold">
+          <h1 className="mb-4 font-bold mobile:text-2xl tablet:text-3xl laptop:text-4xl">
             <span className="bg-gradient-to-r from-gold-start to-gold-end bg-clip-text text-transparent">
               단무지
             </span>
             와 함께하는 학습 여정
           </h1>
-          <p className="mb-6 text-lg text-gray-600">
+          <p className="mb-6 text-gray-600 mobile:text-base tablet:text-lg">
             단무지는 다양한 분야의 지식을 탐색하고 배우며 <br />
             함께 성장하는 온라인 학습 플랫폼입니다. <br />
             지속적인 학습을 통해 지식을 정립하고 <br />
@@ -33,26 +33,26 @@ export default function IntroducePage() {
           <div className="flex flex-wrap gap-4">
             <Link
               href="/knowledge"
-              className="rounded-lg border border-gray-300 bg-light px-6 py-3 hover:border-gold-start hover:bg-white hover:text-gold-start"
+              className="rounded-lg border border-gray-300 bg-light hover:border-gold-start hover:bg-white hover:text-gold-start mobile:px-3 mobile:py-1 mobile:text-sm tablet:px-6 tablet:py-3 tablet:text-base"
             >
               지식 탐색하기
             </Link>
             <Link
               href="/course"
-              className="rounded-lg border border-gray-300 bg-light px-6 py-3 hover:border-gold-start hover:bg-white hover:text-gold-start"
+              className="rounded-lg border border-gray-300 bg-light hover:border-gold-start hover:bg-white hover:text-gold-start mobile:px-3 mobile:py-1 mobile:text-sm tablet:px-6 tablet:py-3 tablet:text-base"
             >
               코스 둘러보기
             </Link>
             <Link
               href="/study"
-              className="rounded-lg border border-gray-300 bg-light px-6 py-3 hover:border-gold-start hover:bg-white hover:text-gold-start"
+              className="rounded-lg border border-gray-300 bg-light hover:border-gold-start hover:bg-white hover:text-gold-start mobile:px-3 mobile:py-1 mobile:text-sm tablet:px-6 tablet:py-3 tablet:text-base"
             >
               스터디 참여하기
             </Link>
           </div>
         </div>
-        <div className="flex-1">
-          <div className="relative h-64 w-full overflow-hidden rounded-lg shadow-xl md:h-80">
+        <div className="mobile:hidden tablet:block">
+          <div className="relative overflow-hidden rounded-lg shadow-xl tablet:h-[300px] tablet:w-[400px]">
             <Image
               src="/images/danmuji.png"
               alt="단무지 학습 플랫폼"
@@ -78,7 +78,7 @@ export default function IntroducePage() {
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 laptop:grid-cols-4">
           <div className="rounded-lg border p-6 transition-shadow hover:border-gold-start hover:shadow-md">
             <div className="mb-4 inline-block rounded-full bg-blue-100 p-3">
               <BookOpen className="h-7 w-7 text-blue-600" />
@@ -130,7 +130,7 @@ export default function IntroducePage() {
           단무지의 핵심 가치
         </h2>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 tablet:grid-cols-2">
           <div className="flex gap-4">
             <div className="shrink-0">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-start text-white">
@@ -196,7 +196,7 @@ export default function IntroducePage() {
       {/* 스터디 강조 섹션 (새로 추가) */}
       <section className="mb-16">
         <div className="rounded-xl bg-amber-50 p-8">
-          <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
+          <div className="flex flex-col items-center justify-between gap-8 tablet:flex-row">
             <div className="flex-1">
               <h2 className="mb-4 text-2xl font-bold">함께 학습하는 즐거움</h2>
               <p className="mb-6 text-gray-700">
@@ -252,7 +252,7 @@ export default function IntroducePage() {
 
       {/* CTA 섹션 */}
       <section className="rounded-xl bg-gradient-to-r from-gold-start to-gold-end p-8 text-white">
-        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+        <div className="flex flex-col items-center justify-between gap-6 tablet:flex-row">
           <div>
             <h2 className="mb-2 text-2xl font-bold">
               지금 단무지와 함께 시작하세요
@@ -264,7 +264,7 @@ export default function IntroducePage() {
               href="/"
               className="rounded-lg border border-gray-600 bg-white/20 px-4 py-2 font-medium text-gray-600 hover:border-light hover:bg-light hover:text-black"
             >
-              홈페이지 둘러보기
+              홈페이지
             </Link>
             <Link
               href="/signup"

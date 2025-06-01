@@ -481,7 +481,7 @@ export default function LectureWatchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl py-12">
+    <div className="mx-auto max-w-5xl py-12 mobile:px-4 tablet:px-6">
       {/* 제목 및 정보 */}
       <div className="mb-6 flex justify-between">
         <div className="flex flex-col">
@@ -494,7 +494,7 @@ export default function LectureWatchPage() {
         </div>
         <Link
           href={`/knowledge/lecture/${lectureId}`}
-          className="group flex items-center rounded-lg border px-3"
+          className="group flex items-center rounded-lg px-3"
         >
           <ArrowLeft className="h-6 w-6 group-hover:text-gold-start" />
         </Link>

@@ -158,11 +158,13 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <h1 className="mb-6 text-2xl font-bold">관리자 대시보드</h1>
+    <div className="mx-auto px-4 py-12 mobile:mb-10 tablet:mb-0 tablet:px-6">
+      <h1 className="text-2xl font-bold mobile:mb-4 tablet:mb-6">
+        관리자 대시보드
+      </h1>
 
       {/* 통계 카드 섹션 */}
-      <div className="mb-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-10 grid gap-4 mobile:grid-cols-2 laptop:grid-cols-4">
         <div className="rounded-lg border bg-white p-4 shadow-sm">
           <div className="mb-2 text-sm text-gray-500">전체 사용자 수</div>
           <div className="flex items-end justify-between">
@@ -172,7 +174,7 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <div className="mb-2 text-sm text-gray-500">등록된 강사 수</div>
+          <div className="mb-2 text-sm text-gray-500">전체 강사 수</div>
           <div className="flex items-end justify-between">
             <div className="text-2xl font-bold">{stats.totalInstructors}</div>
             <ShieldCheck className="h-5 w-5 text-blue-500" />

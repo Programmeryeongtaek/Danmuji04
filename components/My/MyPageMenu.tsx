@@ -180,8 +180,10 @@ const MyPageMenu = () => {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <h1 className="mb-8 text-2xl font-bold">내 페이지</h1>
+    <div className="mx-auto max-w-6xl mobile:mb-10 mobile:px-4 mobile:py-12 tablet:mb-0 tablet:px-6">
+      <h1 className="text-2xl font-bold mobile:mb-4 tablet:mb-6 laptop:mb-8">
+        내 페이지
+      </h1>
 
       <div className="mb-8 flex flex-col gap-6 md:flex-row">
         {/* 사용자 프로필 카드 */}
@@ -221,15 +223,13 @@ const MyPageMenu = () => {
           </div>
 
           <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium text-gray-500">
-              관심 분야
-            </h3>
+            <h3 className="mb-2 text-sm font-medium text-black">관심 분야</h3>
             <div className="flex flex-wrap gap-2">
               {profile.interests && profile.interests.length > 0 ? (
                 profile.interests.map((interest, index) => (
                   <span
                     key={index}
-                    className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700"
+                    className="rounded-full bg-light px-3 py-1 text-sm text-gray-700"
                   >
                     {interest}
                   </span>
@@ -243,7 +243,7 @@ const MyPageMenu = () => {
           </div>
 
           <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium text-gray-500">가입일</h3>
+            <h3 className="mb-2 text-sm font-medium text-black">가입일</h3>
             <div className="flex items-center gap-2 text-sm text-gray-700">
               <Calendar className="h-4 w-4" />
               {new Date(profile.created_at).toLocaleDateString('ko-KR')}
@@ -256,7 +256,7 @@ const MyPageMenu = () => {
             </Link>
             <Link href="/study/create">
               <Button className="w-full bg-gradient-to-r from-gold-start to-gold-end py-2 text-sm text-white hover:opacity-90">
-                스터디 개설하기
+                스터디 개설
               </Button>
             </Link>
           </div>
@@ -312,7 +312,7 @@ const MyPageMenu = () => {
               <div className="rounded-lg border bg-amber-50 p-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-amber-600" />
-                  <span className="text-sm font-medium">참여 중인 스터디</span>
+                  <span className="text-sm font-medium">참여 스터디디</span>
                 </div>
                 <p className="mt-2 text-2xl font-bold">
                   {stats.studiesParticipatingCount}
@@ -337,7 +337,7 @@ const MyPageMenu = () => {
               <div className="flex-1 rounded-lg bg-purple-50 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">참여중인 스터디</p>
+                    <p className="text-sm text-gray-600">참여 스터디</p>
                     <p className="text-xl font-bold">
                       {stats.studiesParticipatingCount}개
                     </p>
@@ -348,7 +348,7 @@ const MyPageMenu = () => {
               <div className="flex-1 rounded-lg bg-blue-50 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">내가 개설한 스터디</p>
+                    <p className="text-sm text-gray-600">개설한 스터디</p>
                     <p className="text-xl font-bold">
                       {stats.studiesCreatedCount}개
                     </p>
@@ -363,7 +363,7 @@ const MyPageMenu = () => {
       </div>
 
       {/* 메뉴 섹션 */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 tablet:grid-cols-3">
         <MenuCard
           title="내 학습"
           icon={BookOpen}
@@ -441,7 +441,7 @@ const MenuCard = ({
           <Link
             key={index}
             href={item.href}
-            className="block rounded-lg px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
+            className="block rounded-lg px-4 py-2 text-gray-700 transition-colors hover:bg-light hover:text-black"
           >
             {item.label}
           </Link>

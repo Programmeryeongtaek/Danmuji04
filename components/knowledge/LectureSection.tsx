@@ -242,7 +242,7 @@ const LectureSection = ({
       </div>
 
       {/* 강의 카드 그리드 - z-index를 낮게 설정 */}
-      <div className="relative z-10 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div className="relative z-10 grid gap-4 mobile:mb-20 mobile:grid-cols-1 sm:grid-cols-2 tablet:grid-cols-3 laptop:grid-cols-4">
         {/* 로딩 중에는 이전 데이터 표시, 없으면 로딩 표시 */}
         {isLoading ? (
           prevLectures.length > 0 ? (

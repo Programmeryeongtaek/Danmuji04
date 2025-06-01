@@ -192,18 +192,23 @@ export default function CourseCreatePageContent() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-16">
-      <div className="flex items-center justify-between">
-        <h1 className="mb-6 text-2xl font-bold">강의 추가하기</h1>
+    <div className="mx-auto max-w-4xl py-12 mobile:px-4">
+      <div className="flex items-center justify-between mobile:mb-2 tablet:mb-4 laptop:mb-6">
+        <h1 className="text-2xl font-bold">강의 추가</h1>
         <Link href={'/course'}>
-          <ArrowLeft />
+          <ArrowLeft className="h-6 w-6 hover:text-gold-start" />
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="mobile:space-y-3 tablet:space-y-6"
+      >
         {/* 카테고리 선택 */}
         <div className="rounded-lg border p-4">
-          <h2 className="mb-4 text-xl font-semibold">강의 카테고리</h2>
+          <h2 className="text-xl font-semibold mobile:mb-2 tablet:mb-4">
+            강의 카테고리
+          </h2>
 
           <div>
             {showCategoryInput ? (
@@ -238,7 +243,7 @@ export default function CourseCreatePageContent() {
                     key={cat}
                     type="button"
                     onClick={() => setCategory(cat)}
-                    className={`rounded-lg px-4 py-2 ${
+                    className={`rounded-lg mobile:px-2 mobile:py-1 tablet:px-4 tablet:py-2 ${
                       category === cat
                         ? 'bg-gold-start text-white'
                         : 'border hover:bg-gray-50'
@@ -286,7 +291,7 @@ export default function CourseCreatePageContent() {
               강의를 추가해주세요.
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-6 bg-light">
               {courseItems.map((item, index) => (
                 <div key={index} className="rounded-lg border p-4">
                   <div className="mb-2 flex items-center justify-between">
@@ -385,13 +390,13 @@ export default function CourseCreatePageContent() {
 
         {/* 제출 버튼 */}
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-6 py-3 text-white hover:opacity-90 disabled:opacity-50"
+            className="disabled:opacity-50 mobile:px-3 mobile:py-1 tablet:px-6 tablet:py-3"
           >
             {isSubmitting ? '추가 중...' : '등록'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

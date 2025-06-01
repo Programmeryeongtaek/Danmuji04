@@ -61,7 +61,7 @@ export default function CourseList({ category }: CourseListProps) {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 sm:grid-cols-2 laptop:grid-cols-3">
       {courses.map((course: CourseWithSections) => {
         const progress = progressData[course.id] || {
           completed: false,
@@ -74,8 +74,18 @@ export default function CourseList({ category }: CourseListProps) {
         return (
           <div
             key={course.id}
-            className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:border-gold-start hover:bg-light hover:shadow-md"
+            className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:border-gold-start hover:bg-light hover:shadow-md"
           >
+            {/* 관리자 기능 - 관리자에게만 표시 */}
+            {isAdmin && (
+              <div className="absolute right-2 top-2 flex gap-1">
+                <CourseActions
+                  courseId={course.id}
+                  category={course.category}
+                  onSuccess={handleDeleteSuccess}
+                />
+              </div>
+            )}
             <Link href={targetUrl} className="flex flex-1 flex-col">
               <div className="flex flex-1 flex-col gap-2 p-4">
                 <div className="flex justify-between">
@@ -115,17 +125,6 @@ export default function CourseList({ category }: CourseListProps) {
                       </div>
                     </div>
                   </div>
-
-                  {/* 관리자 기능 - 관리자에게만 표시 */}
-                  {isAdmin && (
-                    <div className="flex gap-1">
-                      <CourseActions
-                        courseId={course.id}
-                        category={course.category}
-                        onSuccess={handleDeleteSuccess}
-                      />
-                    </div>
-                  )}
                 </div>
                 <div className="flex h-[60px] border-b">
                   <h3 className="line-clamp-2 flex text-lg font-medium group-hover:font-semibold">

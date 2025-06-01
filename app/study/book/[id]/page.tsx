@@ -363,21 +363,21 @@ export default function BookDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="mx-auto py-12 mobile:px-4 tablet:px-6">
       <Link
         href="/study?category=book"
-        className="mb-6 inline-flex items-center text-gray-600 hover:text-gold-start"
+        className="inline-flex items-center text-gray-600 hover:text-gold-start mobile:mb-4 tablet:mb-6"
       >
-        <ArrowLeft className="mr-1 h-6 w-6" />
+        <ArrowLeft className="mobile:h-4 mobile:w-4 tablet:h-6 tablet:w-6" />
       </Link>
 
-      <div className="grid gap-8 md:grid-cols-3">
+      <div className="grid mobile:gap-4 tablet:grid-cols-3 laptop:gap-8">
         {/* 도서 정보 */}
-        <div className="md:col-span-2">
-          <div className="rounded-lg border bg-white p-6 shadow-sm">
-            <div className="mb-6 flex flex-col md:flex-row md:gap-8">
+        <div className="tablet:col-span-2">
+          <div className="rounded-lg border bg-white shadow-sm mobile:p-4 tablet:p-6">
+            <div className="flex flex-col mobile:mb-2 mobile:items-center mobile:gap-4 sm:flex-row sm:items-start tablet:mb-6 tablet:gap-6 laptop:gap-8">
               {/* 도서 표지 */}
-              <div className="mb-4 flex justify-center md:mb-0 md:w-1/3">
+              <div className="flex h-[300px] w-[200px] justify-center">
                 {book.cover_url ? (
                   <Image
                     src={book.cover_url}
@@ -395,8 +395,12 @@ export default function BookDetailPage() {
 
               {/* 도서 정보 */}
               <div className="flex-1">
-                <h1 className="mb-2 text-2xl font-bold">{book.title}</h1>
-                <p className="mb-4 text-lg text-gray-700">{book.author}</p>
+                <h1 className="mb-2 font-bold mobile:text-xl tablet:text-2xl">
+                  {book.title}
+                </h1>
+                <p className="text-gray-700 mobile:mb-2 mobile:text-base tablet:mb-4 tablet:text-lg">
+                  {book.author}
+                </p>
 
                 <div className="mb-4 flex items-center">
                   <div className="flex items-center gap-1">
@@ -405,72 +409,61 @@ export default function BookDetailPage() {
                       className="gap-2font-medium flex items-center"
                     >
                       <ThumbsUp
-                        className={`h-6 w-6 ${book.user_has_recommended ? 'text-gold-start' : 'text-black'}`}
+                        className={`mobile:h-4 mobile:w-4 tablet:h-6 tablet:w-6 ${book.user_has_recommended ? 'text-gold-start' : 'text-gray-500'}`}
                       />
                     </button>
-                    <span className="text-lg font-medium">
+                    <span className="font-medium mobile:text-base tablet:text-lg">
                       {book.recommendation_count}명 추천
                     </span>
                   </div>
                 </div>
 
                 {book.description && (
-                  <div>
-                    <h2 className="mb-2 text-lg font-medium">책 소개</h2>
-                    <p className="whitespace-pre-wrap text-gray-700">
-                      {book.description}
-                    </p>
-                  </div>
+                  <p className="whitespace-pre-wrap text-gray-700">
+                    {book.description}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* 스터디 개설 버튼 */}
-            <div className="mt-6 border-t pt-6">
+            <div className="border-t mobile:mt-3 mobile:pt-3 tablet:mt-6 tablet:pt-6">
               <Link
                 href={`/study/create?book_id=${id}`}
-                className="flex items-center justify-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-3 font-medium text-white transition hover:bg-gradient-to-l"
+                className="flex items-center justify-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end font-medium text-white transition hover:bg-gradient-to-l mobile:px-2 mobile:py-2 tablet:px-4 tablet:py-3"
               >
-                <Users className="mr-2 h-5 w-5" />
-                스터디 모임 개설
+                <Users className="mobile:mr-1 mobile:h-4 mobile:w-4 mobile:text-sm tablet:mr-2 tablet:h-5 tablet:w-5 tablet:text-base" />
+                스터디 개설
               </Link>
             </div>
           </div>
 
           {/* 댓글 섹션 */}
-          <div className="mt-8 rounded-lg border bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">
-              한 줄 감상{' '}
-              <span className="text-gray-500">({comments.length})</span>
+          <div className="rounded-lg border bg-white p-6 shadow-sm mobile:mt-4 tablet:mt-8">
+            <h2 className="text-xl font-semibold mobile:mb-2 tablet:mb-4">
+              도서평 <span className="text-gray-500">({comments.length})</span>
             </h2>
 
             {user ? (
-              <form onSubmit={handleSubmitComment} className="mb-6">
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0">
-                    {user && (
-                      <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
-                        {/* 사용자 아바타 표시 */}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="이 책에 대한 생각을 공유해주세요"
-                      className="w-full rounded-lg border border-gray-300 p-3 focus:border-gold-start focus:outline-none"
-                      rows={2}
-                    ></textarea>
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={!newComment.trim() || isSubmitting}
-                        className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white disabled:opacity-50"
-                      >
-                        {isSubmitting ? '등록 중...' : '작성'}
-                      </button>
-                    </div>
+              <form
+                onSubmit={handleSubmitComment}
+                className="mobile:mb-2 tablet:mb-4"
+              >
+                <div className="flex-1">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="이 책에 대한 생각을 공유해주세요."
+                    className="w-full rounded-lg border border-gray-300 bg-light p-3 focus:border-gold-start focus:outline-none mobile:h-[100px] tablet:h-[150px]"
+                  ></textarea>
+                  <div className="flex justify-end tablet:mt-1">
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim() || isSubmitting}
+                      className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end text-white disabled:opacity-50 mobile:px-2 mobile:py-1 tablet:px-4 tablet:py-2"
+                    >
+                      {isSubmitting ? '등록 중...' : '작성'}
+                    </button>
                   </div>
                 </div>
               </form>
@@ -493,7 +486,7 @@ export default function BookDetailPage() {
             {comments.length > 0 ? (
               <div className="space-y-4">
                 {comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-3">
+                  <div key={comment.id} className="flex gap-3 border-b pb-3">
                     <div className="flex-shrink-0">
                       <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
                         {comment.user_avatar ? (
@@ -513,7 +506,7 @@ export default function BookDetailPage() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-between">
                         <span className="font-medium">{comment.user_name}</span>
                         <span className="ml-2 text-xs text-gray-500">
                           {formatDate(comment.created_at)}
@@ -534,64 +527,61 @@ export default function BookDetailPage() {
         </div>
 
         {/* 관련 스터디 */}
-        <div>
-          <div className="rounded-lg border bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">관련 스터디</h2>
-
-            {relatedStudies.length > 0 ? (
-              <div className="space-y-4">
-                {relatedStudies.map((study) => (
-                  <Link
-                    key={study.id}
-                    href={`/study/${study.id}`}
-                    className="block rounded-lg border bg-white p-4 transition hover:border-gold-start hover:shadow-sm"
-                  >
-                    <div className="flex justify-between">
-                      <span
-                        className={`mb-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          study.status === 'recruiting'
-                            ? 'bg-green-100 text-green-800'
-                            : study.status === 'in_progress'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {study.status === 'recruiting'
-                          ? '모집중'
-                          : study.status === 'in_progress'
-                            ? '진행중'
-                            : '완료'}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {formatDate(study.start_date)} ~{' '}
-                        {formatDate(study.end_date)}
-                      </span>
-                    </div>
-
-                    <h3 className="mb-2 font-medium">{study.title}</h3>
-
-                    <div className="flex items-center gap-1">
-                      <Users className="mr-1 h-4 w-4" />
-                      <span>
-                        {study.current_participants}/{study.max_participants}명
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg bg-gray-50 p-6 text-center">
-                <p className="mb-4 text-gray-600">스터디가 없습니다.</p>
+        <div className="rounded-lg border bg-white shadow-sm mobile:p-4 tablet:p-2 laptop:p-4">
+          <h2 className="mb-4 text-xl font-semibold">관련 스터디</h2>
+          {relatedStudies.length > 0 ? (
+            <div className="space-y-4">
+              {relatedStudies.map((study) => (
                 <Link
-                  href={`/study/create?book_id=${book.id}`}
-                  className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
+                  key={study.id}
+                  href={`/study/${study.id}`}
+                  className="block rounded-lg border bg-light transition hover:border-gold-start hover:shadow-sm mobile:p-4 tablet:p-2 laptop:p-4"
                 >
-                  <Users className="mr-2 h-4 w-4" />
-                  개설하기
+                  <div className="flex justify-between tablet:flex-col tablet:items-start laptop:flex-row laptop:justify-between">
+                    <span
+                      className={`mb-2 inline-block rounded-full text-xs font-medium mobile:px-4 mobile:py-1 tablet:px-1 tablet:py-0.5 laptop:px-4 laptop:py-1 ${
+                        study.status === 'recruiting'
+                          ? 'bg-green-100 text-green-800'
+                          : study.status === 'in_progress'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {study.status === 'recruiting'
+                        ? '모집'
+                        : study.status === 'in_progress'
+                          ? '진행'
+                          : '완료'}
+                    </span>
+                    <span className="text-gray-500 mobile:text-xs tablet:text-sm">
+                      {formatDate(study.start_date)} ~{' '}
+                      {formatDate(study.end_date)}
+                    </span>
+                  </div>
+
+                  <h3 className="mb-2 font-medium">{study.title}</h3>
+
+                  <div className="flex items-center gap-1">
+                    <Users className="mr-1 h-4 w-4" />
+                    <span>
+                      {study.current_participants}/{study.max_participants}명
+                    </span>
+                  </div>
                 </Link>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg bg-gray-50 p-6 text-center">
+              <p className="mb-4 text-gray-600">스터디가 없습니다.</p>
+              <Link
+                href={`/study/create?book_id=${book.id}`}
+                className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition hover:bg-gradient-to-l"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                개설하기
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

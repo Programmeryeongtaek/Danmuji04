@@ -74,7 +74,7 @@ export default function CourseProgressSummary({
 
       {/* 상세 정보 */}
       <>
-        <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mb-4 grid gap-4 mobile:grid-cols-1 sm:grid-cols-2 laptop:grid-cols-3">
           {/* 학습 진행률 */}
           <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
             <div className="mb-2 flex items-center justify-between">

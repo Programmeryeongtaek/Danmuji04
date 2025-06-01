@@ -130,7 +130,7 @@ export default function VideoPlayer({
   // 텍스트 타입인 경우 텍스트 내용을 보여줌
   if (type === 'text') {
     return (
-      <div className="aspect-video w-full bg-white p-6">
+      <div className="aspect-video w-full bg-light p-6">
         <div className="h-full w-full overflow-y-auto p-4 text-gray-800">
           {contentUrl}
         </div>

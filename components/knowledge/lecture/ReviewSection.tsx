@@ -127,7 +127,6 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       console.error('Error checking review status:', error);
       showToast('오류가 발생했습니다. 다시 시도해주세요.', 'error');
     }
-    
     setIsModalOpen(true);
   };
 

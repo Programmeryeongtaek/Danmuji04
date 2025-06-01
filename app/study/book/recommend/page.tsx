@@ -158,8 +158,8 @@ export default function RecommendBookPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mx-auto mb-6 flex max-w-2xl justify-between">
+    <div className="container mx-auto px-4 py-12">
+      <div className="mx-auto flex max-w-2xl justify-between mobile:mb-2 tablet:mb-4 laptop:mb-6">
         <h1 className="text-2xl font-bold">도서추천</h1>
       </div>
 
@@ -172,7 +172,7 @@ export default function RecommendBookPage() {
               onClick={() => setIsSearchMode(false)}
               className="rounded-lg border border-gray-300 px-6 py-2 hover:bg-gray-50"
             >
-              직접 입력하기
+              직접 입력
             </button>
           </div>
         </div>

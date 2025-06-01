@@ -77,7 +77,7 @@ const PopularCourses = () => {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-start border-t-transparent"></div>
         </div>
       ) : courses.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 mobile:grid-cols-1 tablet:grid-cols-2 laptop:grid-cols-3">
           {courses.map((course) => (
             <Link
               key={course.id}
