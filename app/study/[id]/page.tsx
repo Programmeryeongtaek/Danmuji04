@@ -6,9 +6,14 @@ import ChatRoom from '@/components/study/ChatRoom';
 import ShareButton from '@/components/study/ShareButton';
 import StudyEditForm from '@/components/study/StudyEditForm';
 import { userAtom } from '@/store/auth';
+import {
+  getParticipationStatusAtom,
+  initializeParticipationAtom,
+  updateParticipationAtom,
+} from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import {
   ArrowLeft,
   Book,
@@ -92,12 +97,15 @@ export default function StudyDetailPage() {
     Participant[]
   >([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isParticipant, setIsParticipant] = useState(false);
   const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'chat'>('info');
+
+  const [, updateParticipation] = useAtom(updateParticipationAtom);
+  const [, initializeParticipation] = useAtom(initializeParticipationAtom);
+  const getParticipationStatus = useAtomValue(getParticipationStatusAtom);
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -105,32 +113,10 @@ export default function StudyDetailPage() {
   const params = useParams();
   const studyId = params.id as string;
 
-  // 참여 상태만 빠르게 확인하는 별도 함수
-  const checkParticipationStatus = useCallback(async () => {
-    if (!user || !studyId) return;
-
-    try {
-      const supabase = createClient();
-
-      // 사용자의 참여 여부만 빠르게 확인
-      const { data, error } = await supabase
-        .from('study_participants')
-        .select('id, status')
-        .eq('study_id', studyId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('참여 상태 확인 오류:', error);
-        return;
-      }
-
-      // 참여 상태 설정 (null이 아니면 참여 중)
-      setIsParticipant(!!data);
-    } catch (error) {
-      console.error('참여 상태 확인 중 오류:', error);
-    }
-  }, [studyId, user]);
+  // 참여 상태 계산
+  const participationStatus = getParticipationStatus(studyId);
+  const isParticipant = participationStatus.isParticipated;
+  const userParticipationStatus = participationStatus.status;
 
   // 스터디 상태 변경
   const handleChangeStudyStatus = async (
@@ -210,19 +196,20 @@ export default function StudyDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [study?.book_id, showToast]);
+  }, [study?.book_id, showToast, studyId]);
 
   useEffect(() => {
-    if (studyId && user) {
-      // 페이지 로드 시 즉시 참여 여부 확인
-      checkParticipationStatus();
-      // 전체 스터디 정보 로드
-      fetchStudyDetails();
-    } else {
-      // 로그인하지 않은 경우에는 스터디 정보만 로드
+    if (studyId) {
       fetchStudyDetails();
     }
-  }, [studyId, user, checkParticipationStatus, fetchStudyDetails]);
+  }, [studyId, fetchStudyDetails]);
+
+  // 사용자 로그인 시 참여 상태 초기화
+  useEffect(() => {
+    if (user) {
+      initializeParticipation();
+    }
+  }, [user, initializeParticipation]);
 
   // 참여자 데이터 로드 후 분류
   useEffect(() => {
@@ -317,14 +304,6 @@ export default function StudyDetailPage() {
       throw participantsError;
     }
 
-    // 현재 로그인한 사용자가 참여자인지 체크
-    if (user) {
-      const isUserParticipating = participantsData.some(
-        (p) => p.user_id === user.id
-      );
-      setIsParticipant(isUserParticipating);
-    }
-
     // 참여자 프로필 이미지 가져오기
     const enhancedParticipants = await Promise.all(
       participantsData.map(async (participant) => {
@@ -410,7 +389,7 @@ export default function StudyDetailPage() {
       if (existingParticipant) {
         // 이미 승인된 경우
         if (existingParticipant.status === 'approved') {
-          setIsParticipant(true);
+          updateParticipation(studyId, 'approved');
           showToast('이미 참여 중인 스터디입니다.', 'info');
           setIsJoining(false);
           return;
@@ -418,7 +397,7 @@ export default function StudyDetailPage() {
 
         // 대기 중인 경우
         if (existingParticipant.status === 'pending') {
-          setIsParticipant(true);
+          updateParticipation(studyId, 'pending');
           showToast(
             '이미 참여 신청한 스터디입니다. 승인을 기다려주세요.',
             'info'
@@ -513,7 +492,9 @@ export default function StudyDetailPage() {
         '스터디 참여 신청이 완료되었습니다. 승인을 기다려주세요.',
         'success'
       );
-      setIsParticipant(true);
+
+      // 전역 상태 업데이트
+      updateParticipation(studyId, 'pending');
 
       // study 상태 즉시 업데이트
       setStudy({
@@ -584,6 +565,11 @@ export default function StudyDetailPage() {
         })
       );
 
+      // 승인된 사용자가 현재 로그인한 사용자인 경우 전역 상태 업데이트
+      if (participantId === user?.id) {
+        updateParticipation(studyId, 'approved');
+      }
+
       // 승인된 인원 카운트 업데이트
       if (study.approved_participants < study.max_participants) {
         setStudy({
@@ -647,6 +633,11 @@ export default function StudyDetailPage() {
 
       setParticipants(updatedParticipants);
 
+      // 거절된 사용자가 현재 로그인한 사용자인 경우 전역 상태 업데이트
+      if (participantId === user?.id) {
+        updateParticipation(studyId, 'rejected');
+      }
+
       // 참여자 수 감소
       setStudy({
         ...study,
@@ -704,6 +695,11 @@ export default function StudyDetailPage() {
       setParticipants((prev) =>
         prev.filter((p) => p.user_id !== participantId)
       );
+
+      // 강퇴된 사용자가 현재 로그인한 사용자인 경우 전역 상태 업데이트
+      if (participantId === user?.id) {
+        updateParticipation(studyId, null);
+      }
 
       // 스터디 상태 업데이트 (참여자 수 감소)
       setStudy((prev) => {
@@ -861,7 +857,9 @@ export default function StudyDetailPage() {
 
           // 4. UI 상태 업데이트 (DB 작업 결과와 무관하게)
           setParticipants((prev) => prev.filter((p) => p.user_id !== user.id));
-          setIsParticipant(false);
+
+          // 전역 상태에서 참여 상태 제거
+          updateParticipation(studyId, null);
 
           setStudy((prev) => {
             if (!prev) return prev;
@@ -885,7 +883,7 @@ export default function StudyDetailPage() {
 
           // 오류가 발생해도 UI에서 나간 것처럼 처리
           setParticipants((prev) => prev.filter((p) => p.user_id !== user.id));
-          setIsParticipant(false);
+          updateParticipation(studyId, null);
           showToast('오류가 발생했으나 나가기 처리는 완료되었습니다.', 'error');
 
           // 오류가 발생해도 리다이렉트
@@ -1071,21 +1069,19 @@ export default function StudyDetailPage() {
                 <User className="h-4 w-4" />
                 스터디 정보
               </button>
-              {isParticipant &&
-                participants.find((p) => p.user_id === user?.id)?.status ===
-                  'approved' && (
-                  <button
-                    onClick={() => setActiveTab('chat')}
-                    className={`flex items-center gap-2 border-b-2 px-4 py-2 font-medium ${
-                      activeTab === 'chat'
-                        ? 'border-gold-start text-gold-start'
-                        : 'border-transparent text-gray-500 hover:text-gray-800'
-                    }`}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    실시간 토론
-                  </button>
-                )}
+              {isParticipant && userParticipationStatus === 'approved' && (
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-2 font-medium ${
+                    activeTab === 'chat'
+                      ? 'border-gold-start text-gold-start'
+                      : 'border-transparent text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  실시간 토론
+                </button>
+              )}
             </div>
             {/* 방장만 볼 수 있는 편집 버튼 */}
             {user && study.owner_id === user.id && (
@@ -1283,11 +1279,7 @@ export default function StudyDetailPage() {
                 <h3 className="mb-3 font-medium">참여 상태</h3>
                 <div className="rounded-lg bg-light p-3">
                   {(() => {
-                    const userStatus = participants.find(
-                      (p) => p.user_id === user?.id
-                    )?.status;
-
-                    switch (userStatus) {
+                    switch (userParticipationStatus) {
                       case 'approved':
                         return (
                           <div className="flex items-center text-green-600">

@@ -372,13 +372,11 @@ export default function StudyPageContent() {
                             {study.max_participants}명
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 text-gray-600">
-                          <TrendingUp className="mr-1 h-4 w-4" />
-                          <span>
-                            기간: {formatDate(study.start_date)} ~{' '}
-                            {formatDate(study.end_date)}
-                          </span>
-                        </div>
+
+                        <span className="text-gray-600">
+                          {formatDate(study.start_date)} ~{' '}
+                          {formatDate(study.end_date)}
+                        </span>
                       </div>
                     </Link>
                   ))}

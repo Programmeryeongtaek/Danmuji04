@@ -9,8 +9,10 @@ import {
   useNotificationSubscription,
 } from '@/components/Course/NotificationContext';
 import { isLoadingAtom, userAtom } from '@/store/auth';
+import { initializeBookmarksAtom } from '@/store/study/bookmarkAtom';
+import { initializeParticipationAtom } from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
-import { useSetAtom } from 'jotai';
+import { useAtom, useSetAtom } from 'jotai';
 import { Inter } from 'next/font/google';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
@@ -44,19 +46,28 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const studyPage = pathname?.includes('/study');
   const communityPostPage = pathname?.includes('/community/post/');
   const communityCreatePage = pathname?.includes('/community/write');
+
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
+  const [, initializeBookmarks] = useAtom(initializeBookmarksAtom);
+  const [, initializeParticipation] = useAtom(initializeParticipationAtom);
 
   useEffect(() => {
     const supabase = createClient();
 
-    // 초기 세션 체크
+    // 초기 세션 체크 및 스터디 상태 초기화화
     const initializeAuth = async () => {
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        setUser(session?.user || null);
+        const user = session?.user || null;
+        setUser(user);
+
+        // 사용자가 로그인한 경우에만 스터디 관련 상태 초기화
+        if (user) {
+          await Promise.all([initializeBookmarks(), initializeParticipation()]);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -67,15 +78,23 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     // 인증 상태 변화 구독
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user);
-      setUser(session?.user || null);
+      const user = session?.user || null;
+      setUser(user);
+
+      // 로그인/로그아웃 시 스터디 상태 관리
+      if (user) {
+        await Promise.all([initializeBookmarks(), initializeParticipation()]);
+      } else {
+        await Promise.all([initializeBookmarks(), initializeParticipation()]);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [setUser, setIsLoading]);
+  }, [setUser, setIsLoading, initializeBookmarks, initializeParticipation]);
 
   if (isSignUpPage) {
     return (
