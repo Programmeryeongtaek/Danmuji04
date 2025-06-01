@@ -12,7 +12,6 @@ import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
 import { useSearchParams } from 'next/navigation';
-import {} from '@/utils/supabase/client';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import Pagination from '../common/Pagination';
 import {
@@ -20,10 +19,6 @@ import {
   fetchLecturesByCategory,
   searchLectures,
 } from '@/utils/services/knowledge/lectureService';
-
-interface ExtendedLectureSectionProps extends LectureSectionProps {
-  searchQuery?: string;
-}
 
 interface ExtendedLectureSectionProps extends LectureSectionProps {
   searchQuery?: string;
@@ -55,9 +50,9 @@ const LectureSection = ({
   const selectedKeywords = keywordsParam ? keywordsParam.split(',') : [];
 
   const {
-    bookmarkedLectures,
     handleToggleBookmark,
     isLoading: bookmarksLoading,
+    isBookmarked,
   } = useBookmarks();
 
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
@@ -250,7 +245,7 @@ const LectureSection = ({
               <div key={lecture.id} className="opacity-50">
                 <Card
                   {...lecture}
-                  isBookmarked={bookmarkedLectures.includes(lecture.id)}
+                  isBookmarked={isBookmarked(lecture.id)}
                   onToggleBookmark={handleToggleBookmark}
                 />
               </div>
@@ -265,7 +260,7 @@ const LectureSection = ({
             <Card
               key={lecture.id}
               {...lecture}
-              isBookmarked={bookmarkedLectures.includes(lecture.id)}
+              isBookmarked={isBookmarked(lecture.id)}
               onToggleBookmark={handleToggleBookmark}
             />
           ))

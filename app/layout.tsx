@@ -9,6 +9,7 @@ import {
   useNotificationSubscription,
 } from '@/components/Course/NotificationContext';
 import { isLoadingAtom, userAtom } from '@/store/auth';
+import { initializeLectureBookmarksAtom } from '@/store/lecture/bookmarkAtom';
 import { initializeBookmarksAtom } from '@/store/study/bookmarkAtom';
 import { initializeParticipationAtom } from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
@@ -51,11 +52,14 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const setIsLoading = useSetAtom(isLoadingAtom);
   const [, initializeBookmarks] = useAtom(initializeBookmarksAtom);
   const [, initializeParticipation] = useAtom(initializeParticipationAtom);
+  const [, initializeLectureBookmarks] = useAtom(
+    initializeLectureBookmarksAtom
+  );
 
   useEffect(() => {
     const supabase = createClient();
 
-    // 초기 세션 체크 및 스터디 상태 초기화화
+    // 초기 세션 체크 및 스터디 상태 초기화
     const initializeAuth = async () => {
       try {
         const {
@@ -63,11 +67,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         } = await supabase.auth.getSession();
         const user = session?.user || null;
         setUser(user);
-
-        // 사용자가 로그인한 경우에만 스터디 관련 상태 초기화
-        if (user) {
-          await Promise.all([initializeBookmarks(), initializeParticipation()]);
-        }
       } finally {
         setIsLoading(false);
       }
@@ -83,18 +82,32 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       const user = session?.user || null;
       setUser(user);
 
-      // 로그인/로그아웃 시 스터디 상태 관리
+      // 로그인/로그아웃 시 상태 관리
       if (user) {
-        await Promise.all([initializeBookmarks(), initializeParticipation()]);
+        await Promise.all([
+          initializeBookmarks(),
+          initializeParticipation(),
+          initializeLectureBookmarks(),
+        ]);
       } else {
-        await Promise.all([initializeBookmarks(), initializeParticipation()]);
+        await Promise.all([
+          initializeBookmarks(),
+          initializeParticipation(),
+          initializeLectureBookmarks(),
+        ]);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [setUser, setIsLoading, initializeBookmarks, initializeParticipation]);
+  }, [
+    setUser,
+    setIsLoading,
+    initializeBookmarks,
+    initializeParticipation,
+    initializeLectureBookmarks,
+  ]);
 
   if (isSignUpPage) {
     return (
