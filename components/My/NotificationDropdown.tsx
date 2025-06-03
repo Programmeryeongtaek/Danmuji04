@@ -1,5 +1,6 @@
 'use client';
 
+import { Notification } from '@/app/types/notificationTypes';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -9,10 +10,12 @@ import { MouseEvent, useEffect, useRef, useState } from 'react';
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const { notifications, markAsRead } = useNotifications();
-  // 드롭다운에서만 숨길 알림 ID 목록
   const [hiddenInDropdown, setHiddenInDropdown] = useState<number[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 전역 상태에서 알림 데이터와 액션들 가져오기
+  const { notifications, markNotificationAsRead, isLoading } =
+    useNotifications();
 
   // 로컬 스토리지에서 숨겨진 알림 ID 불러오기
   useEffect(() => {
@@ -69,24 +72,34 @@ export default function NotificationDropdown() {
     }
   };
 
-  const handleNotificationClick = (notificationId: number) => {
-    markAsRead(notificationId);
+  const handleNotificationClick = async (notificationId: number) => {
+    await markNotificationAsRead(notificationId);
     setIsOpen(false);
   };
 
   // 드롭다운에 표시될 알림 필터링 (숨겨진 알림 제외)
-  const visibleNotifications = notifications.filter(
+  const visibleNotifications: Notification[] = notifications.filter(
     (notification) => !hiddenInDropdown.includes(notification.id)
   );
 
   // 읽지 않은 알림 개수 계산 (숨겨진 알림 제외)
   const visibleUnreadCount = visibleNotifications.filter((n) => !n.read).length;
 
+  if (isLoading) {
+    return (
+      <div className="relative">
+        <div className="relative rounded-full p-1">
+          <Bell className="h-6 w-6 animate-pulse text-gray-400" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-full p-1"
+        className="relative rounded-full p-1 transition-colors hover:bg-gray-100"
       >
         <Bell className="h-6 w-6 text-gray-600 hover:text-gold-start" />
         {visibleUnreadCount > 0 && (
