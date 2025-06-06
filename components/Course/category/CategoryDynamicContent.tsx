@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  useAllCourseProgress,
-  useCourseList,
-  useCoursePermission,
-} from '@/hooks/useCourse';
+import { useCourseList, useCoursePermission } from '@/hooks/useCourse';
 import QuoteSection from '../QuotesSection';
 import { CourseCategory, isValidCategory } from '@/app/types/course/categories';
 import Link from 'next/link';
@@ -15,6 +11,7 @@ import { createClient } from '@/utils/supabase/client';
 import CourseProgressSummary from '../CourseProgressSummary';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
+import { courseProgressAtom } from '@/store/course/progressAtom';
 
 interface CategoryDynamicContentProps {
   category: string;
@@ -27,7 +24,8 @@ export function CategoryDynamicContent({
 }: CategoryDynamicContentProps) {
   const { isAdmin, isLoading: permissionLoading } = useCoursePermission();
   const { courses, isLoading: coursesLoading } = useCourseList(category);
-  const { progressData, isLoading: progressLoading } = useAllCourseProgress();
+  const progressState = useAtomValue(courseProgressAtom);
+  const { progressData, isLoading: progressLoading } = progressState;
   const [userName, setUserName] = useState('');
   const user = useAtomValue(userAtom);
 

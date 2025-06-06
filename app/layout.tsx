@@ -9,6 +9,7 @@ import {
   useNotificationSubscription,
 } from '@/components/Course/NotificationContext';
 import { isLoadingAtom, userAtom } from '@/store/auth';
+import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
 import { initializeLectureBookmarksAtom } from '@/store/lecture/bookmarkAtom';
 import { initializeNotificationsAtom } from '@/store/notification/notificationAtom';
 import { initializeBookmarksAtom } from '@/store/study/bookmarkAtom';
@@ -58,6 +59,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     initializeLectureBookmarksAtom
   );
   const [, initializeNotifications] = useAtom(initializeNotificationsAtom);
+  const [, initializeCourseProgress] = useAtom(initializeCourseProgressAtom);
 
   // 초기화 상태를 추적하는 ref
   const initializationRef = useRef<{
@@ -90,6 +92,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             initializeParticipation(),
             initializeLectureBookmarks(),
             initializeNotifications(),
+            initializeCourseProgress(),
           ]);
         } else {
           // 로그아웃 시에는 빈 상태로 초기화
@@ -98,6 +101,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             initializeParticipation(),
             initializeLectureBookmarks(),
             initializeNotifications(),
+            initializeCourseProgress(),
           ]);
         }
 
@@ -113,6 +117,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       initializeParticipation,
       initializeLectureBookmarks,
       initializeNotifications,
+      initializeCourseProgress,
     ]
   );
 

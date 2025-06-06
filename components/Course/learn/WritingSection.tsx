@@ -3,7 +3,9 @@
 import { CourseWriting } from '@/app/types/course/courseModel';
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
+import { updateWritingCompletionAtom } from '@/store/course/progressAtom';
 import { createClient } from '@/utils/supabase/client';
+import { useAtom } from 'jotai';
 import { Edit, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -30,6 +32,8 @@ export default function WritingSection({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const { showToast } = useToast();
+
+  const [, updateWritingCompletion] = useAtom(updateWritingCompletionAtom);
 
   async function handleSave() {
     if (!content.trim()) {
@@ -94,6 +98,9 @@ export default function WritingSection({
         if (insertError) throw insertError;
         onWritingSaved(data);
         showToast('내용이 저장되었습니다.', 'success');
+
+        // 새 글 작성 시에만 Jotai 상태 업데이트 (글쓰기 완료)
+        updateWritingCompletion(courseId, true);
       }
 
       setIsEditing(false);
@@ -121,6 +128,9 @@ export default function WritingSection({
 
       onWritingDeleted();
       showToast('글이 삭제되었습니다.', 'success');
+
+      // 글 삭제 시 Jotai 상태 업데이트 (글쓰기 미완료)
+      updateWritingCompletion(courseId, false);
     } catch (error) {
       console.error('글 삭제 중 오류:', error);
       showToast('글 삭제 중 오류가 발생했습니다.', 'error');

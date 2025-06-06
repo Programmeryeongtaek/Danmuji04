@@ -99,8 +99,6 @@ export const subscribeNotificationsAtom = atom(
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('알림 실시간 이벤트 수신:', payload);
-
           const currentState = get(notificationStateAtom);
 
           if (payload.eventType === 'INSERT') {
@@ -139,8 +137,6 @@ export const subscribeNotificationsAtom = atom(
         }
       )
       .subscribe((status) => {
-        console.log('Realtime 구독 상태:', status);
-        
         if (status === 'SUBSCRIBED') {
           set(notificationStateAtom, (prev) => ({ 
             ...prev, 
