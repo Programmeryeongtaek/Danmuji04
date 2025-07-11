@@ -42,6 +42,14 @@ interface LectureSection {
   lecture_items: LectureItem[];
 }
 
+function useIsMounted(): boolean {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  return isMounted;
+}
+
 export default function LectureContent({ lecture }: LectureContentProps) {
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
@@ -51,6 +59,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
 
   const { showToast } = useToast();
   const user = useAtomValue(userAtom);
+  const isMounted = useIsMounted(); // 하이드레이션 안전을 위한 마운트 상태
 
   useEffect(() => {
     const loadData = async () => {
@@ -264,7 +273,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                   </Link>
                 </div>
                 <div className="flex justify-end">
-                  {user ? (
+                  {isMounted && user ? (
                     <div className="flex flex-wrap gap-3">
                       <BookmarkButton
                         lectureId={lecture.id}

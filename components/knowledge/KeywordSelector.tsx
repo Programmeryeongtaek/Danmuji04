@@ -5,6 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Button from '../common/Button/Button';
 import { Tag, X } from 'lucide-react';
+import { useAtom, useAtomValue } from 'jotai';
+import {
+  getUrlParamsAtom,
+  initializeFromUrlAtom,
+  searchFilterAtom,
+  updateKeywordsAtom,
+} from '@/store/knowledge/searchFilterAtom';
 
 // API에서 인기 키워드를 가져오는 함수
 const fetchKeywords = async (): Promise<string[]> => {
@@ -47,11 +54,18 @@ const fetchKeywords = async (): Promise<string[]> => {
 const KeywordSelector = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [tempSelectedKeywords, setTempSelectedKeywords] = useState<string[]>(
     []
   );
   const [isLoading, setIsLoading] = useState(true);
+
+  const searchFilter = useAtomValue(searchFilterAtom);
+  const selectedKeywords = searchFilter.selectedKeywords;
+
+  const [, updateKeywords] = useAtom(updateKeywordsAtom);
+  const [, initializeFromUrl] = useAtom(initializeFromUrlAtom);
+  const getUrlParams = useAtomValue(getUrlParamsAtom);
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -74,19 +88,29 @@ const KeywordSelector = () => {
     loadKeywords();
   }, []);
 
-  // URL에서 키워드 파라미터 읽기
+  // URL 초기화
   useEffect(() => {
-    const keywordsParam = searchParams.get('keywords');
-    if (keywordsParam) {
-      const parsedKeywords = keywordsParam.split(',');
-      setSelectedKeywords(parsedKeywords);
-      setTempSelectedKeywords(parsedKeywords);
-    } else {
-      // URL에 키워드 파라미터가 없으면 선택된 키워드 초기화
-      setSelectedKeywords([]);
-      setTempSelectedKeywords([]);
+    const params = {
+      q: searchParams.get('q') || undefined,
+      category: searchParams.get('category') || undefined,
+      keywords: searchParams.get('keywords') || undefined,
+      depth: searchParams.get('depth') || undefined,
+      fields: searchParams.get('fields') || undefined,
+      hasGroup: searchParams.get('hasGroup') || undefined,
+      sort: searchParams.get('sort') || undefined,
+    };
+
+    initializeFromUrl(params);
+  }, []);
+
+  // 전역상태 변기 시 URL 업데이트
+  useEffect(() => {
+    const urlParams = getUrlParams;
+    if (urlParams) {
+      const newUrl = `${window.location.pathname}?${urlParams}`;
+      router.replace(newUrl, { scroll: false });
     }
-  }, [searchParams]);
+  }, [searchFilter, getUrlParams, router]);
 
   // 모달 열기
   const openModal = () => {
@@ -99,36 +123,20 @@ const KeywordSelector = () => {
     setIsModalOpen(false);
   };
 
-  // 키워드 선택 토글
-  const toggleKeyword = (keywords: string) => {
+  // 키워드 선택 토글 (로컬 임시 상태용)
+  const toggleKeywordLocal = (keyword: string) => {
     setTempSelectedKeywords((prev) => {
-      const isSelected = prev.includes(keywords);
+      const isSelected = prev.includes(keyword);
       return isSelected
-        ? prev.filter((k) => k !== keywords)
-        : [...prev, keywords];
+        ? prev.filter((k) => k !== keyword)
+        : [...prev, keyword];
     });
   };
 
-  // 키워드 필터 적용
+  // 키워드 필터 적용 (전역상태 업데이트)
   const applyKeywords = () => {
-    setSelectedKeywords(tempSelectedKeywords);
-    updateUrlWithKeywords(tempSelectedKeywords);
+    updateKeywords(tempSelectedKeywords);
     setIsModalOpen(false);
-  };
-
-  // 키워드로 URL 업데이트
-  const updateUrlWithKeywords = (keywords: string[]) => {
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (keywords.length > 0) {
-      params.set('keywords', keywords.join(','));
-    } else {
-      params.delete('keywords');
-    }
-
-    // URL 업데이트 (페이지는 리로드하지 않음)
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    router.push(newUrl, { scroll: false });
   };
 
   // 선택한 키워드 모두 제거
@@ -181,7 +189,7 @@ const KeywordSelector = () => {
                   {keywords.map((keyword) => (
                     <button
                       key={keyword}
-                      onClick={() => toggleKeyword(keyword)}
+                      onClick={() => toggleKeywordLocal(keyword)}
                       className={`rounded-full px-3 py-1 text-sm transition-colors ${
                         tempSelectedKeywords.includes(keyword)
                           ? 'bg-gradient-to-r from-gold-start to-gold-end text-white'
@@ -216,7 +224,7 @@ const KeywordSelector = () => {
                         >
                           <span>{keyword}</span>
                           <button
-                            onClick={() => toggleKeyword(keyword)}
+                            onClick={() => toggleKeywordLocal(keyword)}
                             className="rounded-full p-0.5 hover:bg-gray-100"
                           >
                             <X className="h-3 w-3" />

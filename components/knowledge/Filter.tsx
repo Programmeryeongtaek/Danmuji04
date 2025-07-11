@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import FilterModal from './FilterModal';
-import { FilterChangeProps, FilterState } from '@/app/types/knowledge/lecture';
+import { useAtomValue } from 'jotai';
+import { hasActiveFiltersAtom } from '@/store/knowledge/searchFilterAtom';
 
-const Filter = ({ onApply }: FilterChangeProps) => {
+const Filter = () => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  const handleApplyFilters = (filters: FilterState) => {
-    onApply(filters);
-  };
+  // 전역상태에서 필터 활성화 여부 확인
+  const hasActiveFilters = useAtomValue(hasActiveFiltersAtom);
 
   return (
     <>
       <button
         onClick={() => setIsFilterModalOpen(true)}
-        className="rounded-lg border px-3 py-1 text-gray-700 hover:border-gold-start hover:bg-light hover:font-medium hover:text-black"
+        className={`rounded-lg border px-3 py-1 transition-colors hover:border-gold-start hover:bg-light hover:font-medium hover:text-black ${
+          hasActiveFilters
+            ? 'border-gold-start bg-light font-medium text-black'
+            : 'text-gray-700'
+        }`}
       >
         필터
       </button>
@@ -21,7 +25,6 @@ const Filter = ({ onApply }: FilterChangeProps) => {
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        onApply={handleApplyFilters}
       />
     </>
   );
