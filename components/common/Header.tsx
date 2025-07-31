@@ -9,7 +9,6 @@ import Button from './Button/Button';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
-import { Profile } from '@/app/settings/profile/page';
 import RightSideBar from './RightSideBar';
 import NotificationDropdown from '../My/NotificationDropdown';
 import {
@@ -18,6 +17,8 @@ import {
 } from '@/app/types/course/categories';
 import NavDropdown from '../NavDropdown';
 import { useRouter } from 'next/navigation';
+import { userProfileAtom } from '@/store/my/userProfileAtom';
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 
 interface DropdownItem {
   id: string;
@@ -27,7 +28,6 @@ interface DropdownItem {
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [isRightSideBarOpen, setIsRightSideBarOpen] = useState(false);
 
   // 카테고리 상태
@@ -38,12 +38,15 @@ const Header = () => {
 
   const router = useRouter();
   const user = useAtomValue(userAtom);
+  const profile = useAtomValue(userProfileAtom);
   const setUser = useSetAtom(userAtom);
   const isLoading = useAtomValue(isLoadingAtom);
 
   // 검색 기능
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
   // 코스 카테고리 로드
   useEffect(() => {
@@ -121,49 +124,22 @@ const Header = () => {
     setCommunityItems(communityDropdownItems);
   }, []);
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user) return;
-
-      const supabase = createClient();
-
-      try {
-        // 프로필 정보 가져오기
-        const { data: profileData, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-
-        // avatar_url이 있는 경우 public URL 생성
-        if (profileData?.avatar_url) {
-          const { data: urlData } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(profileData.avatar_url);
-
-          // 생성된 publicUrl로 profileData 업데이트
-          profileData.avatar_url = urlData.publicUrl;
-        }
-
-        setProfile(profileData);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      }
-    };
-
-    fetchUserProfile();
-  }, [user]);
-
   const handleLogout = async () => {
     try {
       const supabase = createClient();
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+
+      if (error) throw error;
+
       setUser(null);
+      setIsRightSideBarOpen(false);
       router.push('/');
     } catch (error) {
       console.error('로그아웃 중 오류 발생:', error);
+      // 에러가 발생해도 UI 상으로는 로그아웃 처리
+      setUser(null);
+      setIsRightSideBarOpen(false);
+      router.push('/');
     }
   };
 
@@ -340,16 +316,16 @@ const Header = () => {
             )}
 
             {isLoading ? (
-              <span>로딩중...</span>
+              <div className="h-8 w-8 min-w-[32px] animate-pulse rounded-full bg-gray-300"></div>
             ) : user ? (
               <div
                 className="flex cursor-pointer items-center gap-2"
                 onClick={() => setIsRightSideBarOpen(true)}
               >
                 <div className="flex items-center gap-2">
-                  {profile?.avatar_url ? (
+                  {avatarUrl ? (
                     <Image
-                      src={profile.avatar_url}
+                      src={avatarUrl}
                       alt="프로필 이미지"
                       width={32}
                       height={32}

@@ -15,6 +15,7 @@ import { createClient } from '@/utils/supabase/client';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { ImageIcon, MessageSquare, Send, User, X } from 'lucide-react';
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 
 interface ChatRoomProps {
   studyId: string;
@@ -111,13 +112,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
         data?.map((msg) => {
           const profile = profileMap.get(msg.user_id);
 
-          let avatarUrl = null;
-          if (profile?.avatar_url) {
-            const { data: urlData } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(profile.avatar_url);
-            avatarUrl = urlData.publicUrl;
-          }
+          const avatarUrl = getAvatarUrl(profile?.avatar_url || null);
 
           // 처리된 메시지 ID 추가
           processedMessageIds.current.add(msg.id);
@@ -271,13 +266,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
               .eq('id', newMessage.user_id)
               .single();
 
-            let avatarUrl = null;
-            if (profile?.avatar_url) {
-              const { data: urlData } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(profile.avatar_url);
-              avatarUrl = urlData.publicUrl;
-            }
+            const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
             // 강화된 메시지 생성
             const enhancedMessage = {
@@ -434,13 +423,7 @@ export default function ChatRoom({ studyId }: ChatRoomProps) {
       const userName =
         profile?.nickname || profile?.name || user.email || '익명';
 
-      let avatarUrl = null;
-      if (profile?.avatar_url) {
-        const { data: urlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(profile.avatar_url);
-        avatarUrl = urlData.publicUrl;
-      }
+      const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
       // 이미지 업로드 (있는 경우)
       let imageUrl = null;

@@ -12,6 +12,7 @@ import { checkNicknameDuplicate, updateProfile } from './actions';
 import { Upload, User, X } from 'lucide-react';
 import useDebounce from '@/hooks/useDebounce';
 import Image from 'next/image';
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 
 type Interest = '인문학' | '철학' | '심리학' | '경제학' | '자기계발' | '리더십';
 
@@ -70,26 +71,13 @@ const ProfileSettingsPage = () => {
 
       if (error) throw error;
 
-      console.log('Profile data before URL:', profileData); // 디버깅
-
-      // 여기서 이미지 URL 처리를 수정
-      let fullAvatarUrl = null;
-      if (profileData?.avatar_url) {
-        const {
-          data: { publicUrl },
-        } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(profileData.avatar_url);
-        fullAvatarUrl = publicUrl;
-        console.log('Generated avatar URL:', fullAvatarUrl); // 디버깅
-      }
+      // avatarUtils.ts를 사용하여 아바타 URL 처리
+      const avatarUrl = getAvatarUrl(profileData?.avatar_url);
 
       const updatedProfileData = {
         ...profileData,
-        avatar_url: fullAvatarUrl,
+        avatar_url: avatarUrl,
       };
-
-      console.log('Final profile data:', updatedProfileData); // 디버깅
 
       setProfile(updatedProfileData);
       setCurrentNickname(profileData?.nickname || '');
@@ -160,10 +148,9 @@ const ProfileSettingsPage = () => {
 
       if (updateError) throw updateError;
 
-      // Public URL 가져오기
-      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-
-      return data.publicUrl;
+      // avatarUtils.ts를 사용하여 Public URL 가져오기
+      const avatarUrl = getAvatarUrl(fileName);
+      return avatarUrl;
     } catch (error) {
       console.error('이미지 업로드 에러:', error);
       throw error;
@@ -187,44 +174,6 @@ const ProfileSettingsPage = () => {
     reader.readAsDataURL(file);
     setPendingImage(file);
     setIsEditing(true);
-  };
-
-  const removeImage = async () => {
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error('인증되지 않은 사용자입니다.');
-
-      // Storage에서 기존 이미지 삭제 (필요한 경우)
-      if (profile?.avatar_url) {
-        // Storage에서 기존 이미지 파일명 추출
-        const fileName = profile.avatar_url.split('/').pop();
-        if (fileName) {
-          // Storage에서 이미지 삭제
-          await supabase.storage.from('avatars').remove([fileName]);
-        }
-
-        // Profiles 테이블 업데이트
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ avatar_url: null })
-          .eq('id', user.id);
-
-        if (updateError) throw updateError;
-      }
-
-      // 입력 필드 초기화
-      const input = document.querySelector(
-        'input[name="profileImage"]'
-      ) as HTMLInputElement;
-      if (input) input.value = '';
-      setIsEditing(true);
-    } catch (error) {
-      console.error('이미지 삭제 에러:', error);
-      alert('이미지 삭제에 실패했습니다.');
-    }
   };
 
   const handleAddInterest = () => {
@@ -253,7 +202,7 @@ const ProfileSettingsPage = () => {
 
     // 입력 필드 초기화
     const input = document.querySelector(
-      'input[name="preofileImage"]'
+      'input[name="profileImage"]'
     ) as HTMLInputElement;
     if (input) input.value = '';
   };
@@ -269,16 +218,12 @@ const ProfileSettingsPage = () => {
       formData.set('nickname', currentNickname);
       formData.set('interests', JSON.stringify(selectedInterests));
 
-      console.log('업데이트 시도:', formData.get('nickname')); // 디버깅
-
       // 이미지 업로드 처리
       if (pendingImage) {
         await handleImageUpload(pendingImage);
       }
 
       const result = await updateProfile(formData);
-
-      console.log('업데이트 결과:', result); // 디버깅
 
       if (result.error) {
         console.error('업데이트 실패:', result.error);
@@ -326,9 +271,9 @@ const ProfileSettingsPage = () => {
               <div className="h-20 w-20 overflow-hidden rounded-full">
                 {currentProfileImage ? (
                   <Image
-                    src={currentProfileImage || ''}
-                    width={24}
-                    height={24}
+                    src={currentProfileImage}
+                    width={80}
+                    height={80}
                     alt="프로필 이미지"
                     className="h-full w-full object-cover"
                   />
@@ -426,23 +371,21 @@ const ProfileSettingsPage = () => {
               프로필 이미지
             </label>
             <div className="flex items-center gap-4">
-              <div className="h-200 w-200 relative">
+              <div className="relative h-24 w-24">
                 {pendingImagePreview ? (
                   <>
                     <Image
                       src={pendingImagePreview}
-                      width={150}
-                      height={150}
+                      width={96}
+                      height={96}
                       alt="Preview"
-                      className="rounded-full"
+                      className="h-full w-full rounded-full object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        removeImage();
                         setPendingImage(null);
                         setPendingImagePreview(null);
-                        setCurrentProfileImage('');
                         setIsEditing(true);
                       }}
                       className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
@@ -510,24 +453,12 @@ const ProfileSettingsPage = () => {
                   }
                 }}
                 className="w-full rounded-lg border border-gray-300 p-2 pr-20 focus:bg-light"
-                placeholder="기타 관심 분야 입력를 입력해주세요."
+                placeholder="기타 관심 분야를 입력해주세요."
                 maxLength={10}
               />
               <button
                 type="button"
-                onClick={() => {
-                  if (
-                    newInterest.trim() &&
-                    !selectedInterests.includes(newInterest.trim())
-                  ) {
-                    setSelectedInterests((prev) => [
-                      ...prev,
-                      newInterest.trim(),
-                    ]);
-                    setNewInterest('');
-                    setIsEditing(true);
-                  }
-                }}
+                onClick={handleAddInterest}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-gray-100 px-3 py-1 text-sm hover:bg-gray-200"
               >
                 추가
@@ -562,7 +493,7 @@ const ProfileSettingsPage = () => {
 
         <div className="flex gap-4">
           <button
-            type="button" // submit이 아닌 button 타입으로 설정
+            type="button"
             onClick={handleReset}
             className="w-1/2 rounded-lg border border-gray-300 py-2 text-gray-700 transition-all hover:bg-gray-50"
           >

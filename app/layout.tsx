@@ -11,6 +11,7 @@ import {
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
 import { initializeLectureBookmarksAtom } from '@/store/lecture/bookmarkAtom';
+import { initializeUserProfileAtom } from '@/store/my/userProfileAtom';
 import { initializeNotificationsAtom } from '@/store/notification/notificationAtom';
 import { initializeBookmarksAtom } from '@/store/study/bookmarkAtom';
 import { initializeParticipationAtom } from '@/store/study/participationAtom';
@@ -53,6 +54,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
 
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
+  const initializeUserProfile = useSetAtom(initializeUserProfileAtom);
   const [, initializeBookmarks] = useAtom(initializeBookmarksAtom);
   const [, initializeParticipation] = useAtom(initializeParticipationAtom);
   const [, initializeLectureBookmarks] = useAtom(
@@ -64,29 +66,29 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   // 초기화 상태를 추적하는 ref
   const initializationRef = useRef<{
     isInitializing: boolean;
-    lastUserId: string | null;
+    lastUserId: string | undefined;
   }>({
     isInitializing: false,
-    lastUserId: null,
+    lastUserId: undefined,
   });
 
   // 상태 초기화 함수 - useCallback으로 메모이제이션
   const initializeAllStates = useCallback(
     async (user: User | null) => {
-      const currentUserId = user?.id || null;
-
       // 이미 초기화 중이거나 같은 사용자에 대해 초기화 완료된 경우 스킵
       if (
         initializationRef.current.isInitializing ||
-        initializationRef.current.lastUserId === currentUserId
+        initializationRef.current.lastUserId === user?.id
       ) {
         return;
       }
 
-      try {
-        initializationRef.current.isInitializing = true;
+      initializationRef.current.isInitializing = true;
+      initializationRef.current.lastUserId = user?.id;
 
+      try {
         if (user) {
+          await initializeUserProfile(user.id);
           await Promise.all([
             initializeBookmarks(),
             initializeParticipation(),
@@ -96,6 +98,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           ]);
         } else {
           // 로그아웃 시에는 빈 상태로 초기화
+          await initializeUserProfile('');
           await Promise.all([
             initializeBookmarks(),
             initializeParticipation(),
@@ -104,8 +107,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             initializeCourseProgress(),
           ]);
         }
-
-        initializationRef.current.lastUserId = currentUserId;
       } catch (error) {
         console.error('상태 초기화 중 오류 발생:', error);
       } finally {
@@ -113,6 +114,8 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       }
     },
     [
+      setIsLoading,
+      initializeUserProfile,
       initializeBookmarks,
       initializeParticipation,
       initializeLectureBookmarks,
@@ -161,7 +164,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       // 로그인/로그아웃 시에만 상태 초기화
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         // 이전 초기화 상태 리셋
-        initializationRef.current.lastUserId = null;
+        initializationRef.current.lastUserId = undefined;
         initializeAllStates(user);
       }
     });
@@ -172,7 +175,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       // 초기화 상태 리셋
       initializationRef.current = {
         isInitializing: false,
-        lastUserId: null,
+        lastUserId: undefined,
       };
     };
   }, [setUser, setIsLoading, initializeAllStates]);

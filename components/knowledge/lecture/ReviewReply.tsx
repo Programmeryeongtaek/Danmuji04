@@ -2,7 +2,7 @@
 
 import { ReviewReplyProps } from '@/app/types/knowledge/lecture';
 import {} from '@/utils/supabase/client';
-import { Heart, Pencil, Trash2, X } from 'lucide-react';
+import { Heart, Pencil, Trash2, User, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Image from 'next/image';
@@ -13,6 +13,7 @@ import {
   toggleReplyLike,
   updateReviewReply,
 } from '@/utils/services/knowledge/reviewService';
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 
 export function ReviewReply({
   reply,
@@ -26,6 +27,8 @@ export function ReviewReply({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
   const { checkTimeLimit } = useTimeLimit(24);
+
+  const avatarUrl = getAvatarUrl(reply.user_profile?.avatar_url);
 
   const userName =
     reply.user_profile?.nickname || reply.user_profile?.name || '익명';
@@ -82,44 +85,21 @@ export function ReviewReply({
     }
   };
 
-  const getValidImageUrl = (url: string) => {
-    if (!url) return null;
-    if (url.startsWith('https://')) return url;
-    return `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${url}`;
-  };
-
   return (
     <div className="ml-8 border-l-2 border-gray-200 pl-4">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
-            {reply.user_profile?.avatar_url ? (
+            {avatarUrl ? (
               <Image
-                src={
-                  getValidImageUrl(reply.user_profile.avatar_url) ||
-                  '/images/default-avatar.png'
-                }
-                alt={
-                  reply.user_profile?.nickname ||
-                  reply.user_profile?.name ||
-                  '익명'
-                }
+                src={avatarUrl}
+                alt={reply.user_profile?.nickname || '익명'}
                 width={32}
                 height={32}
                 className="h-full w-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/images/default-avatar.png';
-                }}
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-500">
-                {(
-                  reply.user_profile?.nickname?.[0] ||
-                  reply.user_profile?.name?.[0] ||
-                  '익'
-                ).toUpperCase()}
-              </div>
+              <User className="h-4 w-4 text-gray-400" />
             )}
           </div>
           <div>

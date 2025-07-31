@@ -1,6 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 import { createClient } from '@/utils/supabase/client';
 import {
   ArrowLeft,
@@ -76,24 +77,10 @@ export default function UserRolesManagePage() {
         if (error) throw error;
 
         // 프로필 이미지 URL 처리
-        const enhancedUsers = await Promise.all(
-          (data || []).map(async (user) => {
-            let avatarUrl = user.avatar_url;
-
-            if (avatarUrl) {
-              const { data } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(avatarUrl);
-
-              avatarUrl = data.publicUrl;
-            }
-
-            return {
-              ...user,
-              avatar_url: avatarUrl,
-            };
-          })
-        );
+        const enhancedUsers = (data || []).map((user) => ({
+          ...user,
+          avatar_url: getAvatarUrl(user.avatar_url),
+        }));
 
         setUsers(enhancedUsers);
         setFilteredUsers(enhancedUsers);

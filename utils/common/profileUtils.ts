@@ -1,4 +1,5 @@
 import { createClient } from '../supabase/client';
+import { getAvatarUrl } from './avatarUtils';
 
 export async function getProfileWithAvatar(userId: string) {
   const supabase = createClient();
@@ -18,14 +19,7 @@ export async function getProfileWithAvatar(userId: string) {
   }
 
   // 아바타 URL 생성
-  let avatarUrl = null;
-  if (profile.avatar_url) {
-    const { data: { publicUrl } } = supabase
-      .storage
-      .from('avatars')
-      .getPublicUrl(profile.avatar_url);
-    avatarUrl = publicUrl;
-  }
+  const avatarUrl = getAvatarUrl(profile.avatar_url);
 
   return {
     name: profile.nickname || profile.name || '익명',

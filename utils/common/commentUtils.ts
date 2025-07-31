@@ -1,4 +1,5 @@
 import { createClient } from '../supabase/client';
+import { getAvatarUrl } from './avatarUtils';
 import { getLikeDataForUser } from './likeUtils';
 
 interface CommentRaw {
@@ -63,18 +64,12 @@ export async function fetchCommentsWithDetails(
         .select('id, name, nickname, avatar_url')
         .eq('id', comment.author_id)
         .single();
-      
+        
       if (profile) {
         author = profile;
         
         // 아바타 URL 처리
-        if (profile.avatar_url) {
-          const { data: { publicUrl } } = supabase
-            .storage
-            .from('avatars')
-            .getPublicUrl(profile.avatar_url);
-          avatarUrl = publicUrl;
-        }
+        avatarUrl = getAvatarUrl(profile?.avatar_url);
       }
     } catch (profileError) {
       console.error('Failed to fetch profile for author:', comment.author_id, profileError);
