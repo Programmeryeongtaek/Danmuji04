@@ -16,28 +16,12 @@ import {
   searchFilterAtom,
   updateSortOptionAtom,
 } from '@/store/knowledge/searchFilterAtom';
-import {
-  fetchAndCacheLecturesByCategoryAtom,
-  fetchAndCacheSearchResultsAtom,
-  getCachedLecturesAtom,
-  getCachedSearchResultsAtom,
-  getCacheLoadingStateAtom,
-} from '@/store/knowledge/lectureCacheAtom';
+// TanStack Query만 사용 (lectureCacheAtom 완전 제거)
+import { useLectureList, useLectureSearch } from '@/hooks/api/useLectureApi';
 
 interface ExtendedLectureSectionProps extends LectureSectionProps {
   searchQuery?: string;
 }
-
-const categoryLabelMap = new Map([
-  ['all', '전체'],
-  ['search', '검색'],
-  ['humanities', '인문학'],
-  ['philosophy', '철학'],
-  ['psychology', '심리학'],
-  ['economics', '경제학'],
-  ['self-development', '자기계발'],
-  ['leadership', '리더십'],
-]);
 
 const ITEMS_PER_PAGE = 12;
 
@@ -54,30 +38,29 @@ const LectureSection = ({
 
   const [, initializeFromUrl] = useAtom(initializeFromUrlAtom);
   const [, updateSortOption] = useAtom(updateSortOptionAtom);
-  const [, fetchCachedLectures] = useAtom(fetchAndCacheLecturesByCategoryAtom);
-  const [, fetchCachedSearchResults] = useAtom(fetchAndCacheSearchResultsAtom);
 
-  const getCachedLecturesList = useAtomValue(getCachedLecturesAtom);
-  const getCachedSearchResultsList = useAtomValue(getCachedSearchResultsAtom);
-  const getCacheLoading = useAtomValue(getCacheLoadingStateAtom);
+  // TanStack Query 훅들
+  const {
+    data: categoryLectures,
+    isLoading: categoryLoading,
+    error: categoryError,
+  } = useLectureList(selectedCategory);
 
   const {
-    handleToggleBookmark,
-    isLoading: bookmarksLoading,
-    isBookmarked,
-  } = useBookmarks();
+    data: searchResults,
+    isLoading: searchLoading,
+    error: searchError,
+  } = useLectureSearch(effectiveSearchQuery, activeFilters);
+
+  const { handleToggleBookmark, isBookmarked } = useBookmarks();
 
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
-  const [prevLectures, setPrevLectures] = useState<Lecture[]>([]);
-
-  const cacheKey = effectiveSearchQuery
-    ? `search_${effectiveSearchQuery}_${JSON.stringify(activeFilters)}`
-    : `category_${selectedCategory}`;
-  const isCacheLoading = getCacheLoading(cacheKey);
-  const isLoading = isCacheLoading;
-
-  // 페이지네이션 관련 상태
   const [currentPage, setCurrentPage] = useState(1);
+
+  // 로딩 상태와 데이터 계산
+  const isLoading = effectiveSearchQuery ? searchLoading : categoryLoading;
+  const error = effectiveSearchQuery ? searchError : categoryError;
+  const lectures = effectiveSearchQuery ? searchResults : categoryLectures;
 
   // URL 파라미터 초기화
   useEffect(() => {
@@ -92,170 +75,88 @@ const LectureSection = ({
     };
 
     initializeFromUrl(params);
-  }, []);
+  }, [searchParams, selectedCategory, initializeFromUrl]);
 
-  // 전역상태 변경 시 강의 데이터 가져오기
+  // 강의 목록 업데이트 - lectures 변경 시마다 필터링 및 정렬 적용
   useEffect(() => {
-    const loadLectures = async () => {
-      try {
-        // 이전 데이터 유지
-        if (lectureList.length > 0) {
-          setPrevLectures(lectureList);
-        }
+    if (lectures) {
+      // 키워드 필터링
+      let filteredLectures = lectures;
 
-        let data: Lecture[] = [];
+      if (selectedKeywords.length > 0) {
+        filteredLectures = lectures.filter((lecture) =>
+          selectedKeywords.some(
+            (keyword) =>
+              lecture.keyword?.toLowerCase().includes(keyword.toLowerCase()) ||
+              lecture.title.toLowerCase().includes(keyword.toLowerCase())
+          )
+        );
+      }
 
-        if (effectiveSearchQuery) {
-          // 🎯 검색 결과 캐시에서 가져오기 또는 새로 조회
-          const cachedResults = getCachedSearchResultsList(
-            effectiveSearchQuery,
-            activeFilters
-          );
-          if (cachedResults) {
-            data = cachedResults; // 🔥 이제 타입이 일치함
-          } else {
-            await fetchCachedSearchResults(effectiveSearchQuery, activeFilters);
-            const freshResults = getCachedSearchResultsList(
-              effectiveSearchQuery,
-              activeFilters
+      // 정렬 적용
+      const sortedLectures = [...filteredLectures].sort((a, b) => {
+        switch (sortOption) {
+          case 'latest':
+            return (
+              new Date(b.createdAt || 0).getTime() -
+              new Date(a.createdAt || 0).getTime()
             );
-            data = freshResults || [];
-          }
-        } else {
-          // 🎯 카테고리별 강의 캐시에서 가져오기 또는 새로 조회
-          const categoryLabel =
-            selectedCategory === 'all'
-              ? 'all'
-              : categoryLabelMap.get(selectedCategory) || selectedCategory;
-          const cachedLectures = getCachedLecturesList(categoryLabel);
-          if (cachedLectures) {
-            data = cachedLectures; // 🔥 이제 타입이 일치함
-          } else {
-            await fetchCachedLectures(categoryLabel);
-            const freshLectures = getCachedLecturesList(categoryLabel);
-            data = freshLectures || [];
-          }
+          case 'popular':
+            return (b.students || 0) - (a.students || 0);
+          case 'likes':
+            return (b.likes || 0) - (a.likes || 0);
+          default:
+            return 0;
         }
+      });
 
-        // 정렬 적용
-        const sortedData = applySorting(data, sortOption);
-        setLectureList(sortedData);
-
-        // 카테고리나 검색어가 변경되면 페이지를 1로 리셋
-        setCurrentPage(1);
-      } catch (error) {
-        console.error('Failed to fetch lectures:', error);
-      }
-    };
-
-    loadLectures();
-  }, [selectedCategory, effectiveSearchQuery, activeFilters, sortOption]);
-
-  // 정렬 적용 함수
-  const applySorting = (lectures: Lecture[], sort: string): Lecture[] => {
-    return [...lectures].sort((a, b) => {
-      switch (sort) {
-        case 'latest':
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        case 'popular':
-        case 'students':
-          return b.students - a.students;
-        case 'rating':
-        case 'likes':
-          return b.likes - a.likes;
-        case 'title':
-          return a.title.localeCompare(b.title);
-        default:
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-      }
-    });
-  };
-
-  // 필터 파라미터나 키워드가 변경될 때마다 페이지네이션 리셋
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedKeywords, activeFilters]);
-
-  // 키워드가 강의 keyword 필드에 포함되어 있는지 확인하는 함수
-  const hasMatchingKeyword = (
-    lecture: Lecture,
-    searchKeywords: string[]
-  ): boolean => {
-    if (!searchKeywords.length) return true;
-    if (!lecture.keyword) return false;
-
-    const lectureKeywords = lecture.keyword
-      .split(',')
-      .map((k) => k.trim().toLowerCase());
-
-    return searchKeywords.some((searchKeyword) =>
-      lectureKeywords.includes(searchKeyword.toLowerCase())
-    );
-  };
-
-  // 필터링 로직 (전역상태 기반)
-  const filteredLectures = lectureList.filter((lecture) => {
-    // 키워드 필터링
-    if (
-      selectedKeywords.length > 0 &&
-      !hasMatchingKeyword(lecture, selectedKeywords)
-    ) {
-      return false;
+      setLectureList(sortedLectures);
+      setCurrentPage(1); // 새 데이터 로드 시 첫 페이지로
     }
+  }, [lectures, selectedKeywords, sortOption]);
 
-    // 필터 적용
-    if (
-      activeFilters.depth.length > 0 &&
-      !activeFilters.depth.includes(lecture.depth)
-    ) {
-      return false;
-    }
-    if (
-      activeFilters.fields.length > 0 &&
-      !activeFilters.fields.includes(lecture.category)
-    ) {
-      return false;
-    }
-    if (activeFilters.hasGroup && lecture.group_type !== '오프라인') {
-      return false;
-    }
-
-    return true;
-  });
-
-  // 정렬 핸들러 (전역상태 업데이트)
-  const handleSort = (option: SortOption) => {
-    updateSortOption(option);
+  // 정렬 옵션 변경 핸들러 수정 (SortOption은 string 타입)
+  const handleSortChange = (option: SortOption) => {
+    updateSortOption(option); // option 자체가 string이므로 직접 사용
   };
 
   // 페이지네이션 처리
-  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
-  const currentItems = filteredLectures.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedLectures = lectureList.slice(startIndex, endIndex);
 
   // 페이지 변경 핸들러
-  const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (isLoading || bookmarksLoading) {
-    return <div>로딩 중...</div>;
+  // 에러 처리
+  if (error) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+          <p className="mb-4 text-gray-500">
+            강의를 불러오는 중 오류가 발생했습니다.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded bg-gold-start px-4 py-2 text-white hover:bg-gold-end"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col px-4">
+      {/* 검색 결과 헤더 */}
       {effectiveSearchQuery && (
         <div className="mb-4">
           <h2 className="text-lg font-medium">
-            {effectiveSearchQuery} 검색 결과 ({filteredLectures.length}개)
+            {effectiveSearchQuery} 검색 결과 ({lectureList.length}개)
           </h2>
         </div>
       )}
@@ -268,7 +169,7 @@ const LectureSection = ({
         </div>
 
         <div className="relative z-40 hover:bg-light">
-          <Dropdown.Root onSort={handleSort}>
+          <Dropdown.Root onSort={handleSortChange}>
             <Dropdown.Trigger />
             <Dropdown.Context />
           </Dropdown.Root>
@@ -277,56 +178,53 @@ const LectureSection = ({
 
       {/* 총 결과 수 표시 */}
       <div className="mb-4 text-sm text-gray-600">
-        총 {filteredLectures.length}개의 강의
+        총 {lectureList.length}개의 강의
       </div>
 
       {/* 강의 카드 그리드 */}
       <div className="relative z-10 grid gap-4 mobile:mb-20 mobile:grid-cols-1 sm:grid-cols-2 tablet:grid-cols-3 laptop:grid-cols-4">
         {isLoading ? (
-          prevLectures.length > 0 ? (
-            prevLectures.slice(0, ITEMS_PER_PAGE).map((lecture) => (
-              <div key={lecture.id} className="opacity-50">
-                <Card
-                  {...lecture}
-                  isBookmarked={isBookmarked(lecture.id)}
-                  onToggleBookmark={handleToggleBookmark}
-                />
-              </div>
-            ))
-          ) : (
-            <div className="col-span-full flex justify-center py-8">
-              로딩 중...
+          // 로딩 중 스켈레톤 UI
+          Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+            <div key={index} className="animate-pulse">
+              <div className="mb-2 h-64 rounded-lg bg-gray-200"></div>
+              <div className="mb-1 h-4 rounded bg-gray-200"></div>
+              <div className="h-4 w-3/4 rounded bg-gray-200"></div>
             </div>
-          )
-        ) : currentItems.length > 0 ? (
-          currentItems.map((lecture) => (
+          ))
+        ) : paginatedLectures.length > 0 ? (
+          paginatedLectures.map((lecture) => (
             <Card
               key={lecture.id}
-              {...lecture}
+              {...lecture} // lecture 객체의 모든 속성을 spread
               isBookmarked={isBookmarked(lecture.id)}
-              onToggleBookmark={handleToggleBookmark}
+              onToggleBookmark={() => handleToggleBookmark(lecture.id)}
             />
           ))
         ) : (
           <div className="col-span-full flex justify-center py-8">
             <div className="text-center">
               <p className="mb-2 text-lg font-medium text-gray-700">
-                검색 결과가 없습니다.
+                {effectiveSearchQuery
+                  ? '검색 결과가 없습니다.'
+                  : '강의가 없습니다.'}
               </p>
               <p className="text-sm text-gray-500">
-                다른 키워드나 필터를 사용해 보세요.
+                {effectiveSearchQuery
+                  ? '다른 키워드나 필터를 사용해 보세요.'
+                  : '다른 카테고리를 확인해보세요.'}
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* 페이지네이션 */}
-      {filteredLectures.length > ITEMS_PER_PAGE && (
+      {/* 컴파운드 패턴 페이지네이션 */}
+      {lectureList.length > ITEMS_PER_PAGE && (
         <div className="mt-8 flex justify-center">
           <Pagination.Root
             currentPage={currentPage}
-            totalItems={filteredLectures.length}
+            totalItems={lectureList.length}
             itemsPerPage={ITEMS_PER_PAGE}
             onPageChange={handlePageChange}
           >
