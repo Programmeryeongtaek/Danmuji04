@@ -215,7 +215,7 @@ export default function InstructorsManagePage() {
               >
                 <div className="col-span-1">{index + 1}</div>
                 <div className="col-span-3">
-                  <div className="flex items-center">
+                  <div className="flex flex-col items-start">
                     <div className="mr-3 h-10 w-10 overflow-hidden rounded-full bg-gray-200">
                       {instructor.avatar_url ? (
                         <Image
@@ -239,13 +239,15 @@ export default function InstructorsManagePage() {
                     </div>
                   </div>
                 </div>
-                <div className="col-span-3">
-                  {instructor.email || '이메일 없음'}
+                <div className="flex flex-col gap-4">
+                  <div className="col-span-3">
+                    {instructor.email || '이메일 없음'}
+                  </div>
+                  <div className="col-span-2">
+                    {new Date(instructor.created_at).toLocaleDateString()}
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  {new Date(instructor.created_at).toLocaleDateString()}
-                </div>
-                <div className="col-span-3 flex justify-end gap-2">
+                <div className="flex justify-end gap-2">
                   <button
                     onClick={() => {
                       //TODO: 프로필 상세 보기 (미구현)

@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
 import { FormEvent, useEffect, useState } from 'react';
 import { StarRating } from './StarRating';
-import { Heart, MessageCircle, Pencil, Trash2, X } from 'lucide-react';
+import { Heart, MessageCircle, Pencil, Trash2, User, X } from 'lucide-react';
 import { ReviewReply } from './ReviewReply';
 import { useTimeLimit } from '@/app/hooks/useTimeLimit';
 import {
@@ -15,6 +15,7 @@ import {
   updateReview,
 } from '@/utils/services/knowledge/reviewService';
 import { getTodayTimeOrDate } from '@/utils/helpers/formatDate';
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 
 export function ReviewItem({
   review,
@@ -31,6 +32,8 @@ export function ReviewItem({
   const [content, setContent] = useState(review.content);
   const { checkTimeLimit } = useTimeLimit(24);
   const supabase = createClient();
+
+  const avatarUrl = getAvatarUrl(review.user_profile?.avatar_url);
 
   const handleLike = async () => {
     if (!currentUserId) return;
@@ -223,45 +226,21 @@ export function ReviewItem({
     loadReplies();
   }, [review.id, supabase]);
 
-  // 함수로 URL 체크 및 생성
-  const getValidImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith('https://')) return url;
-    return `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${url}`;
-  };
-
   return (
     <div className="mt-2 border-b pb-4">
       <div className="flex items-start gap-4">
         {/* 프로필 이미지 부분 수정 */}
         <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
-          {review.user_profile?.avatar_url ? (
+          {avatarUrl ? (
             <Image
-              src={
-                getValidImageUrl(review.user_profile.avatar_url) ||
-                '/images/default-avatar.png'
-              }
-              alt={
-                review.user_profile?.nickname ||
-                review.user_profile?.name ||
-                '익명'
-              }
+              src={avatarUrl}
+              alt={review.user_profile?.nickname || '익명'}
               width={40}
               height={40}
               className="h-full w-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/images/default-avatar.png';
-              }}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-500">
-              {(
-                review.user_profile?.nickname?.[0] ||
-                review.user_profile?.name?.[0] ||
-                '익명'
-              ).toUpperCase()}
-            </div>
+            <User className="h-5 w-5 text-gray-400" />
           )}
         </div>
 

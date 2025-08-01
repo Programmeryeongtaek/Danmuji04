@@ -1,11 +1,24 @@
 import { FilterModalProps, FilterState } from '@/app/types/knowledge/lecture';
 import Modal from '../common/Modal';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '../common/Button/Button';
 import { RefreshCw } from 'lucide-react';
+import { useAtom, useAtomValue } from 'jotai';
+import {
+  resetFiltersAtom,
+  searchFilterAtom,
+  updateFiltersAtom,
+} from '@/store/knowledge/searchFilterAtom';
 
-const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
-  const [filters, setFilters] = useState<FilterState>({
+const FilterModal = ({ isOpen, onClose }: FilterModalProps) => {
+  const searchFilter = useAtomValue(searchFilterAtom);
+  const currentFilters = searchFilter.filters;
+
+  const [, updateFilters] = useAtom(updateFiltersAtom);
+  const [, resetFilters] = useAtom(resetFiltersAtom);
+
+  // 임시 저장 (적용 버튼 누리기 전까지)
+  const [tempFilters, setTempFilters] = useState<FilterState>({
     depth: [],
     fields: [],
     hasGroup: false,
@@ -14,8 +27,19 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
   const lectureDepth = ['입문', '초급', '중급 이상'];
   const fields = ['인문학', '철학', '심리학', '경제학', '자기계발', '리더십'];
 
+  // 모덜이 열릴 때 현재 전역상태를 임시상태로 복사
+  useEffect(() => {
+    if (isOpen) {
+      setTempFilters({
+        depth: [...currentFilters.depth],
+        fields: [...currentFilters.fields],
+        hasGroup: currentFilters.hasGroup,
+      });
+    }
+  }, [isOpen, currentFilters]);
+
   const handleDepthCheck = (depth: string) => {
-    setFilters((prev) => ({
+    setTempFilters((prev) => ({
       ...prev,
       depth: prev.depth.includes(depth)
         ? prev.depth.filter((d) => d !== depth)
@@ -24,7 +48,7 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
   };
 
   const handleFieldCheck = (field: string) => {
-    setFilters((prev) => ({
+    setTempFilters((prev) => ({
       ...prev,
       fields: prev.fields.includes(field)
         ? prev.fields.filter((f) => f !== field)
@@ -33,22 +57,26 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
   };
 
   const handleGroupToggle = () => {
-    setFilters((prev) => ({
+    setTempFilters((prev) => ({
       ...prev,
       hasGroup: !prev.hasGroup,
     }));
   };
 
+  // 초기화 (전역사태로 함께 초기화)
   const handleReset = () => {
-    setFilters({
+    setTempFilters({
       depth: [],
       fields: [],
       hasGroup: false,
     });
+    resetFilters(); // 전역상태도 초기화
+    onClose();
   };
 
+  // 적용 (임시상태를 전역상태로 업데이트)
   const handleApply = () => {
-    onApply(filters);
+    updateFilters(tempFilters);
     onClose();
   };
 
@@ -69,14 +97,14 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
                 <label
                   key={depth}
                   className={`cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors ${
-                    filters.depth.includes(depth)
+                    tempFilters.depth.includes(depth)
                       ? 'bg-gradient-to-r from-gold-start to-gold-end text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   <input
                     type="checkbox"
-                    checked={filters.depth.includes(depth)}
+                    checked={tempFilters.depth.includes(depth)}
                     onChange={() => handleDepthCheck(depth)}
                     className="sr-only"
                   />
@@ -94,14 +122,14 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
                 <label
                   key={field}
                   className={`cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors ${
-                    filters.fields.includes(field)
+                    tempFilters.fields.includes(field)
                       ? 'bg-gradient-to-r from-gold-start to-gold-end text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   <input
                     type="checkbox"
-                    checked={filters.fields.includes(field)}
+                    checked={tempFilters.fields.includes(field)}
                     onChange={() => handleFieldCheck(field)}
                     className="sr-only"
                   />
@@ -119,7 +147,7 @@ const FilterModal = ({ isOpen, onClose, onApply }: FilterModalProps) => {
               <div className="relative">
                 <input
                   type="checkbox"
-                  checked={filters.hasGroup}
+                  checked={tempFilters.hasGroup}
                   onChange={handleGroupToggle}
                   className="peer sr-only"
                 />

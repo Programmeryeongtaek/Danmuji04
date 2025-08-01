@@ -3,27 +3,26 @@
 import Card from '../common/Card';
 import KeywordSelector from './KeywordSelector';
 import Filter from './Filter';
-import {
-  FilterState,
-  Lecture,
-  LectureSectionProps,
-} from '@/app/types/knowledge/lecture';
+import { Lecture, LectureSectionProps } from '@/app/types/knowledge/lecture';
 import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
 import { useSearchParams } from 'next/navigation';
-import {} from '@/utils/supabase/client';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import Pagination from '../common/Pagination';
+import { useAtom, useAtomValue } from 'jotai';
 import {
-  fetchLectures,
-  fetchLecturesByCategory,
-  searchLectures,
-} from '@/utils/services/knowledge/lectureService';
-
-interface ExtendedLectureSectionProps extends LectureSectionProps {
-  searchQuery?: string;
-}
+  initializeFromUrlAtom,
+  searchFilterAtom,
+  updateSortOptionAtom,
+} from '@/store/knowledge/searchFilterAtom';
+import {
+  fetchAndCacheLecturesByCategoryAtom,
+  fetchAndCacheSearchResultsAtom,
+  getCachedLecturesAtom,
+  getCachedSearchResultsAtom,
+  getCacheLoadingStateAtom,
+} from '@/store/knowledge/lectureCacheAtom';
 
 interface ExtendedLectureSectionProps extends LectureSectionProps {
   searchQuery?: string;
@@ -50,29 +49,52 @@ const LectureSection = ({
   const querySearchTerm = searchParams.get('q')?.toLowerCase() || '';
   const effectiveSearchQuery = searchQuery || querySearchTerm;
 
-  // 키워드 필터링 파라미터 가져오기
-  const keywordsParam = searchParams.get('keywords') || '';
-  const selectedKeywords = keywordsParam ? keywordsParam.split(',') : [];
+  const searchFilter = useAtomValue(searchFilterAtom);
+  const { selectedKeywords, filters: activeFilters, sortOption } = searchFilter;
+
+  const [, initializeFromUrl] = useAtom(initializeFromUrlAtom);
+  const [, updateSortOption] = useAtom(updateSortOptionAtom);
+  const [, fetchCachedLectures] = useAtom(fetchAndCacheLecturesByCategoryAtom);
+  const [, fetchCachedSearchResults] = useAtom(fetchAndCacheSearchResultsAtom);
+
+  const getCachedLecturesList = useAtomValue(getCachedLecturesAtom);
+  const getCachedSearchResultsList = useAtomValue(getCachedSearchResultsAtom);
+  const getCacheLoading = useAtomValue(getCacheLoadingStateAtom);
 
   const {
-    bookmarkedLectures,
     handleToggleBookmark,
     isLoading: bookmarksLoading,
+    isBookmarked,
   } = useBookmarks();
 
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
   const [prevLectures, setPrevLectures] = useState<Lecture[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<FilterState>({
-    depth: [],
-    fields: [],
-    hasGroup: false,
-  });
+
+  const cacheKey = effectiveSearchQuery
+    ? `search_${effectiveSearchQuery}_${JSON.stringify(activeFilters)}`
+    : `category_${selectedCategory}`;
+  const isCacheLoading = getCacheLoading(cacheKey);
+  const isLoading = isCacheLoading;
 
   // 페이지네이션 관련 상태
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 강의 데이터 가져오기
+  // URL 파라미터 초기화
+  useEffect(() => {
+    const params = {
+      q: searchParams.get('q') || undefined,
+      category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      keywords: searchParams.get('keywords') || undefined,
+      depth: searchParams.get('depth') || undefined,
+      fields: searchParams.get('fields') || undefined,
+      hasGroup: searchParams.get('hasGroup') || undefined,
+      sort: searchParams.get('sort') || undefined,
+    };
+
+    initializeFromUrl(params);
+  }, []);
+
+  // 전역상태 변경 시 강의 데이터 가져오기
   useEffect(() => {
     const loadLectures = async () => {
       try {
@@ -81,71 +103,101 @@ const LectureSection = ({
           setPrevLectures(lectureList);
         }
 
-        setIsLoading(true);
-        let data;
+        let data: Lecture[] = [];
 
-        if (selectedCategory === 'search' && effectiveSearchQuery) {
-          data = await searchLectures(effectiveSearchQuery);
-        } else if (selectedCategory !== 'all') {
-          const categoryLabel = categoryLabelMap.get(selectedCategory);
-          data = await fetchLecturesByCategory(categoryLabel || '');
+        if (effectiveSearchQuery) {
+          // 🎯 검색 결과 캐시에서 가져오기 또는 새로 조회
+          const cachedResults = getCachedSearchResultsList(
+            effectiveSearchQuery,
+            activeFilters
+          );
+          if (cachedResults) {
+            data = cachedResults; // 🔥 이제 타입이 일치함
+          } else {
+            await fetchCachedSearchResults(effectiveSearchQuery, activeFilters);
+            const freshResults = getCachedSearchResultsList(
+              effectiveSearchQuery,
+              activeFilters
+            );
+            data = freshResults || [];
+          }
         } else {
-          data = await fetchLectures();
+          // 🎯 카테고리별 강의 캐시에서 가져오기 또는 새로 조회
+          const categoryLabel =
+            selectedCategory === 'all'
+              ? 'all'
+              : categoryLabelMap.get(selectedCategory) || selectedCategory;
+          const cachedLectures = getCachedLecturesList(categoryLabel);
+          if (cachedLectures) {
+            data = cachedLectures; // 🔥 이제 타입이 일치함
+          } else {
+            await fetchCachedLectures(categoryLabel);
+            const freshLectures = getCachedLecturesList(categoryLabel);
+            data = freshLectures || [];
+          }
         }
 
-        setLectureList(data || []);
+        // 정렬 적용
+        const sortedData = applySorting(data, sortOption);
+        setLectureList(sortedData);
+
         // 카테고리나 검색어가 변경되면 페이지를 1로 리셋
         setCurrentPage(1);
       } catch (error) {
         console.error('Failed to fetch lectures:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
     loadLectures();
-  }, [selectedCategory, effectiveSearchQuery]);
+  }, [selectedCategory, effectiveSearchQuery, activeFilters, sortOption]);
+
+  // 정렬 적용 함수
+  const applySorting = (lectures: Lecture[], sort: string): Lecture[] => {
+    return [...lectures].sort((a, b) => {
+      switch (sort) {
+        case 'latest':
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        case 'popular':
+        case 'students':
+          return b.students - a.students;
+        case 'rating':
+        case 'likes':
+          return b.likes - a.likes;
+        case 'title':
+          return a.title.localeCompare(b.title);
+        default:
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+      }
+    });
+  };
 
   // 필터 파라미터나 키워드가 변경될 때마다 페이지네이션 리셋
   useEffect(() => {
     setCurrentPage(1);
-  }, [keywordsParam, activeFilters]);
-
-  const onApply = (newFilters: FilterState) => {
-    setActiveFilters(newFilters);
-    setCurrentPage(1); // 필터 적용 시 첫 페이지로 이동
-  };
-
-  // 카테고리 변경 시 필터 초기화
-  useEffect(() => {
-    if (selectedCategory !== 'search') {
-      setActiveFilters({
-        depth: [],
-        fields: [],
-        hasGroup: false,
-      });
-    }
-  }, [selectedCategory]);
+  }, [selectedKeywords, activeFilters]);
 
   // 키워드가 강의 keyword 필드에 포함되어 있는지 확인하는 함수
   const hasMatchingKeyword = (
     lecture: Lecture,
     searchKeywords: string[]
   ): boolean => {
-    if (!searchKeywords.length) return true; // 선택된 키워드가 없으면 모든 강의 표시
-    if (!lecture.keyword) return false; // 강의에 키워드가 없으면 매칭되지 않음
+    if (!searchKeywords.length) return true;
+    if (!lecture.keyword) return false;
 
-    // 강의 키워드 문자열을 개별 키워드로 분리
     const lectureKeywords = lecture.keyword
       .split(',')
       .map((k) => k.trim().toLowerCase());
 
-    // 선택된 키워드 중 하나라도 강의 키워드에 포함되어 있으면 true 반환
     return searchKeywords.some((searchKeyword) =>
       lectureKeywords.includes(searchKeyword.toLowerCase())
     );
   };
 
+  // 필터링 로직 (전역상태 기반)
   const filteredLectures = lectureList.filter((lecture) => {
     // 키워드 필터링
     if (
@@ -175,20 +227,9 @@ const LectureSection = ({
     return true;
   });
 
-  const handleSort = async (option: SortOption) => {
-    const sorted = [...lectureList].sort((a, b) => {
-      switch (option) {
-        case 'latest':
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        case 'students':
-          return b.students - a.students;
-        case 'likes':
-          return b.likes - a.likes;
-      }
-    });
-    setLectureList(sorted);
+  // 정렬 핸들러 (전역상태 업데이트)
+  const handleSort = (option: SortOption) => {
+    updateSortOption(option);
   };
 
   // 페이지네이션 처리
@@ -202,7 +243,6 @@ const LectureSection = ({
   // 페이지 변경 핸들러
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
-    // 페이지 상단으로 스크롤
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -224,10 +264,9 @@ const LectureSection = ({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <KeywordSelector />
-          <Filter onApply={onApply} />
+          <Filter />
         </div>
 
-        {/* 드롭다운 영역 - 더 높은 z-index 값 부여 */}
         <div className="relative z-40 hover:bg-light">
           <Dropdown.Root onSort={handleSort}>
             <Dropdown.Trigger />
@@ -241,16 +280,15 @@ const LectureSection = ({
         총 {filteredLectures.length}개의 강의
       </div>
 
-      {/* 강의 카드 그리드 - z-index를 낮게 설정 */}
+      {/* 강의 카드 그리드 */}
       <div className="relative z-10 grid gap-4 mobile:mb-20 mobile:grid-cols-1 sm:grid-cols-2 tablet:grid-cols-3 laptop:grid-cols-4">
-        {/* 로딩 중에는 이전 데이터 표시, 없으면 로딩 표시 */}
         {isLoading ? (
           prevLectures.length > 0 ? (
             prevLectures.slice(0, ITEMS_PER_PAGE).map((lecture) => (
               <div key={lecture.id} className="opacity-50">
                 <Card
                   {...lecture}
-                  isBookmarked={bookmarkedLectures.includes(lecture.id)}
+                  isBookmarked={isBookmarked(lecture.id)}
                   onToggleBookmark={handleToggleBookmark}
                 />
               </div>
@@ -265,7 +303,7 @@ const LectureSection = ({
             <Card
               key={lecture.id}
               {...lecture}
-              isBookmarked={bookmarkedLectures.includes(lecture.id)}
+              isBookmarked={isBookmarked(lecture.id)}
               onToggleBookmark={handleToggleBookmark}
             />
           ))

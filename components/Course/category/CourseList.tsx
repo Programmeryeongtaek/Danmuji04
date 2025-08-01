@@ -1,16 +1,14 @@
 'use client';
 
-import {
-  useAllCourseProgress,
-  useCourseList,
-  useCoursePermission,
-} from '@/hooks/useCourse';
+import { useCourseList, useCoursePermission } from '@/hooks/useCourse';
 import { getCategoryTitle } from '@/app/types/course/categories';
 import { Check, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import CourseActions from './CourseActions';
 import { CourseWithSections } from '@/app/types/course/courseModel';
+import { useAtomValue } from 'jotai';
+import { courseProgressAtom } from '@/store/course/progressAtom';
 
 interface CourseListProps {
   category?: string;
@@ -19,7 +17,8 @@ interface CourseListProps {
 export default function CourseList({ category }: CourseListProps) {
   const { courses: initialCourses, isLoading: coursesLoading } =
     useCourseList(category);
-  const { progressData, isLoading: progressLoading } = useAllCourseProgress();
+  const progressState = useAtomValue(courseProgressAtom);
+  const { progressData, isLoading: progressLoading } = progressState;
   const { isAdmin } = useCoursePermission();
   const [courses, setCourses] = useState<CourseWithSections[]>(
     initialCourses as CourseWithSections[]

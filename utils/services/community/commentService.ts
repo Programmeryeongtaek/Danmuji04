@@ -1,6 +1,6 @@
 import { Comment } from '@/app/types/community/communityType';
 import { fetchCommentsWithDetails } from '@/utils/common/commentUtils';
-import { getProfileWithAvatar } from '@/utils/common/profielUtils';
+import { getProfileWithAvatar } from '@/utils/common/profileUtils';
 import { toggleRelation } from '@/utils/common/toggleUtils';
 import { requireAuth } from '@/utils/supabase/auth';
 import { createClient } from '@/utils/supabase/client';

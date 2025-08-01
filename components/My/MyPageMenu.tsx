@@ -17,17 +17,10 @@ import { useToast } from '../common/Toast/Context';
 import { createClient } from '@/utils/supabase/client';
 import Button from '../common/Button/Button';
 import Image from 'next/image';
-
-interface UserProfile {
-  id: string;
-  name: string | null;
-  nickname: string | null;
-  email: string | null;
-  avatar_url: string | null;
-  role: string;
-  interests: string[];
-  created_at: string;
-}
+import { userAtom } from '@/store/auth';
+import { useAtomValue } from 'jotai';
+import { userProfileAtom } from '@/store/my/userProfileAtom';
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 
 interface UserStats {
   enrolledCourses: number;
@@ -40,7 +33,10 @@ interface UserStats {
 }
 
 const MyPageMenu = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const user = useAtomValue(userAtom);
+  const profile = useAtomValue(userProfileAtom);
+  const avatarUrl = getAvatarUrl(profile?.avatar_url);
+
   const [stats, setStats] = useState<UserStats>({
     enrolledCourses: 0,
     completedCourses: 0,
@@ -50,49 +46,21 @@ const MyPageMenu = () => {
     studiesParticipatingCount: 0,
     studiesCreatedCount: 0,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const { showToast } = useToast();
 
   // 사용자 프로필 및 통계 데이터 로드
   useEffect(() => {
     const loadUserData = async () => {
-      setIsLoading(true);
+      if (!user || !profile) {
+        setIsLoadingStats(false);
+        return;
+      }
+
+      setIsLoadingStats(true);
       const supabase = createClient();
 
       try {
-        // 현재 사용자 확인
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-          showToast('로그인이 필요합니다.', 'error');
-          return;
-        }
-
-        // 프로필 정보 가져오기
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) throw profileError;
-
-        // 프로필 이미지 URL 생성
-        let avatarUrl = null;
-        if (profileData?.avatar_url) {
-          const { data: urlData } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(profileData.avatar_url);
-
-          avatarUrl = urlData.publicUrl;
-        }
-
-        setProfile({
-          ...profileData,
-          avatar_url: avatarUrl,
-        });
-
         // 통계 데이터 가져오기
         // 1. 수강 중인 강의 수
         const { count: enrolledCount } = await supabase
@@ -154,27 +122,27 @@ const MyPageMenu = () => {
         console.error('사용자 데이터 로드 실패:', error);
         showToast('데이터를 불러오는데 실패했습니다.', 'error');
       } finally {
-        setIsLoading(false);
+        setIsLoadingStats(false);
       }
     };
 
     loadUserData();
-  }, [showToast]);
+  }, [user, profile, showToast]);
 
-  if (isLoading) {
+  if (!user) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg">로딩 중...</div>
+      <div className="mx-auto max-w-4xl p-6 text-center">
+        <h2 className="mb-4 text-xl font-bold">로그인이 필요합니다</h2>
+        <p className="mb-6 text-gray-600">로그인해주세요.</p>
+        <Button className="px-6 py-2">로그인</Button>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="mx-auto max-w-4xl p-6 text-center">
-        <h2 className="mb-4 text-xl font-bold">로그인이 필요합니다</h2>
-        <p className="mb-6 text-gray-600">내 페이지를 보려면 로그인해주세요.</p>
-        <Button className="px-6 py-2">로그인</Button>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-lg">프로필 로딩 중...</div>
       </div>
     );
   }
@@ -190,9 +158,9 @@ const MyPageMenu = () => {
         <div className="w-full rounded-lg border bg-white p-6 shadow-sm md:w-1/3">
           <div className="mb-4 flex items-center gap-4">
             <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gray-100">
-              {profile.avatar_url ? (
+              {avatarUrl ? (
                 <Image
-                  src={profile.avatar_url}
+                  src={avatarUrl}
                   alt="프로필 이미지"
                   fill
                   className="object-cover"
@@ -266,59 +234,81 @@ const MyPageMenu = () => {
         <div className="flex w-full flex-1 flex-col gap-4 md:w-2/3">
           <div className="rounded-lg border bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-bold">학습 현황</h2>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-              <div className="rounded-lg border bg-blue-50 p-4">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm font-medium">수강 중인 강의</span>
-                </div>
-                <p className="mt-2 text-2xl font-bold">
-                  {stats.enrolledCourses}
-                </p>
+            {isLoadingStats ? (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse rounded-lg border bg-gray-50 p-4"
+                  >
+                    <div className="mb-2 h-4 w-16 rounded bg-gray-200"></div>
+                    <div className="h-6 w-8 rounded bg-gray-200"></div>
+                  </div>
+                ))}
               </div>
-              <div className="rounded-lg border bg-green-50 p-4">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium">완료한 강의</span>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                <div className="rounded-lg border bg-blue-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium">수강 중인 강의</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-blue-600">
+                    {stats.enrolledCourses}
+                  </p>
                 </div>
-                <p className="mt-2 text-2xl font-bold">
-                  {stats.completedCourses}
-                </p>
-              </div>
-              <div className="rounded-lg border bg-yellow-50 p-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-yellow-600" />
-                  <span className="text-sm font-medium">작성한 글</span>
+
+                <div className="rounded-lg border bg-green-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5 text-green-600" />
+                    <span className="text-sm font-medium">완료한 강의</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-green-600">
+                    {stats.completedCourses}
+                  </p>
                 </div>
-                <p className="mt-2 text-2xl font-bold">{stats.writingsCount}</p>
-              </div>
-              <div className="rounded-lg border bg-purple-50 p-4">
-                <div className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-purple-600" />
-                  <span className="text-sm font-medium">수료증</span>
+
+                <div className="rounded-lg border bg-purple-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <PencilLine className="h-5 w-5 text-purple-600" />
+                    <span className="text-sm font-medium">작성한 글</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-purple-600">
+                    {stats.writingsCount}
+                  </p>
                 </div>
-                <p className="mt-2 text-2xl font-bold">
-                  {stats.certificatesCount}
-                </p>
-              </div>
-              <div className="rounded-lg border bg-red-50 p-4">
-                <div className="flex items-center gap-2">
-                  <Heart className="h-5 w-5 text-red-600" />
-                  <span className="text-sm font-medium">찜한 강의</span>
+
+                <div className="rounded-lg border bg-yellow-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-yellow-600" />
+                    <span className="text-sm font-medium">수료증</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-yellow-600">
+                    {stats.certificatesCount}
+                  </p>
                 </div>
-                <p className="mt-2 text-2xl font-bold">{stats.wishlistCount}</p>
-              </div>
-              {/* 스터디 통계 카드 추가 */}
-              <div className="rounded-lg border bg-amber-50 p-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-amber-600" />
-                  <span className="text-sm font-medium">참여 스터디디</span>
+
+                <div className="rounded-lg border bg-pink-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <Heart className="h-5 w-5 text-pink-600" />
+                    <span className="text-sm font-medium">찜한 강의</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-pink-600">
+                    {stats.wishlistCount}
+                  </p>
                 </div>
-                <p className="mt-2 text-2xl font-bold">
-                  {stats.studiesParticipatingCount}
-                </p>
+
+                <div className="rounded-lg border bg-indigo-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-indigo-600" />
+                    <span className="text-sm font-medium">참여 스터디</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-indigo-600">
+                    {stats.studiesParticipatingCount}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 스터디 현황 섹션 추가 */}

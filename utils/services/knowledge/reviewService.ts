@@ -1,5 +1,6 @@
+import { getAvatarUrl } from '@/utils/common/avatarUtils';
 import { getLikeDataForUser } from '@/utils/common/likeUtils';
-import { getProfileWithAvatar } from '@/utils/common/profielUtils';
+import { getProfileWithAvatar } from '@/utils/common/profileUtils';
 import { toggleRelation } from '@/utils/common/toggleUtils';
 import { getCurrentUser, requireAuth } from '@/utils/supabase/auth';
 import { createClient } from '@/utils/supabase/client';
@@ -62,15 +63,8 @@ export async function fetchReviewsByLectureId(lectureId: number) {
           // getLikeDataForUser 함수 사용
           const replyLikesData = await getLikeDataForUser('review_reply_likes', reply.id, user?.id, 'reply_id');
 
-          // 프로필 이미지 URL 생성
-          let avatarUrl = null;
-          if (replyProfile?.avatar_url) {
-            const { data: { publicUrl } } = supabase
-              .storage
-              .from('avatars')
-              .getPublicUrl(replyProfile.avatar_url);
-            avatarUrl = publicUrl;
-          }
+          // 프로필 이미지
+          const avatarUrl = getAvatarUrl(replyProfile?.avatar_url);
 
           return {
             ...reply,
@@ -85,15 +79,8 @@ export async function fetchReviewsByLectureId(lectureId: number) {
         })
       ) : [];
 
-      // 리뷰 프로필 이미지 URL 생성
-      let avatarUrl = null;
-      if (profile?.avatar_url) {
-        const { data: { publicUrl } } = supabase
-          .storage
-          .from('avatars')
-          .getPublicUrl(profile.avatar_url);
-        avatarUrl = publicUrl;
-      }
+      // 리뷰 프로필 이미지
+      const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
       return {
         ...review,

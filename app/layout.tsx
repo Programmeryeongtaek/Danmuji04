@@ -9,11 +9,18 @@ import {
   useNotificationSubscription,
 } from '@/components/Course/NotificationContext';
 import { isLoadingAtom, userAtom } from '@/store/auth';
+import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
+import { initializeLectureBookmarksAtom } from '@/store/lecture/bookmarkAtom';
+import { initializeUserProfileAtom } from '@/store/my/userProfileAtom';
+import { initializeNotificationsAtom } from '@/store/notification/notificationAtom';
+import { initializeBookmarksAtom } from '@/store/study/bookmarkAtom';
+import { initializeParticipationAtom } from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
-import { useSetAtom } from 'jotai';
+import { User } from '@supabase/supabase-js';
+import { useAtom, useSetAtom } from 'jotai';
 import { Inter } from 'next/font/google';
 import { usePathname } from 'next/navigation';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useCallback, useEffect, useRef } from 'react';
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -44,21 +51,103 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const studyPage = pathname?.includes('/study');
   const communityPostPage = pathname?.includes('/community/post/');
   const communityCreatePage = pathname?.includes('/community/write');
+
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
+  const initializeUserProfile = useSetAtom(initializeUserProfileAtom);
+  const [, initializeBookmarks] = useAtom(initializeBookmarksAtom);
+  const [, initializeParticipation] = useAtom(initializeParticipationAtom);
+  const [, initializeLectureBookmarks] = useAtom(
+    initializeLectureBookmarksAtom
+  );
+  const [, initializeNotifications] = useAtom(initializeNotificationsAtom);
+  const [, initializeCourseProgress] = useAtom(initializeCourseProgressAtom);
+
+  // 초기화 상태를 추적하는 ref
+  const initializationRef = useRef<{
+    isInitializing: boolean;
+    lastUserId: string | undefined;
+  }>({
+    isInitializing: false,
+    lastUserId: undefined,
+  });
+
+  // 상태 초기화 함수 - useCallback으로 메모이제이션
+  const initializeAllStates = useCallback(
+    async (user: User | null) => {
+      // 이미 초기화 중이거나 같은 사용자에 대해 초기화 완료된 경우 스킵
+      if (
+        initializationRef.current.isInitializing ||
+        initializationRef.current.lastUserId === user?.id
+      ) {
+        return;
+      }
+
+      initializationRef.current.isInitializing = true;
+      initializationRef.current.lastUserId = user?.id;
+
+      try {
+        if (user) {
+          await initializeUserProfile(user.id);
+          await Promise.all([
+            initializeBookmarks(),
+            initializeParticipation(),
+            initializeLectureBookmarks(),
+            initializeNotifications(),
+            initializeCourseProgress(),
+          ]);
+        } else {
+          // 로그아웃 시에는 빈 상태로 초기화
+          await initializeUserProfile('');
+          await Promise.all([
+            initializeBookmarks(),
+            initializeParticipation(),
+            initializeLectureBookmarks(),
+            initializeNotifications(),
+            initializeCourseProgress(),
+          ]);
+        }
+      } catch (error) {
+        console.error('상태 초기화 중 오류 발생:', error);
+      } finally {
+        initializationRef.current.isInitializing = false;
+      }
+    },
+    [
+      setIsLoading,
+      initializeUserProfile,
+      initializeBookmarks,
+      initializeParticipation,
+      initializeLectureBookmarks,
+      initializeNotifications,
+      initializeCourseProgress,
+    ]
+  );
 
   useEffect(() => {
     const supabase = createClient();
+    let isMounted = true;
 
-    // 초기 세션 체크
+    // 초기 세션 체크 및 상태 초기화
     const initializeAuth = async () => {
       try {
+        setIsLoading(true);
+
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        setUser(session?.user || null);
+        const user = session?.user || null;
+
+        if (isMounted) {
+          setUser(user);
+          await initializeAllStates(user);
+        }
+      } catch (error) {
+        console.error('인증 초기화 중 오류:', error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -68,14 +157,28 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session?.user);
-      setUser(session?.user || null);
+      if (!isMounted) return;
+      const user = session?.user || null;
+      setUser(user);
+
+      // 로그인/로그아웃 시에만 상태 초기화
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        // 이전 초기화 상태 리셋
+        initializationRef.current.lastUserId = undefined;
+        initializeAllStates(user);
+      }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
+      // 초기화 상태 리셋
+      initializationRef.current = {
+        isInitializing: false,
+        lastUserId: undefined,
+      };
     };
-  }, [setUser, setIsLoading]);
+  }, [setUser, setIsLoading, initializeAllStates]);
 
   if (isSignUpPage) {
     return (

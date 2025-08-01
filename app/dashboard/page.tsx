@@ -1,6 +1,5 @@
 'use client';
 
-import { useAllCourseProgress } from '@/hooks/useCourse';
 import { Course } from '@/app/types/course/courseModel';
 import { Lecture } from '@/app/types/knowledge/lecture';
 import { createClient } from '@/utils/supabase/client';
@@ -15,6 +14,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAllCertificates } from '@/hooks/useAllCertificates';
 import { getCategoryTitle } from '../types/course/categories';
+import { useAtomValue } from 'jotai';
+import { courseProgressAtom } from '@/store/course/progressAtom';
 
 interface DashboardStatsProps {
   enrollmentCourseCount: number;
@@ -56,7 +57,8 @@ const DashboardPage = () => {
   const [recentLectures, setRecentLectures] = useState<Lecture[]>([]);
   const [recentStudies, setRecentStudies] = useState<Study[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { progressData, isLoading: progressLoading } = useAllCourseProgress();
+  const progressState = useAtomValue(courseProgressAtom);
+  const { progressData, isLoading: progressLoading } = progressState;
   const { certificates, isLoading: certificatesLoading } = useAllCertificates();
 
   useEffect(() => {

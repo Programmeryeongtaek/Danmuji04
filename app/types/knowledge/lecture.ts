@@ -33,11 +33,6 @@ export interface FilterState {
 export interface FilterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApply: (filters: FilterState) => void
-}
-
-export interface FilterChangeProps {
-  onApply: (filters: FilterState) => void
 }
 
 // 수강평

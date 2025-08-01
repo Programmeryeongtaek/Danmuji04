@@ -12,6 +12,11 @@ import { useToast } from '@/components/common/Toast/Context';
 import { markItemAsCompleted } from '@/utils/services/course/courseService';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 import WritingSection from './WritingSection';
+import { useAtom, useAtomValue } from 'jotai';
+import {
+  courseProgressAtom,
+  updateItemCompletionAtom,
+} from '@/store/course/progressAtom';
 
 interface CourseLearnContentProps {
   courseId: string;
@@ -29,8 +34,14 @@ export default function CourseLearnContent({
   const [userWriting, setUserWriting] = useState<CourseWriting | null>(null);
   const [otherWritings, setOtherWritings] = useState<CourseWriting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [completedItems, setCompletedItems] = useState<string[]>([]);
   const { showToast } = useToast();
+
+  const progressState = useAtomValue(courseProgressAtom);
+  const [, updateItemCompletion] = useAtom(updateItemCompletionAtom);
+
+  // 완료된 아이템 목록 Jotai에서 가져오기
+  const completedItems =
+    progressState.progressData[courseId]?.completedItems || [];
 
   useEffect(() => {
     async function fetchData() {
@@ -61,21 +72,7 @@ export default function CourseLearnContent({
           data: { user },
         } = await supabase.auth.getUser();
 
-        // 5. 완료된 아이템 목록 가져오기
-        if (user) {
-          const { data: progressData } = await supabase
-            .from('course_progress')
-            .select('item_id')
-            .eq('user_id', user.id)
-            .eq('course_id', courseId)
-            .eq('completed', true);
-
-          if (progressData) {
-            setCompletedItems(progressData.map((item) => item.item_id));
-          }
-        }
-
-        // 6. 현재 유저의 글 가져오기
+        // 5. 현재 유저의 글 가져오기
         let userWritingData = null;
         let otherWritingsData: CourseWriting[] = [];
 
@@ -90,7 +87,7 @@ export default function CourseLearnContent({
 
           userWritingData = userWritings;
 
-          // 7. 다른 사용자의 공개된 글 가져오기
+          // 6. 다른 사용자의 공개된 글 가져오기
           const { data: publicWritings } = await supabase
             .from('course_writings')
             .select('*')
@@ -126,22 +123,19 @@ export default function CourseLearnContent({
   // 아이템 완료 처리 함수
   const handleItemComplete = async (): Promise<void> => {
     try {
-      // 이미 완료된 아이템인지 확인
+      // 이미 완료된 아이템인지 확인 (Jotai 상태에서)
       if (completedItems.includes(itemId)) {
         return;
       }
 
-      // 아이템 완료 처리
+      // 서버에 아이템 완료 처리
       const success = await markItemAsCompleted(courseId, itemId);
 
       if (success) {
         showToast('학습이 완료되었습니다.', 'success');
 
-        // 완료된 아이템 목록 업데이트
-        setCompletedItems((prev) => {
-          const updatedItems = new Set([...prev, itemId]);
-          return Array.from(updatedItems);
-        });
+        // Jotai 상태 업데이트
+        updateItemCompletion(courseId, itemId);
       } else {
         showToast('완료 처리에 실패했습니다.', 'error');
       }

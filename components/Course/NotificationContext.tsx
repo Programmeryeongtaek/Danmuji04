@@ -1,77 +1,21 @@
 'use client';
 
+import { NotificationContextType } from '@/app/types/notificationTypes';
 import { useNotifications } from '@/hooks/useNotifications';
-import { createClient } from '@/utils/supabase/client';
-import { createContext, ReactNode, useContext, useEffect } from 'react';
+import { userAtom } from '@/store/auth';
+import { useAtomValue } from 'jotai';
+import { createContext, ReactNode, useContext, useEffect, useRef } from 'react';
 
-// 알림 관련 데이터 타입 정의
-interface CourseAddedData {
-  category: string;
-  course_id: string;
-  course_title: string;
-}
-
-interface CertificateData {
-  category: string;
-}
-
-// 알림 타입에 따른 데이터 타입 정의
-type NotificationRelatedData =
-  | CourseAddedData
-  | CertificateData
-  | Record<string, unknown>;
-
-// Notification 타입 직접 정의
-interface Notification {
-  id: number;
-  user_id: string;
-  title: string;
-  message: string;
-  type: 'course_added' | 'certificate_issued' | 'certificate_updated';
-  related_data: NotificationRelatedData;
-  read: boolean;
-  created_at: string;
-}
-
-// 알림 컨텍스트 인터페이스
-interface NotificationContextType {
-  notifications: Notification[];
-  unreadCount: number;
-  markAsRead: (id: number) => Promise<boolean>;
-  markAllAsRead: () => Promise<boolean>;
-  refresh: () => Promise<void>;
-  isLoading: boolean;
-}
-
-// 기본값 생성
-const NotificationContext = createContext<NotificationContextType>({
-  notifications: [],
-  unreadCount: 0,
-  markAsRead: async () => false,
-  markAllAsRead: async () => false,
-  refresh: async () => {},
-  isLoading: false,
-});
+// 컨텍스트 생성 (선택적 사용 - 대부분 useNotifications 훅을 직접 사용)
+const NotificationContext = createContext<NotificationContextType | undefined>(
+  undefined
+);
 
 // 알림 Provider 컴포넌트
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    refresh,
-    isLoading,
-  } = useNotifications();
-
-  const contextValue: NotificationContextType = {
-    notifications: notifications as Notification[],
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    refresh,
-    isLoading,
-  };
+  // 실제 알림 관리는 useNotifications 훅에서 처리하므로
+  // 여기서는 최소한의 컨텍스트만 제공 (주로 useNotifications 훅 사용 권장)
+  const contextValue = {} as NotificationContextType;
 
   return (
     <NotificationContext.Provider value={contextValue}>
@@ -80,10 +24,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// 알림 컨텍스트 사용을 위한 커스텀 훅
+// 컨텍스트 사용 훅 (선택적 사용 - useNotifications 훅 사용 권장)
 export function useNotificationContext() {
   const context = useContext(NotificationContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error(
       'useNotificationContext must be used within a NotificationProvider'
     );
@@ -91,48 +35,63 @@ export function useNotificationContext() {
   return context;
 }
 
-// 실시간 알림 구독을 위한 훅
+// 실시간 알림 구독을 처리하는 훅
 export function useNotificationSubscription() {
-  const { refresh } = useNotificationContext();
+  const user = useAtomValue(userAtom);
+  const { initialize, startRealtimeSubscription } = useNotifications();
+  const cleanupRef = useRef<(() => void) | null>(null);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
-    const supabase = createClient();
+    // 사용자가 로그인한 경우에만 초기화 및 구독
+    if (user && !isInitializedRef.current) {
+      const initializeAndSubscribe = async () => {
+        try {
+          // 1. 알림 데이터 초기화
+          await initialize();
 
-    async function setupSubscription() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+          // 2. 실시간 구독 시작
+          const cleanup = await startRealtimeSubscription();
+          cleanupRef.current = cleanup;
 
-      // 알림 테이블 변경 구독
-      const channel = supabase
-        .channel('notifications-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            refresh();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        channel.unsubscribe();
+          isInitializedRef.current = true;
+        } catch (error) {
+          console.error('알림 시스템 초기화 실패:', error);
+        }
       };
+
+      initializeAndSubscribe();
     }
 
-    const cleanup = setupSubscription();
+    // 사용자가 로그아웃한 경우 정리
+    if (!user && isInitializedRef.current) {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
+      isInitializedRef.current = false;
+    }
+
+    // 컴포넌트 언마운트 시 정리
     return () => {
-      if (cleanup) {
-        cleanup.then((unsub) => unsub && unsub());
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
       }
     };
-  }, [refresh]);
+  }, [user, initialize, startRealtimeSubscription]);
 
-  return null; // 이 훅은 사이드 이펙트만 있음
+  // 페이지 언로드 시에도 정리
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 }

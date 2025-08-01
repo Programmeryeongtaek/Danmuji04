@@ -30,14 +30,17 @@ export async function signup(formData: FormData) {
   const avatarFile = formData.get('profileImage') as File;
 
   if (avatarFile && authData.user) {
-    const { data: fileData, error: uploadError } = await supabase.storage
+    const fileExt = avatarFile.name.split('.').pop();
+    const fileName = `${authData.user.id}-${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage // data 제거
       .from('avatars')
-      .upload(`${authData.user.id}/${Date.now()}`, avatarFile);
+      .upload(fileName, avatarFile);
 
     if (uploadError) {
       console.error('Avatar upload error:', uploadError);
     } else {
-      avatarUrl = fileData.path;
+      avatarUrl = fileName; // 파일명만 저장 (userProfileAtom에서 URL 변환)
     }
   }
 
