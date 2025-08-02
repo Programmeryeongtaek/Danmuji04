@@ -43,6 +43,61 @@ interface LectureBookmarkInsert {
   created_at?: string;
 }
 
+// 스터디 북마크 응답 타입 (Supabase 조인 결과)
+interface StudyBookmarkRow {
+  id: string;
+  study_id: string;
+  user_id: string;
+  created_at: string;
+  notes: string | null;
+  importance: number;
+  studies: {
+    id: string;
+    title: string;
+    category: string;
+    description: string;
+    owner_id: string;
+    owner_name: string;
+    max_participants: number;
+    current_participants: number;
+    approved_participants: number;
+    start_date: string;
+    end_date: string;
+    status: 'recruiting' | 'in_progress' | 'completed';
+    book_id?: string | null;
+    books?: {
+      id: string;
+      title: string;
+    } | null;
+  };
+}
+
+// 변환된 스터디 북마크 타입 (컴포넌트에서 사용)
+export interface BookmarkedStudy {
+  id: string;
+  study_id: string;
+  user_id: string;
+  created_at: string;
+  notes: string | null;
+  importance: number;
+  study: {
+    id: string;
+    title: string;
+    category: string;
+    description: string;
+    owner_id: string;
+    owner_name: string;
+    max_participants: number;
+    current_participants: number;
+    approved_participants: number;
+    start_date: string;
+    end_date: string;
+    status: 'recruiting' | 'in_progress' | 'completed';
+    book_id?: string | null;
+    book_title?: string | null;
+  };
+}
+
 type BookmarkInsertData = PostBookmarkInsert | StudyBookmarkInsert | LectureBookmarkInsert;
 
 // 북마크 타입별 설정
@@ -296,32 +351,59 @@ export const useBookmarksList = (type: BookmarkType, options?: {
 
   return useQuery({
     queryKey: [config.queryPrefix, 'list', page, limit],
-    queryFn: async () => {
-      if (!user) return { data: [], total: 0 };
+    queryFn: async (): Promise<BookmarkedStudy[]> => {
+      if (!user) return [];
 
       const supabase = createClient();
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
-      // 북마크 목록과 관련 데이터 조회
+      if (type === 'study') {
+        // 스터디 북마크 조회
+        const { data, error } = await supabase
+          .from('study_bookmarks')
+          .select(`
+            *,
+            studies!inner (
+              *,
+              books (
+                id,
+                title
+              )
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        // 타입 변환: StudyBookmarkRow[] → BookmarkedStudy[]
+        return (data as StudyBookmarkRow[]).map((bookmark) => ({
+          ...bookmark,
+          study: {
+            ...bookmark.studies,
+            book_title: bookmark.studies.books?.title || null,
+          },
+        }));
+      }
+
+      // 다른 타입들은 기존 방식 유지 (any 타입 허용)
       const query = supabase
         .from(config.tableName)
         .select(`
           *,
-          ${type === 'post' ? 'community_posts(*)' : type === 'study' ? 'studies(*)' : 'lectures(*)'}  
+          ${type === 'post' ? 'community_posts(*)' : 'lectures(*)'}  
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .range(from, to);
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      return {
-        data: data || [],
-        total: count || 0,
-      };
+      return data || [];
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000
