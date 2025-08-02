@@ -1,39 +1,21 @@
 'use client';
 
-import { useToast } from '@/components/common/Toast/Context';
 import { useCallback } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
-import { isLectureBookmarkedAtom, lectureBookmarkAtom, toggleLectureBookmarkAtom } from '@/store/lecture/bookmarkAtom';
+import { useBookmarksList, useToggleBookmark } from './api/useBookmarks';
 
 export const useBookmarks = () => {
-  const bookmarkState = useAtomValue(lectureBookmarkAtom);
-  const isBookmarked = useAtomValue(isLectureBookmarkedAtom);
-  const [, toggleBookmark] = useAtom(toggleLectureBookmarkAtom);
-  const { showToast } = useToast();
+  const { mutate: toggleBookmark } = useToggleBookmark();
+  const { data: bookmarksList, isLoading } = useBookmarksList('lecture');
 
-  const bookmarkedLectures = Array.from(bookmarkState.lectureBookmarks);
-  const isLoading = bookmarkState.isLoading;
+  const bookmarkedLectures = bookmarksList?.data?.map(item => item.lecture_id) || [];
 
   const handleToggleBookmark = useCallback(async (lectureId: number) => {
-    try {
-      const result = await toggleBookmark(lectureId);
+    toggleBookmark({ id: lectureId, type: 'lecture'});
+  }, [toggleBookmark]);
 
-      showToast(
-        result
-          ? '찜하기에 추가되었습니다.'
-          : '찜하기가 취소되었습니다.',
-        'success'
-      );
-    } catch (error) {
-      console.error('북마크 토글 실패:', error);
-
-      if (error instanceof Error && error.message === '로그인이 필요합니다.') {
-        showToast('로그인이 필요합니다.', 'error');
-      } else {
-        showToast('오류가 발생했습니다.', 'error');
-      }
-    }
-  }, [toggleBookmark, showToast]);
+  const isBookmarked = (lectureId: number) => {
+    return bookmarkedLectures.includes(lectureId);
+  };
 
   return {
     bookmarkedLectures,
