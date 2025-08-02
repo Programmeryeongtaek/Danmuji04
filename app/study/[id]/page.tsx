@@ -6,14 +6,9 @@ import ChatRoom from '@/components/study/ChatRoom';
 import ShareButton from '@/components/study/ShareButton';
 import StudyEditForm from '@/components/study/StudyEditForm';
 import { userAtom } from '@/store/auth';
-import {
-  getParticipationStatusAtom,
-  initializeParticipationAtom,
-  updateParticipationAtom,
-} from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import {
   ArrowLeft,
   Book,
@@ -103,9 +98,10 @@ export default function StudyDetailPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'chat'>('info');
 
-  const [, updateParticipation] = useAtom(updateParticipationAtom);
-  const [, initializeParticipation] = useAtom(initializeParticipationAtom);
-  const getParticipationStatus = useAtomValue(getParticipationStatusAtom);
+  const [userParticipationStatus, setUserParticipationStatus] = useState<
+    'pending' | 'approved' | 'rejected' | null
+  >(null);
+  const [isParticipant, setIsParticipant] = useState(false);
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -113,10 +109,42 @@ export default function StudyDetailPage() {
   const params = useParams();
   const studyId = params.id as string;
 
-  // 참여 상태 계산
-  const participationStatus = getParticipationStatus(studyId);
-  const isParticipant = participationStatus.isParticipated;
-  const userParticipationStatus = participationStatus.status;
+  const checkParticipationStatus = async () => {
+    if (!user || !studyId) return;
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('study_participants')
+        .select('status')
+        .eq('study_id', studyId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('참여 상태 확인 오류:', error);
+        return;
+      }
+
+      if (data) {
+        setUserParticipationStatus(data.status);
+        setIsParticipant(true);
+      } else {
+        setUserParticipationStatus(null);
+        setIsParticipant(false);
+      }
+    } catch (error) {
+      console.error('참여 상태 확인 실패:', error);
+    }
+  };
+
+  // 참여 상태 업데이트 함수
+  const updateParticipationStatus = (
+    status: 'pending' | 'approved' | 'rejected' | null
+  ) => {
+    setUserParticipationStatus(status);
+    setIsParticipant(status !== null);
+  };
 
   // 스터디 상태 변경
   const handleChangeStudyStatus = async (
@@ -201,15 +229,12 @@ export default function StudyDetailPage() {
   useEffect(() => {
     if (studyId) {
       fetchStudyDetails();
+      // 참여자가 로그인했을 때 참여 상태 확인
+      if (user) {
+        checkParticipationStatus();
+      }
     }
-  }, [studyId, fetchStudyDetails]);
-
-  // 사용자 로그인 시 참여 상태 초기화
-  useEffect(() => {
-    if (user) {
-      initializeParticipation();
-    }
-  }, [user, initializeParticipation]);
+  }, [studyId, user, fetchStudyDetails]);
 
   // 참여자 데이터 로드 후 분류
   useEffect(() => {
@@ -389,7 +414,7 @@ export default function StudyDetailPage() {
       if (existingParticipant) {
         // 이미 승인된 경우
         if (existingParticipant.status === 'approved') {
-          updateParticipation(studyId, 'approved');
+          updateParticipationStatus('approved');
           showToast('이미 참여 중인 스터디입니다.', 'info');
           setIsJoining(false);
           return;
@@ -397,7 +422,7 @@ export default function StudyDetailPage() {
 
         // 대기 중인 경우
         if (existingParticipant.status === 'pending') {
-          updateParticipation(studyId, 'pending');
+          updateParticipationStatus('pending');
           showToast(
             '이미 참여 신청한 스터디입니다. 승인을 기다려주세요.',
             'info'
@@ -494,7 +519,7 @@ export default function StudyDetailPage() {
       );
 
       // 전역 상태 업데이트
-      updateParticipation(studyId, 'pending');
+      updateParticipationStatus('pending');
 
       // study 상태 즉시 업데이트
       setStudy({
@@ -567,7 +592,7 @@ export default function StudyDetailPage() {
 
       // 승인된 사용자가 현재 로그인한 사용자인 경우 전역 상태 업데이트
       if (participantId === user?.id) {
-        updateParticipation(studyId, 'approved');
+        updateParticipationStatus('approved');
       }
 
       // 승인된 인원 카운트 업데이트
@@ -635,7 +660,7 @@ export default function StudyDetailPage() {
 
       // 거절된 사용자가 현재 로그인한 사용자인 경우 전역 상태 업데이트
       if (participantId === user?.id) {
-        updateParticipation(studyId, 'rejected');
+        updateParticipationStatus('rejected');
       }
 
       // 참여자 수 감소
@@ -698,7 +723,7 @@ export default function StudyDetailPage() {
 
       // 강퇴된 사용자가 현재 로그인한 사용자인 경우 전역 상태 업데이트
       if (participantId === user?.id) {
-        updateParticipation(studyId, null);
+        updateParticipationStatus(null);
       }
 
       // 스터디 상태 업데이트 (참여자 수 감소)
@@ -859,7 +884,7 @@ export default function StudyDetailPage() {
           setParticipants((prev) => prev.filter((p) => p.user_id !== user.id));
 
           // 전역 상태에서 참여 상태 제거
-          updateParticipation(studyId, null);
+          updateParticipationStatus(null);
 
           setStudy((prev) => {
             if (!prev) return prev;
@@ -883,7 +908,7 @@ export default function StudyDetailPage() {
 
           // 오류가 발생해도 UI에서 나간 것처럼 처리
           setParticipants((prev) => prev.filter((p) => p.user_id !== user.id));
-          updateParticipation(studyId, null);
+          updateParticipationStatus(null);
           showToast('오류가 발생했으나 나가기 처리는 완료되었습니다.', 'error');
 
           // 오류가 발생해도 리다이렉트
