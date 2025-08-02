@@ -12,7 +12,6 @@ import { queryClient } from '@/lib/queryClient';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
 import { initializeUserProfileAtom } from '@/store/my/userProfileAtom';
-import { initializeNotificationsAtom } from '@/store/notification/notificationAtom';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -55,7 +54,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
   const initializeUserProfile = useSetAtom(initializeUserProfileAtom);
-  const [, initializeNotifications] = useAtom(initializeNotificationsAtom);
   const [, initializeCourseProgress] = useAtom(initializeCourseProgressAtom);
 
   // 초기화 상태를 추적하는 ref
@@ -84,17 +82,11 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       try {
         if (user) {
           await initializeUserProfile(user.id);
-          await Promise.all([
-            initializeNotifications(),
-            initializeCourseProgress(),
-          ]);
+          await Promise.all([initializeCourseProgress()]);
         } else {
           // 로그아웃 시에는 빈 상태로 초기화
           await initializeUserProfile('');
-          await Promise.all([
-            initializeNotifications(),
-            initializeCourseProgress(),
-          ]);
+          await Promise.all([initializeCourseProgress()]);
         }
       } catch (error) {
         console.error('상태 초기화 중 오류 발생:', error);
@@ -102,12 +94,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         initializationRef.current.isInitializing = false;
       }
     },
-    [
-      setIsLoading,
-      initializeUserProfile,
-      initializeNotifications,
-      initializeCourseProgress,
-    ]
+    [setIsLoading, initializeUserProfile, initializeCourseProgress]
   );
 
   useEffect(() => {
