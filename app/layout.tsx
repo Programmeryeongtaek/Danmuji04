@@ -13,7 +13,6 @@ import { isLoadingAtom, userAtom } from '@/store/auth';
 import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
 import { initializeUserProfileAtom } from '@/store/my/userProfileAtom';
 import { initializeNotificationsAtom } from '@/store/notification/notificationAtom';
-import { initializeParticipationAtom } from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -56,7 +55,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
   const initializeUserProfile = useSetAtom(initializeUserProfileAtom);
-  const [, initializeParticipation] = useAtom(initializeParticipationAtom);
   const [, initializeNotifications] = useAtom(initializeNotificationsAtom);
   const [, initializeCourseProgress] = useAtom(initializeCourseProgressAtom);
 
@@ -87,7 +85,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         if (user) {
           await initializeUserProfile(user.id);
           await Promise.all([
-            initializeParticipation(),
             initializeNotifications(),
             initializeCourseProgress(),
           ]);
@@ -95,7 +92,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           // 로그아웃 시에는 빈 상태로 초기화
           await initializeUserProfile('');
           await Promise.all([
-            initializeParticipation(),
             initializeNotifications(),
             initializeCourseProgress(),
           ]);
@@ -109,7 +105,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     [
       setIsLoading,
       initializeUserProfile,
-      initializeParticipation,
       initializeNotifications,
       initializeCourseProgress,
     ]
