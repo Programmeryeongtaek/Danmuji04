@@ -16,7 +16,6 @@ import {
   searchFilterAtom,
   updateSortOptionAtom,
 } from '@/store/knowledge/searchFilterAtom';
-// TanStack Query만 사용 (lectureCacheAtom 완전 제거)
 import { useLectureList, useLectureSearch } from '@/hooks/api/useLectureApi';
 
 interface ExtendedLectureSectionProps extends LectureSectionProps {
