@@ -11,10 +11,8 @@ import {
 import { queryClient } from '@/lib/queryClient';
 import { isLoadingAtom, userAtom } from '@/store/auth';
 import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
-import { initializeLectureBookmarksAtom } from '@/store/lecture/bookmarkAtom';
 import { initializeUserProfileAtom } from '@/store/my/userProfileAtom';
 import { initializeNotificationsAtom } from '@/store/notification/notificationAtom';
-import { initializeBookmarksAtom } from '@/store/study/bookmarkAtom';
 import { initializeParticipationAtom } from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -58,11 +56,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
   const initializeUserProfile = useSetAtom(initializeUserProfileAtom);
-  const [, initializeBookmarks] = useAtom(initializeBookmarksAtom);
   const [, initializeParticipation] = useAtom(initializeParticipationAtom);
-  const [, initializeLectureBookmarks] = useAtom(
-    initializeLectureBookmarksAtom
-  );
   const [, initializeNotifications] = useAtom(initializeNotificationsAtom);
   const [, initializeCourseProgress] = useAtom(initializeCourseProgressAtom);
 
@@ -93,9 +87,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         if (user) {
           await initializeUserProfile(user.id);
           await Promise.all([
-            initializeBookmarks(),
             initializeParticipation(),
-            initializeLectureBookmarks(),
             initializeNotifications(),
             initializeCourseProgress(),
           ]);
@@ -103,9 +95,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           // 로그아웃 시에는 빈 상태로 초기화
           await initializeUserProfile('');
           await Promise.all([
-            initializeBookmarks(),
             initializeParticipation(),
-            initializeLectureBookmarks(),
             initializeNotifications(),
             initializeCourseProgress(),
           ]);
@@ -119,9 +109,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     [
       setIsLoading,
       initializeUserProfile,
-      initializeBookmarks,
       initializeParticipation,
-      initializeLectureBookmarks,
       initializeNotifications,
       initializeCourseProgress,
     ]
