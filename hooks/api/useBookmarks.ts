@@ -1,4 +1,3 @@
-// src/hooks/common/useBookmarks.ts
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
