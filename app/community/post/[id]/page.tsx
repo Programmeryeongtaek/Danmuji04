@@ -13,23 +13,17 @@ import PostContent from '@/components/community/post/PostContent';
 import PostHeader from '@/components/community/post/PostHeader';
 import RelatedPosts from '@/components/community/post/RelatedPosts';
 import LoginModal from '@/components/home/LoginModal';
+import { useBookmarkStatus, useToggleBookmark } from '@/hooks/api/useBookmarks';
+import {
+  useCommentsLikeStatus,
+  useInvalidateCommentCache,
+  useToggleCommentLike,
+} from '@/hooks/api/useCommentInteraction';
+import {
+  usePostLikeStatus,
+  useTogglePostLike,
+} from '@/hooks/api/usePostInteractions';
 import { userAtom } from '@/store/auth';
-import {
-  getCommentLikeStatusAtom,
-  initializeCommentsLikeAtom,
-  removeCommentFromLikeStateAtom,
-  toggleCommentLikeAtom,
-} from '@/store/community/commentLikeAtom';
-import {
-  initializePostBookmarkAtom,
-  isPostBookmarkedAtom,
-  togglePostBookmarkAtom,
-} from '@/store/community/postBookmarkAtom';
-import {
-  getPostLikeStatusAtom,
-  initializePostLikeAtom,
-  togglePostLikeAtom,
-} from '@/store/community/postLikeAtom';
 import {
   initializePostViewCountsAtom,
   viewPostAtom,
@@ -55,24 +49,10 @@ export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
   const postId = params.id as string;
+  const numericPostId = parseInt(postId, 10);
   const { showToast } = useToast();
 
   const user = useAtomValue(userAtom);
-  const getPostLikeStatus = useAtomValue(getPostLikeStatusAtom);
-  const isPostBookmarked = useAtomValue(isPostBookmarkedAtom);
-  const getCommentLikeStatus = useAtomValue(getCommentLikeStatusAtom);
-
-  const [, initializePostLike] = useAtom(initializePostLikeAtom);
-  const [, initializePostBookmark] = useAtom(initializePostBookmarkAtom);
-  const [, initializeCommentsLike] = useAtom(initializeCommentsLikeAtom);
-  const [, initializePostViewCounts] = useAtom(initializePostViewCountsAtom);
-  const [, togglePostLike] = useAtom(togglePostLikeAtom);
-  const [, togglePostBookmark] = useAtom(togglePostBookmarkAtom);
-  const [, toggleCommentLikeAction] = useAtom(toggleCommentLikeAtom);
-  const [, removeCommentFromLikeState] = useAtom(
-    removeCommentFromLikeStateAtom
-  );
-  const [, viewPost] = useAtom(viewPostAtom);
 
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -88,6 +68,25 @@ export default function PostDetailPage() {
     commentId: null,
     content: '',
   });
+
+  const { data: postLikeStatus } = usePostLikeStatus(numericPostId);
+  const { data: bookmarkStatus } = useBookmarkStatus(numericPostId, 'post');
+  const { mutate: togglePostLike } = useTogglePostLike();
+  const { mutate: toggleBookmark } = useToggleBookmark();
+
+  // 댓글 ID 목록 추출
+  const allCommentIds = comments.flatMap((comment) => [
+    comment.id,
+    ...(comment.replies?.map((reply) => reply.id) || []),
+  ]);
+
+  const { data: commentsLikeStatus } = useCommentsLikeStatus(allCommentIds);
+  const { mutate: toggleCommentLike } = useToggleCommentLike();
+  const invalidateCommentCache = useInvalidateCommentCache();
+
+  // 조회수 관련은 유지 (아직 마이그레이션 안함)
+  const [, initializePostViewCounts] = useAtom(initializePostViewCountsAtom);
+  const [, viewPost] = useAtom(viewPostAtom);
 
   // 이미지 preload 함수
   const preloadFirstImage = useCallback((content: string) => {
@@ -122,7 +121,6 @@ export default function PostDetailPage() {
     const fetchPostData = async () => {
       try {
         setIsLoading(true);
-        const numericPostId = parseInt(postId, 10);
 
         if (isNaN(numericPostId)) {
           router.push('/community?error=post-not-found');
@@ -155,15 +153,7 @@ export default function PostDetailPage() {
           cleanupPreload = preloadFirstImage(postData.content);
         }
 
-        // 3. 전역 상태 초기화 (비동기로 처리)
-        if (user) {
-          Promise.all([
-            initializePostLike(numericPostId),
-            initializePostBookmark(numericPostId),
-          ]).catch(console.error);
-        }
-
-        // 4. 댓글과 관련 게시글은 백그라운드에서 로드
+        // 3. 댓글과 관련 게시글은 백그라운에서 로드
         Promise.all([
           fetchCommentsByPostId(numericPostId),
           fetchRelatedPosts(numericPostId),
@@ -171,15 +161,6 @@ export default function PostDetailPage() {
           .then(async ([commentsData, relatedPostsData]) => {
             setComments(commentsData);
             setRelatedPosts(relatedPostsData);
-
-            // 댓글 좋아요 상태 초기화
-            if (user && commentsData.length > 0) {
-              const allCommentIds = commentsData.flatMap((comment) => [
-                comment.id,
-                ...(comment.replies?.map((reply) => reply.id) || []),
-              ]);
-              await initializeCommentsLike(allCommentIds);
-            }
           })
           .catch(console.error);
 
@@ -206,52 +187,32 @@ export default function PostDetailPage() {
     postId,
     router,
     showToast,
-    user,
-    initializePostLike,
-    initializePostBookmark,
+    numericPostId,
+    initializePostViewCounts,
+    viewPost,
     preloadFirstImage,
   ]);
 
   // 좋아요 처리
-  const handleLike = async () => {
+  const handleLike = () => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
 
     if (!post) return;
-
-    try {
-      const result = await togglePostLike(post.id);
-      showToast(
-        result ? '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.',
-        'success'
-      );
-    } catch (error) {
-      console.error('좋아요 처리 실패:', error);
-      showToast('좋아요 처리에 실패했습니다.', 'error');
-    }
+    togglePostLike(post.id);
   };
 
   // 북마크 처리
-  const handleBookmark = async () => {
+  const handleBookmark = () => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
 
     if (!post) return;
-
-    try {
-      const result = await togglePostBookmark(post.id);
-      showToast(
-        result ? '북마크에 추가되었습니다.' : '북마크가 취소되었습니다.',
-        'success'
-      );
-    } catch (error) {
-      console.error('북마크 처리 실패:', error);
-      showToast('북마크 처리에 실패했습니다.', 'error');
-    }
+    toggleBookmark({ id: post.id, type: 'post' });
   };
 
   // 공유하기
@@ -310,9 +271,6 @@ export default function PostDetailPage() {
       const postIdNum = parseInt(postId, 10);
       const createdComment = await createComment(postIdNum, newComment);
 
-      // 새 댓글의 좋아요 상태 초기화
-      await initializeCommentsLike([createdComment.id]);
-
       setComments((prev) => [...prev, createdComment]);
       setNewComment('');
       showToast('댓글이 등록되었습니다.', 'success');
@@ -323,22 +281,13 @@ export default function PostDetailPage() {
   };
 
   // 댓글 좋아요
-  const handleCommentLike = async (commentId: number) => {
+  const handleCommentLike = (commentId: number) => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
 
-    try {
-      const result = await toggleCommentLikeAction(commentId);
-      showToast(
-        result ? '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.',
-        'success'
-      );
-    } catch (error) {
-      console.error('댓글 좋아요 실패:', error);
-      showToast('좋아요 처리에 실패했습니다.', 'error');
-    }
+    toggleCommentLike(commentId);
   };
 
   // 댓글 수정 시작
@@ -426,8 +375,8 @@ export default function PostDetailPage() {
       const success = await deleteComment(commentId);
 
       if (success) {
-        // 전역 상태에서 댓글 제거
-        removeCommentFromLikeState(commentId);
+        // TanStack Query 캐시에서 댓글 관련 데이터 정리
+        invalidateCommentCache(commentId);
 
         if (isReply && parentId) {
           setComments((prevComments) =>
@@ -476,9 +425,6 @@ export default function PostDetailPage() {
         commentId
       );
 
-      // 새 답글의 좋아요 상태 초기화
-      await initializeCommentsLike([createdReply.id]);
-
       setComments((prevComments) =>
         prevComments.map((comment) => {
           if (comment.id === commentId) {
@@ -497,6 +443,11 @@ export default function PostDetailPage() {
       console.error('답글 등록 실패:', error);
       showToast('답글 등록에 실패했습니다.', 'error');
     }
+  };
+
+  // 댓글별 좋아요 상태 가져오기
+  const getCommentLikeStatus = (commentId: number) => {
+    return commentsLikeStatus?.[commentId] || { isLiked: false, likesCount: 0 };
   };
 
   // 로딩 상태 최적화 - 스켈레톤 UI 대신 빠른 콘텐츠 표시
@@ -538,10 +489,11 @@ export default function PostDetailPage() {
   const isOwner = user && user.id === post.author_id;
 
   // 전역 상태에서 좋아요, 북마크 상태 가져오기
-  const likeStatus: LikeStatus = post
-    ? getPostLikeStatus(post.id)
-    : { isLiked: false, likesCount: 0 };
-  const bookmarkStatus = post ? isPostBookmarked(post.id) : false;
+  const likeStatus: LikeStatus = {
+    isLiked: postLikeStatus?.isLiked || false,
+    likesCount: postLikeStatus?.likesCount || 0,
+  };
+  const bookmarkStatusValue = bookmarkStatus?.isBookmarked || false;
 
   return (
     <div className="mx-auto max-w-4xl mobile:p-4 tablet:p-6">
@@ -559,7 +511,7 @@ export default function PostDetailPage() {
       <PostHeader
         post={post}
         likeStatus={likeStatus}
-        bookmarkStatus={bookmarkStatus}
+        bookmarkStatus={bookmarkStatusValue}
         onLike={handleLike}
         onBookmark={handleBookmark}
         onShare={handleShare}
@@ -613,7 +565,6 @@ export default function PostDetailPage() {
         onLoginRequired={() => setIsLoginModalOpen(true)}
       />
 
-      {/* 로그인 모달 */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
