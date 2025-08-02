@@ -1,8 +1,8 @@
 'use client';
 
 import Button from '@/components/common/Button/Button';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useToast } from '@/components/common/Toast/Context';
-import { useNotificationsRealtime } from '@/hooks/useNotificationsRealtime';
 import { COURSE_CATEGORIES } from '@/app/types/course/categories';
 import {
   Award,
@@ -21,12 +21,11 @@ export default function NotificationPage() {
   const {
     notifications,
     isLoading,
-    markAsRead,
-    markAllAsRead,
-    markForDeletion,
-    cancelDeletion,
-    deleteAllNotifications,
-  } = useNotificationsRealtime();
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    markNotificationForDeletion,
+    cancelNotificationDeletion,
+  } = useNotifications();
 
   const [timers, setTimers] = useState<Record<number, NodeJS.Timeout>>({});
   const mountedRef = useRef(true);
@@ -81,7 +80,7 @@ export default function NotificationPage() {
 
   // 알림 읽음 처리
   const handleMarkAsRead = async (notificationId: number) => {
-    const success = await markAsRead(notificationId);
+    const success = await markNotificationAsRead(notificationId);
     if (success) {
       showToast('알림을 읽음 처리했습니다.', 'success');
     }
@@ -89,7 +88,7 @@ export default function NotificationPage() {
 
   // 모든 알림 읽음 처리
   const handleMarkAllAsRead = async () => {
-    const success = await markAllAsRead();
+    const success = await markAllNotificationsAsRead();
     if (success) {
       showToast('모든 알림을 읽음 처리했습니다.', 'success');
     }
@@ -107,7 +106,7 @@ export default function NotificationPage() {
       });
     }
 
-    const success = await markForDeletion(notificationId, 30);
+    const success = await markNotificationForDeletion(notificationId, 30);
     if (success) {
       showToast('30분 후에 알림이 자동으로 삭제됩니다.', 'info');
     }
@@ -125,13 +124,13 @@ export default function NotificationPage() {
       });
     }
 
-    const success = await cancelDeletion(notificationId);
+    const success = await cancelNotificationDeletion(notificationId);
     if (success) {
       showToast('알림 삭제가 취소되었습니다.', 'success');
     }
   };
 
-  // 모든 알림 삭제
+  // 모든 알림 삭제 (개별 삭제로 구현)
   const handleDeleteAll = async () => {
     if (!confirm('모든 알림을 삭제하시겠습니까?')) return;
 
@@ -139,9 +138,24 @@ export default function NotificationPage() {
     Object.values(timers).forEach((timer) => clearTimeout(timer));
     setTimers({});
 
-    const success = await deleteAllNotifications();
-    if (success) {
-      showToast('모든 알림이 삭제되었습니다.', 'success');
+    // 각 알림을 개별적으로 삭제 예약
+    let successCount = 0;
+    for (const notification of notifications) {
+      try {
+        await markNotificationForDeletion(notification.id, 1); // 1분 후 삭제
+        successCount++;
+      } catch (error) {
+        console.error(`알림 ${notification.id} 삭제 실패:`, error);
+      }
+    }
+
+    if (successCount > 0) {
+      showToast(
+        `${successCount}개 알림이 1분 후 삭제 예약되었습니다.`,
+        'success'
+      );
+    } else {
+      showToast('알림 삭제에 실패했습니다.', 'error');
     }
   };
 
