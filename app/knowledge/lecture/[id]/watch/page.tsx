@@ -21,9 +21,9 @@ import {
 } from '@/utils/services/knowledge/lectureWatchService';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
-import { getActiveEnrollment } from '@/utils/services/knowledge/lectureService';
 import Button from '@/components/common/Button/Button';
 import LoginModal from '@/components/home/LoginModal';
+import { useEnrollmentStatus } from '@/hooks/api/useEnrollment';
 
 // DB에서 불러온 섹션 데이터를 위한 타입
 interface DBLectureSection {
@@ -60,14 +60,17 @@ export default function LectureWatchPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isEnrolled, setIsEnrolled] = useState(false);
-  const [isEnrollmentChecking, setIsEnrollmentChecking] = useState(true);
   const [lecture, setLecture] = useState<Lecture | null>(null);
   const [sections, setSections] = useState<LectureSection[]>([]);
   const [currentItem, setCurrentItem] = useState<LectureItem | null>(null);
   const [prevItemId, setPrevItemId] = useState<number | null>(null);
   const [nextItemId, setNextItemId] = useState<number | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+
+  const { data: enrollmentInfo, isLoading: enrollmentLoading } =
+    useEnrollmentStatus(Number(lectureId));
+  const isEnrolled =
+    enrollmentInfo?.isEnrolled && enrollmentInfo?.status === 'active';
 
   // 로컬 스토리지 대신 일반 state 사용
   const [isCourseCompleted, setIsCourseCompleted] = useState(false);
@@ -76,32 +79,6 @@ export default function LectureWatchPage() {
   // 업데이트 상태를 추적하는 ref - 상태 변경으로 리렌더링을 일으키지 않도록
   const isUpdatingRef = useRef(false);
   const lastWatchedItemRef = useRef<number | null>(null);
-
-  // 로그인 및 수강신청 상태 확인
-  useEffect(() => {
-    const checkEnrollmentStatus = async () => {
-      try {
-        setIsEnrollmentChecking(true);
-
-        // 로그인 상태 확인
-        if (!user) {
-          setIsEnrolled(false);
-          setIsEnrollmentChecking(false);
-          return;
-        }
-
-        // 수강 상태 확인
-        const response = await getActiveEnrollment(Number(lectureId), user.id);
-        setIsEnrolled(response.data?.status === 'active');
-      } catch (error) {
-        console.error('Error checking enrollment:', error);
-      } finally {
-        setIsEnrollmentChecking(false);
-      }
-    };
-
-    checkEnrollmentStatus();
-  }, [lectureId, user]);
 
   // 강의 데이터 로드
   useEffect(() => {
@@ -425,7 +402,7 @@ export default function LectureWatchPage() {
     router.push(`/knowledge/lecture/${lectureId}`);
   };
 
-  if (isLoading || isEnrollmentChecking) {
+  if (isLoading || enrollmentLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-purple-600"></div>

@@ -3,12 +3,17 @@
 import Card from '@/components/common/Card';
 import CancelEnrollmentButton from '@/components/My/CancelEnrollmentButton';
 import { useToast } from '@/components/common/Toast/Context';
-import { ToastType } from '@/components/common/Toast/type';
 import { Lecture } from '@/app/types/knowledge/lecture';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { calculateEnrollmentProgress } from '@/utils/services/knowledge/lectureWatchService';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/auth';
+import {
+  useCancelEnrollment,
+  useEnrollmentList,
+} from '@/hooks/api/useEnrollment';
 
 interface EnrolledLecture extends Lecture {
   enrollment_status: 'active' | 'cancelled';
@@ -19,91 +24,111 @@ export default function MyLearningPage() {
   const [enrolledLectures, setEnrolledLectures] = useState<EnrolledLecture[]>(
     []
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(true);
   const { showToast } = useToast();
+  const user = useAtomValue(userAtom);
 
-  const loadEnrolledLectures = async () => {
+  const { data: enrollments, isLoading: enrollmentsLoading } =
+    useEnrollmentList();
+  const cancelMutation = useCancelEnrollment();
+
+  useEffect(() => {
+    const loadLecturesWithProgress = async () => {
+      if (!enrollments || !user || enrollments.length === 0) {
+        setEnrolledLectures([]);
+        return;
+      }
+
+      setIsLoadingProgress(true);
+      try {
+        const supabase = createClient();
+
+        // 활성 수강신청만 필터링
+        const activeEnrollments = enrollments.filter(
+          (e) => e.status === 'active'
+        );
+
+        if (activeEnrollments.length === 0) {
+          setEnrolledLectures([]);
+          return;
+        }
+
+        const lectureIds = activeEnrollments.map((e) => e.lecture_id);
+
+        // 강의 상세 정보 가져오기
+        const { data: lectures, error: lecturesError } = await supabase
+          .from('lectures')
+          .select('*')
+          .in('id', lectureIds);
+
+        if (lecturesError) throw lecturesError;
+
+        // 각 강의의 진행률 계산
+        const lecturesWithProgress = await Promise.all(
+          lectures.map(async (lecture) => {
+            let progress = 0;
+            try {
+              progress = await calculateEnrollmentProgress(lecture.id, user.id);
+            } catch (error) {
+              console.error(`강의 ${lecture.id}의 진행률 계산 중 오류:`, error);
+            }
+
+            const enrollment = activeEnrollments.find(
+              (e) => e.lecture_id === lecture.id
+            );
+
+            return {
+              ...lecture,
+              enrollment_status: enrollment?.status || 'cancelled',
+              progress: Math.round(progress),
+              enrolled_at: enrollment?.enrolled_at || '',
+            } as EnrolledLecture;
+          })
+        );
+
+        setEnrolledLectures(lecturesWithProgress);
+      } catch (error) {
+        console.error('수강 강의 목록 로드 실패:', error);
+        showToast('수강 중인 강의 목록을 불러오는데 실패했습니다.', 'error');
+      } finally {
+        setIsLoadingProgress(false);
+      }
+    };
+
+    loadLecturesWithProgress();
+  }, [enrollments, user, showToast]);
+
+  const handleCancelEnrollment = async (lectureId: number) => {
     try {
-      setIsLoading(true);
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      await cancelMutation.mutateAsync(lectureId);
+      showToast('수강 취소가 완료되었습니다.', 'success');
 
-      if (!user) {
-        showToast('로그인이 필요합니다.', 'warning' as ToastType);
-        return;
-      }
-
-      // 1. 사용자의 수강신청 정보 가져오기
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('enrollments')
-        .select('lecture_id, status')
-        .eq('user_id', user.id)
-        .eq('status', 'active');
-
-      if (enrollmentsError) throw enrollmentsError;
-      if (!enrollments || enrollments.length === 0) {
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. 강의 ID 리스트 만들기
-      const lectureIds = enrollments.map((enrollment) => enrollment.lecture_id);
-
-      // 3. 강의 상세 정보 가져오기
-      const { data: lectures, error: lecturesError } = await supabase
-        .from('lectures')
-        .select('*')
-        .in('id', lectureIds);
-
-      if (lecturesError) throw lecturesError;
-
-      // 4. 각 강의의 진행률 계산
-      const lecturesWithProgress = await Promise.all(
-        lectures.map(async (lecture) => {
-          let progress = 0;
-          try {
-            progress = await calculateEnrollmentProgress(lecture.id, user.id);
-          } catch (error) {
-            console.error(`강의 ${lecture.id}의 진행률 계산 중 오류:`, error);
-            // 오류 발생 시 진행률 0으로 설정
-          }
-
-          const enrollment = enrollments.find(
-            (e) => e.lecture_id === lecture.id
-          );
-
-          return {
-            ...lecture,
-            enrollment_status: enrollment?.status || 'cancelled',
-            progress: Math.round(progress), // 진행률 반올림
-          };
-        })
+      // 로컬 상태에서 해당 강의 제거
+      setEnrolledLectures((prev) =>
+        prev.filter((lecture) => lecture.id !== lectureId)
       );
-
-      setEnrolledLectures(lecturesWithProgress);
     } catch (error) {
-      console.error('수강 중인 강의 목록을 불러오는데 실패했습니다.', error);
-      showToast(
-        '수강 중인 강의 목록을 불러오는데 실패했습니다.',
-        'error' as ToastType
-      );
-    } finally {
-      setIsLoading(false);
+      console.error('수강 취소 실패:', error);
+      showToast('수강 취소에 실패했습니다.', 'error');
     }
   };
 
-  useEffect(() => {
-    loadEnrolledLectures();
-  }, []);
-
-  const handleCancelSuccess = () => {
-    loadEnrolledLectures(); // 취소 성공 시 목록 새로고침
-  };
+  const isLoading = enrollmentsLoading || isLoadingProgress;
 
   if (isLoading) {
-    return <div className="flex justify-center p-8">로딩 중...</div>;
+    return (
+      <div className="mx-auto max-w-7xl p-6">
+        <h1 className="mb-8 text-2xl font-bold">학습 현황</h1>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="flex items-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+            <span className="ml-2 text-gray-600">
+              수강 정보를 불러오는 중...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -145,9 +170,7 @@ export default function MyLearningPage() {
                       <Link
                         href={`/knowledge/lecture/${lecture.id}/watch`}
                         className="mt-2 block rounded-lg bg-gold-start px-4 py-2 text-center text-white"
-                        prefetch={
-                          false
-                        } /* prefetch 비활성화 - 동적 데이터가 있는 페이지에서 유용 */
+                        prefetch={false}
                       >
                         학습하기
                       </Link>
@@ -155,14 +178,16 @@ export default function MyLearningPage() {
                         <CancelEnrollmentButton
                           lectureId={lecture.id}
                           progress={lecture.progress}
-                          onCancelSuccess={handleCancelSuccess}
+                          onCancelSuccess={() =>
+                            handleCancelEnrollment(lecture.id)
+                          }
                         />
                       ) : (
                         <button
                           onClick={() =>
                             showToast(
                               '수강률이 20% 이상이므로 수강 취소가 불가능합니다.',
-                              'error' as ToastType
+                              'error'
                             )
                           }
                           className="cursor-not-allowed text-sm text-red-500 opacity-50"
