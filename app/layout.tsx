@@ -81,12 +81,16 @@ const RootLayout = ({ children }: RootLayoutProps) => {
 
       try {
         if (user) {
+          // 사용자 프로필과 코스 진도만 초기화
           await initializeUserProfile(user.id);
-          await Promise.all([initializeCourseProgress()]);
+          await initializeCourseProgress();
         } else {
           // 로그아웃 시에는 빈 상태로 초기화
           await initializeUserProfile('');
-          await Promise.all([initializeCourseProgress()]);
+          await initializeCourseProgress();
+
+          // 로그아웃 시 TanStack Query 캐시도 정리
+          queryClient.clear();
         }
       } catch (error) {
         console.error('상태 초기화 중 오류 발생:', error);
@@ -94,7 +98,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         initializationRef.current.isInitializing = false;
       }
     },
-    [setIsLoading, initializeUserProfile, initializeCourseProgress]
+    [initializeUserProfile, initializeCourseProgress]
   );
 
   useEffect(() => {

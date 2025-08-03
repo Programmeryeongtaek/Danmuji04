@@ -17,6 +17,11 @@ import {
   courseProgressAtom,
   updateItemCompletionAtom,
 } from '@/store/course/progressAtom';
+import {
+  useIsItemCompleted,
+  useMarkItemCompleted,
+  useUpdateLastWatched,
+} from '@/hooks/api/useLectureProgress';
 
 interface CourseLearnContentProps {
   courseId: string;
@@ -36,8 +41,17 @@ export default function CourseLearnContent({
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
+  // 코스 진도는 Jotai로 계속 관리
   const progressState = useAtomValue(courseProgressAtom);
   const [, updateItemCompletion] = useAtom(updateItemCompletionAtom);
+
+  // 강의 진도는 TanStack Query로 관리
+  const lectureId = parseInt(courseId);
+  const itemIdNumber = parseInt(itemId);
+
+  const markItemCompletedMutation = useMarkItemCompleted();
+  const updateLastWatchedMutation = useUpdateLastWatched();
+  const isItemCompleted = useIsItemCompleted(lectureId, itemIdNumber);
 
   // 완료된 아이템 목록 Jotai에서 가져오기
   const completedItems =
@@ -120,22 +134,46 @@ export default function CourseLearnContent({
     }
   }, [category, course, currentItem]);
 
+  // 강의 아이템 시청 위치 업데이트
+  useEffect(() => {
+    if (currentItem && lectureId && itemIdNumber) {
+      updateLastWatchedMutation.mutate({
+        lectureId,
+        itemId: itemIdNumber,
+      });
+    }
+  }, [currentItem, lectureId, itemIdNumber, updateLastWatchedMutation]);
+
   // 아이템 완료 처리 함수
   const handleItemComplete = async (): Promise<void> => {
     try {
-      // 이미 완료된 아이템인지 확인 (Jotai 상태에서)
+      // 1. 코스 진도 확인 (Jotai)
       if (completedItems.includes(itemId)) {
         return;
       }
 
-      // 서버에 아이템 완료 처리
+      // 2. 강의 진도 확인 (TanStack Query)
+      if (isItemCompleted) {
+        // 이미 강의에서는 완료됨, 코스 진도만 업데이트
+        updateItemCompletion(courseId, itemId);
+        showToast('학습이 완료되었습니다.', 'success');
+        return;
+      }
+
+      // 3. 서버에 코스 아이템 완료 처리
       const success = await markItemAsCompleted(courseId, itemId);
 
       if (success) {
-        showToast('학습이 완료되었습니다.', 'success');
+        // 4. 강의 진도 업데이트 (TanStack Query)
+        await markItemCompletedMutation.mutateAsync({
+          lectureId,
+          itemId: itemIdNumber,
+        });
 
-        // Jotai 상태 업데이트
+        // 5. 코스 진도 업데이트 (Jotai)
         updateItemCompletion(courseId, itemId);
+
+        showToast('학습이 완료되었습니다.', 'success');
       } else {
         showToast('완료 처리에 실패했습니다.', 'error');
       }
@@ -143,6 +181,18 @@ export default function CourseLearnContent({
       console.error('아이템 완료 처리 중 오류:', error);
       showToast('오류가 발생했습니다.', 'error');
     }
+  };
+
+  // 카테고리 제목 가져오기
+  const getCategoryTitle = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      reading: '독서',
+      writing: '글쓰기',
+      question: '질문',
+      // 필요에 따라 더 추가
+    };
+
+    return categoryMap[category] || '코스';
   };
 
   if (isLoading) {
@@ -235,16 +285,4 @@ export default function CourseLearnContent({
       </div>
     </div>
   );
-}
-
-// 카테고리 이름 가져오기 함수
-function getCategoryTitle(category: string): string {
-  const categoryMap: Record<string, string> = {
-    reading: '독서',
-    writing: '글쓰기',
-    question: '질문',
-    // 필요에 따라 더 추가
-  };
-
-  return categoryMap[category] || category;
 }

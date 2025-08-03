@@ -24,8 +24,11 @@ export function CategoryDynamicContent({
 }: CategoryDynamicContentProps) {
   const { isAdmin, isLoading: permissionLoading } = useCoursePermission();
   const { courses, isLoading: coursesLoading } = useCourseList(category);
+
+  // 코스 진도는 Jotai로 유지 (코스별 관리)
   const progressState = useAtomValue(courseProgressAtom);
   const { progressData, isLoading: progressLoading } = progressState;
+
   const [userName, setUserName] = useState('');
   const user = useAtomValue(userAtom);
 
@@ -70,7 +73,7 @@ export function CategoryDynamicContent({
     let completedCourses = 0;
     let completedWritings = 0;
 
-    // 각 코스의 완료 상태 확인
+    // 각 코스의 완료 상태 확인 (Jotai 데이터 사용)
     categoryCourses.forEach((course) => {
       const progress = progressData[course.id];
       if (progress) {
@@ -79,7 +82,11 @@ export function CategoryDynamicContent({
       }
     });
 
-    return { totalCourses, completedCourses, completedWritings };
+    return {
+      totalCourses,
+      completedCourses,
+      completedWritings,
+    };
   };
 
   const { totalCourses, completedCourses, completedWritings } =
@@ -118,7 +125,7 @@ export function CategoryDynamicContent({
           선별한 {title} 관련 영상을 보고 자신만의 생각을 글로 정리해보세요.
         </p>
 
-        {/* 진행 상황 요약 컴포넌트 - 카테고리 prop 추가 */}
+        {/* 진행 상황 요약 컴포넌트 */}
         {user && totalCourses > 0 && (
           <CourseProgressSummary
             categoryName={title}

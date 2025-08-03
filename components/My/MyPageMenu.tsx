@@ -21,6 +21,7 @@ import { userAtom } from '@/store/auth';
 import { useAtomValue } from 'jotai';
 import { userProfileAtom } from '@/store/my/userProfileAtom';
 import { getAvatarUrl } from '@/utils/common/avatarUtils';
+import { useLectureProgressStats } from '@/hooks/api/useLectureProgress';
 
 interface UserStats {
   enrolledCourses: number;
@@ -36,6 +37,8 @@ const MyPageMenu = () => {
   const user = useAtomValue(userAtom);
   const profile = useAtomValue(userProfileAtom);
   const avatarUrl = getAvatarUrl(profile?.avatar_url);
+
+  const { data: lectureStats } = useLectureProgressStats();
 
   const [stats, setStats] = useState<UserStats>({
     enrolledCourses: 0,
@@ -69,14 +72,8 @@ const MyPageMenu = () => {
           .eq('user_id', user.id)
           .eq('status', 'active');
 
-        // 2. 완료한 강의 수 - 진행률 100%인 강의
-        // 여기서는 간단하게 enrollments 테이블에서 가져오지만
-        // 실제로는 진행률 계산 함수를 이용해야 할 수 있음
-        const { count: completedCount } = await supabase
-          .from('lecture_progress')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('completed', true);
+        // 2. 완료한 강의 수 - TanStack Query 통계 사용
+        const completedLectures = lectureStats?.completedLectures || 0;
 
         // 3. 작성한 글 수
         const { count: writingsCount } = await supabase
@@ -111,7 +108,7 @@ const MyPageMenu = () => {
 
         setStats({
           enrolledCourses: enrolledCount || 0,
-          completedCourses: completedCount || 0,
+          completedCourses: completedLectures,
           writingsCount: writingsCount || 0,
           certificatesCount: certificatesCount || 0,
           wishlistCount: wishlistCount || 0,
@@ -127,7 +124,7 @@ const MyPageMenu = () => {
     };
 
     loadUserData();
-  }, [user, profile, showToast]);
+  }, [user, profile, lectureStats, showToast]);
 
   if (!user) {
     return (

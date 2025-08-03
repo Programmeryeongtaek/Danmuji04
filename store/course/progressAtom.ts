@@ -20,7 +20,7 @@ const courseProgressStateAtom = atom<CourseProgressState>({
 // 읽기 전용
 export const courseProgressAtom = atom((get) => get(courseProgressStateAtom));
 
-// 초기화 (기존 useAllCourseProgress 사용)
+// 초기화 (코스 진도만 관리)
 export const initializeCourseProgressAtom = atom(
   null,
   async (get, set) => {
@@ -35,7 +35,7 @@ export const initializeCourseProgressAtom = atom(
     set(courseProgressStateAtom, prev => ({ ...prev, isLoading: true }));
 
     try {
-      // 기존 useAllCourseProgress와 동일한 로직
+      // 코스 진도만 조회 (강의 진도는 TanStack Query로 별도 관리)
       const { data: courses } = await supabase.from('courses').select('id');
       const { data: progress } = await supabase
         .from('course_progress')
@@ -61,7 +61,7 @@ export const initializeCourseProgressAtom = atom(
 
       set(courseProgressStateAtom, { progressData: result, isLoading: false });
     } catch (error) {
-      console.error('진행 상황 초기화 실패:', error);
+      console.error('코스 진행 상황 초기화 실패:', error);
       set(courseProgressStateAtom, prev => ({ ...prev, isLoading: false }));
     }
   }

@@ -12,20 +12,23 @@ import {
   Video,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useLectureProgress } from '@/hooks/api/useLectureProgress';
 
 interface LectureCurriculumProps {
+  lectureId: number;
   sections: LectureSection[];
   currentItemId: number;
   onItemSelect: (item: LectureItem) => void;
-  completedItems: number[]; // 부모로부터 완료된 항목 목록 전달받음
 }
 
 export default function LectureCurriculum({
+  lectureId,
   sections,
   currentItemId,
   onItemSelect,
-  completedItems, // 부모로부터 전달받은 props
 }: LectureCurriculumProps) {
+  const { data: lectureProgress } = useLectureProgress(lectureId);
+  const completedItems = lectureProgress?.completedItems || [];
   // 완료된 항목 상태 관리 (로컬 스토리지 대신 일반 상태 사용)
   const [progressState, setProgressState] = useState({
     completed: 0,
