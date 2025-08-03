@@ -1,11 +1,14 @@
 'use client';
 
-import { Comment, Profile } from '@/app/types/community/communityType';
+import { Comment } from '@/app/types/community/communityType';
 import Button from '@/components/common/Button/Button';
 import { Edit, ThumbsUp, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { memo, useMemo } from 'react';
 import ReplyItem from './ReplyItem';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/auth';
+import { useToggleCommentLike } from '@/hooks/api/useCommentInteraction';
 
 interface EditingComment {
   id: number;
@@ -20,10 +23,8 @@ interface NewReply {
 
 interface CommentItemProps {
   comment: Comment;
-  user: Profile | null;
-  onLike: (commentId: number) => void;
   onEdit: (comment: Comment) => void;
-  onDelete: (commentId: number) => void;
+  onDelete: (commentId: number, isReply?: boolean) => void; // isReply를 optional로 변경
   onSubmitReply: (e: React.FormEvent, commentId: number) => void;
   editingComment: EditingComment | null;
   setEditingComment: (value: EditingComment | null) => void;
@@ -35,13 +36,14 @@ interface CommentItemProps {
     isLiked: boolean;
     likesCount: number;
   };
+  updateCommentLoading?: boolean;
+  deleteCommentLoading?: boolean;
+  createCommentLoading?: boolean;
 }
 
 const CommentItem = memo(
   ({
     comment,
-    user,
-    onLike,
     onEdit,
     onDelete,
     onSubmitReply,
@@ -52,12 +54,27 @@ const CommentItem = memo(
     onCancelEdit,
     onSubmitEdit,
     getCommentLikeStatus,
+    updateCommentLoading = false,
+    deleteCommentLoading = false,
+    createCommentLoading = false,
   }: CommentItemProps) => {
+    const user = useAtomValue(userAtom);
+    const { mutate: toggleCommentLike } = useToggleCommentLike();
+
     const setReplyMode = (commentId: number | null) => {
       setNewReply({
         commentId,
         content: '',
       });
+    };
+
+    // 댓글 좋아요 처리
+    const handleCommentLike = (commentId: number) => {
+      if (!user) {
+        // 로그인 필요 시 처리 (부모 컴포넌트에서 모달 관리)
+        return;
+      }
+      toggleCommentLike(commentId);
     };
 
     // 계산 최적화
@@ -101,14 +118,13 @@ const CommentItem = memo(
               {comment.author_avatar ? (
                 <Image
                   src={comment.author_avatar}
-                  alt={comment.author_name || ''}
+                  alt={comment.author_name || '사용자'}
                   width={32}
                   height={32}
                   className="h-full w-full object-cover"
-                  loading="lazy"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-gray-500">
+                <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
                   {comment.author_name
                     ? comment.author_name.charAt(0).toUpperCase()
                     : '?'}
@@ -116,147 +132,164 @@ const CommentItem = memo(
               )}
             </div>
             <div>
-              <div className="font-medium">{comment.author_name}</div>
+              <div className="font-medium">
+                {comment.author_name || '사용자'}
+              </div>
               <div className="text-xs text-gray-500">{formattedDate}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onLike(comment.id)}
-              className={`flex items-center gap-1 text-sm ${
-                likeStatus.isLiked
-                  ? 'text-gold-start'
-                  : 'text-gray-500 hover:text-gold-start'
-              }`}
-            >
-              <ThumbsUp className="h-4 w-4" />
-              <span>{likeStatus.likesCount}</span>
-            </button>
-
-            {isAuthor && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onEdit(comment)}
-                  className="text-sm text-gray-500 hover:text-blue-500"
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => onDelete(comment.id)}
-                  className="text-sm text-gray-500 hover:text-red-500"
-                >
+          {/* 작성자만 보이는 수정/삭제 버튼 */}
+          {isAuthor && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => onEdit(comment)}
+                className="flex items-center gap-1 text-gray-500 hover:text-blue-600"
+                disabled={updateCommentLoading}
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => onDelete(comment.id, false)} // isReply: false 명시적으로 전달
+                className="flex items-center gap-1 text-gray-500 hover:text-red-600"
+                disabled={deleteCommentLoading}
+              >
+                {deleteCommentLoading ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-600"></div>
+                ) : (
                   <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* 댓글 내용 - 수정 모드인 경우 수정 폼 표시 */}
-        {isEditing && editingComment ? (
-          <form onSubmit={onSubmitEdit} className="pl-10">
+        {/* 댓글 내용 - 수정 모드일 때와 일반 모드 */}
+        {isEditing ? (
+          <form onSubmit={onSubmitEdit} className="mb-3">
             <textarea
-              value={editingComment.content}
+              value={editingComment?.content || ''}
               onChange={(e) =>
-                setEditingComment({
-                  ...editingComment,
-                  content: e.target.value,
-                })
+                setEditingComment(
+                  editingComment
+                    ? { ...editingComment, content: e.target.value }
+                    : null
+                )
               }
-              className="mb-2 h-20 w-full resize-none rounded-lg border p-3 focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+              className="mb-2 h-20 w-full resize-none rounded border p-2 focus:border-blue-500 focus:outline-none"
+              disabled={updateCommentLoading}
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                className="px-3 py-1 text-sm"
+                disabled={updateCommentLoading}
+              >
+                {updateCommentLoading ? (
+                  <div className="flex items-center">
+                    <div className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    수정 중...
+                  </div>
+                ) : (
+                  '수정'
+                )}
+              </Button>
               <button
                 type="button"
                 onClick={onCancelEdit}
-                className="rounded-lg border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
+                className="rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-100"
+                disabled={updateCommentLoading}
               >
                 취소
-              </button>
-              <button
-                type="submit"
-                className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-3 py-1 text-sm text-white"
-              >
-                완료
               </button>
             </div>
           </form>
         ) : (
-          <div className="whitespace-pre-line pl-10 text-gray-800">
+          <div className="mb-3 whitespace-pre-wrap text-gray-800">
             {comment.content}
-            {comment.updated_at !== comment.created_at && (
-              <span
-                className="ml-2 cursor-help text-xs text-gray-500"
-                title={`수정 시간: ${formattedDate}`}
-              >
-                (수정됨)
-              </span>
-            )}
           </div>
         )}
 
-        {/* 답글 버튼 */}
-        <div className="mt-2 flex justify-end">
-          {isReplying ? (
-            <button
-              onClick={() => setReplyMode(null)}
-              className="text-sm text-gray-500 hover:text-red-500"
-            >
-              취소
-            </button>
-          ) : (
-            <button
-              onClick={() => setReplyMode(comment.id)}
-              className="text-sm text-gray-500 hover:text-gold-start"
-            >
-              답글
-            </button>
-          )}
+        {/* 좋아요 및 답글 버튼 */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => handleCommentLike(comment.id)}
+            className={`flex items-center gap-1 text-sm ${
+              likeStatus.isLiked
+                ? 'text-blue-600'
+                : 'text-gray-500 hover:text-blue-600'
+            }`}
+          >
+            <ThumbsUp className="h-4 w-4" />
+            <span>{likeStatus.likesCount}</span>
+          </button>
+
+          <button
+            onClick={() => setReplyMode(isReplying ? null : comment.id)}
+            className="text-sm text-gray-500 hover:text-blue-600"
+          >
+            답글
+          </button>
         </div>
 
         {/* 답글 작성 폼 */}
         {isReplying && (
           <form
             onSubmit={(e) => onSubmitReply(e, comment.id)}
-            className="mt-3 pl-10"
+            className="ml-8 mt-4"
           >
             <textarea
               value={newReply.content}
               onChange={(e) =>
-                setNewReply({
-                  commentId: comment.id,
-                  content: e.target.value,
-                })
+                setNewReply({ ...newReply, content: e.target.value })
               }
               placeholder="답글을 작성해주세요."
-              className="mb-2 h-20 w-full resize-none rounded-lg border p-3 text-sm focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+              className="mb-2 h-16 w-full resize-none rounded border p-2 focus:border-blue-500 focus:outline-none"
+              disabled={createCommentLoading}
             />
-            <div className="flex justify-end">
-              <Button type="submit" className="px-3 py-1 text-sm">
-                작성
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                className="px-3 py-1 text-sm"
+                disabled={createCommentLoading || !newReply.content.trim()}
+              >
+                {createCommentLoading ? (
+                  <div className="flex items-center">
+                    <div className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    등록 중...
+                  </div>
+                ) : (
+                  '답글 등록'
+                )}
               </Button>
+              <button
+                type="button"
+                onClick={() => setReplyMode(null)}
+                className="rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-100"
+                disabled={createCommentLoading}
+              >
+                취소
+              </button>
             </div>
           </form>
         )}
 
-        {/* 답글이 있는 경우 렌더링 */}
+        {/* 답글 목록 */}
         {comment.replies && comment.replies.length > 0 && (
-          <div className="mt-4 space-y-4 rounded-lg bg-gray-50 p-4">
+          <div className="ml-8 mt-4 space-y-3">
             {comment.replies.map((reply) => (
               <ReplyItem
                 key={reply.id}
                 reply={reply}
-                user={user}
-                parentId={comment.id}
-                onLike={onLike}
-                onEdit={onEdit}
-                onDelete={onDelete}
+                onEdit={() => onEdit(reply)}
+                onDelete={() => onDelete(reply.id, true)}
                 editingComment={editingComment}
                 setEditingComment={setEditingComment}
                 onCancelEdit={onCancelEdit}
                 onSubmitEdit={onSubmitEdit}
                 getCommentLikeStatus={getCommentLikeStatus}
+                updateCommentLoading={updateCommentLoading}
+                deleteCommentLoading={deleteCommentLoading}
               />
             ))}
           </div>
