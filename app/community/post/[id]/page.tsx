@@ -125,7 +125,7 @@ export default function PostDetailPage() {
           return;
         }
 
-        const postData = await fetchPostById(numericPostId, false);
+        const postData = await fetchPostById(numericPostId);
         if (!postData) {
           router.push('/community?error=post-not-found');
           return;
