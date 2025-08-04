@@ -26,17 +26,18 @@ import {
   usePostLikeStatus,
   useTogglePostLike,
 } from '@/hooks/api/usePostInteractions';
-import { userAtom } from '@/store/auth';
 import {
-  initializePostViewCountsAtom,
-  viewPostAtom,
-} from '@/store/community/postViewAtom';
+  useIncrementPostView,
+  usePostViewCount,
+  usePostViewSession,
+} from '@/hooks/api/usePostView';
+import { userAtom } from '@/store/auth';
 import {
   deletePost,
   fetchPostById,
   fetchRelatedPosts,
 } from '@/utils/services/community/postService';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -84,10 +85,9 @@ export default function PostDetailPage() {
   ]);
 
   const { data: commentsLikeStatus } = useCommentsLikeStatus(allCommentIds);
-
-  // 조회수 관련은 유지
-  const [, initializePostViewCounts] = useAtom(initializePostViewCountsAtom);
-  const [, viewPost] = useAtom(viewPostAtom);
+  const { data: postViewData } = usePostViewCount(numericPostId);
+  const incrementPostView = useIncrementPostView();
+  const { hasViewed, markAsViewed } = usePostViewSession();
 
   // 이미지 preload 함수
   const preloadFirstImage = useCallback((content: string) => {
@@ -133,14 +133,6 @@ export default function PostDetailPage() {
 
         setPost(postData);
 
-        // 조회수 관련 처리
-        if (postData) {
-          await initializePostViewCounts([
-            { id: postData.id, views: postData.views },
-          ]);
-          await viewPost(postData.id);
-        }
-
         // 첫 번째 이미지 preload
         let cleanupPreload: (() => void) | undefined;
         if (postData.content) {
@@ -174,15 +166,14 @@ export default function PostDetailPage() {
         cleanup?.then((cleanupFn) => cleanupFn?.());
       };
     }
-  }, [
-    postId,
-    router,
-    showToast,
-    numericPostId,
-    initializePostViewCounts,
-    viewPost,
-    preloadFirstImage,
-  ]);
+  }, [postId, router, showToast, numericPostId, preloadFirstImage]);
+
+  useEffect(() => {
+    if (post && !hasViewed(numericPostId)) {
+      markAsViewed(numericPostId);
+      incrementPostView.mutate(numericPostId);
+    }
+  }, [post, hasViewed, markAsViewed, incrementPostView, numericPostId]);
 
   // TanStack Query v5: mutation 성공 시 상태 초기화를 useEffect로 처리
   useEffect(() => {
@@ -407,6 +398,7 @@ export default function PostDetailPage() {
         post={post}
         likeStatus={likeStatus}
         bookmarkStatus={bookmarkStatusValue}
+        viewCount={postViewData?.views ?? post.views ?? 0}
         onLike={handleLike}
         onBookmark={handleBookmark}
         onShare={handleShare}

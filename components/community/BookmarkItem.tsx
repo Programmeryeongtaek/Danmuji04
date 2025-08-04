@@ -1,6 +1,7 @@
 'use client';
 
 import { BookmarkedPost } from '@/app/types/community/communityType';
+import { usePostViewCount } from '@/hooks/api/usePostView';
 import {
   CheckSquare,
   Edit,
@@ -47,6 +48,9 @@ export default function BookmarkItem({
     memo: string;
   } | null>(null);
   const memoInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const { data: viewData } = usePostViewCount(post.id);
+  const displayViewCount = viewData?.views ?? post.views ?? 0;
 
   const toggleImportanceDropdown = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -222,7 +226,7 @@ export default function BookmarkItem({
             <div className="flex items-center gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-1">
                 <Eye className="h-4 w-4" />
-                <span>{post.views}</span>
+                <span>{displayViewCount.toLocaleString()}</span>
               </div>
               <div className="flex items-center gap-1">
                 <MessageSquare className="h-4 w-4" />

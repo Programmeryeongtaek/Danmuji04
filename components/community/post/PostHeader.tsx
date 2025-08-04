@@ -9,6 +9,7 @@ interface PostHeaderProps {
   post: Post;
   likeStatus: { isLiked: boolean; likesCount: number };
   bookmarkStatus: boolean;
+  viewCount: number;
   onLike: () => void;
   onBookmark: () => void;
   onShare: () => void;
@@ -19,6 +20,7 @@ const PostHeader = memo(
     post,
     likeStatus,
     bookmarkStatus,
+    viewCount,
     onLike,
     onBookmark,
     onShare,
@@ -64,7 +66,11 @@ const PostHeader = memo(
             </div>
             <div>
               <div className="font-medium">{post.author_name}</div>
-              <div className="text-sm text-gray-500">{formattedDate}</div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{formattedDate}</span>
+                <span>•</span>
+                <span>조회 {viewCount.toLocaleString()}</span>
+              </div>
             </div>
           </div>
 
