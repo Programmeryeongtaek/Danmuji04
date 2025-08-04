@@ -11,7 +11,7 @@ import { createClient } from '@/utils/supabase/client';
 import CourseProgressSummary from '../CourseProgressSummary';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
-import { courseProgressAtom } from '@/store/course/progressAtom';
+import { useAllCoursesProgress } from '@/hooks/api/useCourseProgress';
 
 interface CategoryDynamicContentProps {
   category: string;
@@ -25,9 +25,9 @@ export function CategoryDynamicContent({
   const { isAdmin, isLoading: permissionLoading } = useCoursePermission();
   const { courses, isLoading: coursesLoading } = useCourseList(category);
 
-  // 코스 진도는 Jotai로 유지 (코스별 관리)
-  const progressState = useAtomValue(courseProgressAtom);
-  const { progressData, isLoading: progressLoading } = progressState;
+  // 코스 진도 관리
+  const { data: allCoursesProgress = {}, isLoading: progressLoading } =
+    useAllCoursesProgress();
 
   const [userName, setUserName] = useState('');
   const user = useAtomValue(userAtom);
@@ -73,12 +73,12 @@ export function CategoryDynamicContent({
     let completedCourses = 0;
     let completedWritings = 0;
 
-    // 각 코스의 완료 상태 확인 (Jotai 데이터 사용)
+    // 각 코스의 완료 상태 확인
     categoryCourses.forEach((course) => {
-      const progress = progressData[course.id];
+      const progress = allCoursesProgress[course.id];
       if (progress) {
-        if (progress.completed) completedCourses++;
-        if (progress.writingCompleted) completedWritings++;
+        if (progress.isCompleted) completedCourses++;
+        if (progress.hasWriting) completedWritings++;
       }
     });
 

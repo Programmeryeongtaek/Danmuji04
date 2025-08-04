@@ -9,17 +9,15 @@ import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/common/Toast/Context';
-import { markItemAsCompleted } from '@/utils/services/course/courseService';
 import VideoPlayer from '@/components/knowledge/lecture/watch/VideoPlayer';
 import WritingSection from './WritingSection';
-import { useAtom, useAtomValue } from 'jotai';
 import {
-  courseProgressAtom,
-  updateItemCompletionAtom,
-} from '@/store/course/progressAtom';
+  useMarkItemCompleted as useCourseMarkItemCompleted,
+  useIsItemCompleted as useCourseIsItemCompleted,
+} from '@/hooks/api/useCourseProgress';
 import {
-  useIsItemCompleted,
-  useMarkItemCompleted,
+  useIsItemCompleted as useLectureIsItemCompleted,
+  useMarkItemCompleted as useLectureMarkItemCompleted,
   useUpdateLastWatched,
 } from '@/hooks/api/useLectureProgress';
 
@@ -41,21 +39,20 @@ export default function CourseLearnContent({
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
-  // 코스 진도는 Jotai로 계속 관리
-  const progressState = useAtomValue(courseProgressAtom);
-  const [, updateItemCompletion] = useAtom(updateItemCompletionAtom);
-
-  // 강의 진도는 TanStack Query로 관리
   const lectureId = parseInt(courseId);
   const itemIdNumber = parseInt(itemId);
 
-  const markItemCompletedMutation = useMarkItemCompleted();
-  const updateLastWatchedMutation = useUpdateLastWatched();
-  const isItemCompleted = useIsItemCompleted(lectureId, itemIdNumber);
+  // 코스 진도 관리 (TanStack Query)
+  const courseMarkItemCompletedMutation = useCourseMarkItemCompleted();
+  const isCourseItemCompleted = useCourseIsItemCompleted(courseId, itemId);
 
-  // 완료된 아이템 목록 Jotai에서 가져오기
-  const completedItems =
-    progressState.progressData[courseId]?.completedItems || [];
+  // 강의 진도 관리 (TanStack Query)
+  const lectureMarkItemCompletedMutation = useLectureMarkItemCompleted();
+  const updateLastWatchedMutation = useUpdateLastWatched();
+  const isLectureItemCompleted = useLectureIsItemCompleted(
+    lectureId,
+    itemIdNumber
+  );
 
   useEffect(() => {
     async function fetchData() {
@@ -127,7 +124,7 @@ export default function CourseLearnContent({
     fetchData();
   }, [courseId, itemId]);
 
-  // 페이지 제목 설정 (category 사용 예)
+  // 페이지 제목 설정
   useEffect(() => {
     if (currentItem && course) {
       document.title = `${getCategoryTitle(category)} - ${course.title}`;
@@ -136,7 +133,13 @@ export default function CourseLearnContent({
 
   // 강의 아이템 시청 위치 업데이트
   useEffect(() => {
-    if (currentItem && lectureId && itemIdNumber) {
+    if (
+      currentItem &&
+      lectureId &&
+      itemIdNumber &&
+      !isNaN(lectureId) &&
+      !isNaN(itemIdNumber)
+    ) {
       updateLastWatchedMutation.mutate({
         lectureId,
         itemId: itemIdNumber,
@@ -144,43 +147,60 @@ export default function CourseLearnContent({
     }
   }, [currentItem, lectureId, itemIdNumber, updateLastWatchedMutation]);
 
-  // 아이템 완료 처리 함수
+  // 아이템 완료 처리 함수 (통합)
   const handleItemComplete = async (): Promise<void> => {
     try {
-      // 1. 코스 진도 확인 (Jotai)
-      if (completedItems.includes(itemId)) {
+      // 1. 이미 완료된 상태인지 확인
+      if (isCourseItemCompleted && isLectureItemCompleted) {
+        showToast('이미 완료된 학습입니다.', 'info');
         return;
       }
 
-      // 2. 강의 진도 확인 (TanStack Query)
-      if (isItemCompleted) {
-        // 이미 강의에서는 완료됨, 코스 진도만 업데이트
-        updateItemCompletion(courseId, itemId);
-        showToast('학습이 완료되었습니다.', 'success');
-        return;
+      // 2. 병렬로 코스와 강의 진도 업데이트
+      const promises = [];
+
+      // 코스 진도 업데이트
+      if (!isCourseItemCompleted) {
+        promises.push(
+          courseMarkItemCompletedMutation.mutateAsync({
+            courseId,
+            itemId,
+          })
+        );
       }
 
-      // 3. 서버에 코스 아이템 완료 처리
-      const success = await markItemAsCompleted(courseId, itemId);
-
-      if (success) {
-        // 4. 강의 진도 업데이트 (TanStack Query)
-        await markItemCompletedMutation.mutateAsync({
-          lectureId,
-          itemId: itemIdNumber,
-        });
-
-        // 5. 코스 진도 업데이트 (Jotai)
-        updateItemCompletion(courseId, itemId);
-
-        showToast('학습이 완료되었습니다.', 'success');
-      } else {
-        showToast('완료 처리에 실패했습니다.', 'error');
+      // 강의 진도 업데이트 (유효한 숫자인 경우에만)
+      if (
+        !isLectureItemCompleted &&
+        !isNaN(lectureId) &&
+        !isNaN(itemIdNumber)
+      ) {
+        promises.push(
+          lectureMarkItemCompletedMutation.mutateAsync({
+            lectureId,
+            itemId: itemIdNumber,
+          })
+        );
       }
+
+      // 모든 업데이트 완료 대기
+      await Promise.all(promises);
+
+      showToast('학습이 완료되었습니다.', 'success');
     } catch (error) {
       console.error('아이템 완료 처리 중 오류:', error);
-      showToast('오류가 발생했습니다.', 'error');
+      showToast('완료 처리 중 오류가 발생했습니다.', 'error');
     }
+  };
+
+  // 글 저장 후 콜백
+  const handleWritingSaved = (writing: CourseWriting) => {
+    setUserWriting(writing);
+  };
+
+  // 글 삭제 후 콜백
+  const handleWritingDeleted = () => {
+    setUserWriting(null);
   };
 
   // 카테고리 제목 가져오기
@@ -189,9 +209,7 @@ export default function CourseLearnContent({
       reading: '독서',
       writing: '글쓰기',
       question: '질문',
-      // 필요에 따라 더 추가
     };
-
     return categoryMap[category] || '코스';
   };
 
@@ -217,11 +235,18 @@ export default function CourseLearnContent({
     );
   }
 
+  // 완료 상태 계산
+  const isCompleted =
+    isCourseItemCompleted && (isNaN(lectureId) || isLectureItemCompleted);
+  const isProcessing =
+    courseMarkItemCompletedMutation.isPending ||
+    lectureMarkItemCompletedMutation.isPending;
+
   return (
     <div className="relative mx-auto max-w-4xl px-4 py-12">
       <h1 className="mb-2 text-xl font-bold">{currentItem.title}</h1>
 
-      {/* 강의 영상 - 항상 표시 */}
+      {/* 강의 영상 */}
       <div className="mb-6 overflow-hidden rounded-lg">
         <VideoPlayer
           contentUrl={
@@ -235,6 +260,7 @@ export default function CourseLearnContent({
         />
       </div>
 
+      {/* 강의 설명 */}
       {currentItem.description && (
         <div className="mb-6 rounded-lg bg-gray-50 p-4">
           <h2 className="mb-2 text-lg font-semibold">강의 설명</h2>
@@ -242,17 +268,33 @@ export default function CourseLearnContent({
         </div>
       )}
 
-      {/* 내용 정리 섹션 - 항상 표시 */}
+      {/* 완료 버튼 */}
+      <div className="mb-6 text-center">
+        <button
+          onClick={handleItemComplete}
+          disabled={isProcessing || isCompleted}
+          className={`rounded-lg px-6 py-2 font-medium transition-colors ${
+            isCompleted
+              ? 'bg-green-100 text-green-800'
+              : isProcessing
+                ? 'cursor-not-allowed bg-gray-300 text-gray-600'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          {isProcessing ? '처리 중...' : isCompleted ? '완료됨' : '학습 완료'}
+        </button>
+      </div>
+
+      {/* 글쓰기 섹션 */}
       <div className="mt-8">
         <h2 className="mb-4 text-xl font-semibold">내용 정리</h2>
 
-        {/* WritingSection 컴포넌트 */}
         <WritingSection
           courseId={courseId}
           itemId={itemId}
           userWriting={userWriting}
-          onWritingSaved={(writing) => setUserWriting(writing)}
-          onWritingDeleted={() => setUserWriting(null)}
+          onWritingSaved={handleWritingSaved}
+          onWritingDeleted={handleWritingDeleted}
         />
 
         {/* 다른 사람의 글 섹션 */}
