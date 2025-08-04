@@ -1,244 +1,70 @@
 'use client';
 
-import { CourseProgress, CourseWithSections } from '@/app/types/course/courseModel';
-import { Course } from '@/app/types/course/courseTypes';
-import { useCallback, useEffect, useState } from 'react';
+import { CourseWithSections } from '@/app/types/course/courseModel';
+import { Course, CourseItem } from '@/app/types/course/courseTypes';
+import { useEffect, useState } from 'react';
 import useSupabase from './useSupabase';
 import { useToast } from '@/components/common/Toast/Context';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/client';
 import { isAdminUser } from '@/utils/supabase/auth';
 
-// Database 타입 정의 (간소화된 버전)
-interface Database {
-  public: {
-    Tables: {
-      [key: string]: {
-        Row: Record<string, unknown>;
-      };
-    };
-  };
+// Supabase 쿼리 결과 타입 정의
+interface CourseWithItems extends Course {
+  course_items?: CourseItem[];
 }
 
-//TODO: 후에 분리할 것
-const fetchCoursesByCategory = async (supabase: SupabaseClient<Database>, category: string): Promise<Course[]> => {
-  const { data, error } = await supabase
-    .from('courses')
-    .select('*')
-    .eq('category', category)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data as Course[];
-};
-
-const fetchCourses = async (supabase: SupabaseClient<Database>): Promise<Course[]> => {
-  const { data, error } = await supabase
-    .from('courses')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data as Course[];
-};
-
-const fetchCourseDetail = async (supabase: SupabaseClient<Database>, courseId: string): Promise<CourseWithSections> => {
-  // 코스 기본 정보 조회
-  const { data: course, error: courseError } = await supabase
-    .from('courses')
-    .select('*')
-    .eq('id', courseId)
-    .single();
-  
-  if (courseError) throw courseError;
-  
-  // 코스 아이템 조회
-  const { data: items, error: itemsError } = await supabase
-    .from('course_items')
-    .select('*')
-    .eq('course_id', courseId)
-    .order('order_num', { ascending: true });
-  
-  if (itemsError) throw itemsError;
-  
-  // 결과 조합
-  return {
-    ...course,
-    sections: [
-      {
-        id: 'main-section',
-        title: '강의 목록',
-        items: items || []
-      }
-    ]
-  } as CourseWithSections;
-};
-
-const getUserCourseProgress = async (supabase: SupabaseClient<Database>, courseId: string, userId: string): Promise<CourseProgress[]> => {
-  if (!userId) return [];
-  
-  const { data, error } = await supabase
-    .from('course_progress')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('course_id', courseId);
-  
-  if (error) throw error;
-  return data || [];
-};
-
-const markItemAsCompleted = async (supabase: SupabaseClient<Database>, courseId: string, itemId: string, userId: string): Promise<boolean> => {
-  if (!userId) return false;
-  
-  // 이미 진행 상태가 있는지 확인
-  const { data: existingProgress } = await supabase
-    .from('course_progress')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('course_id', courseId)
-    .eq('item_id', itemId)
-    .maybeSingle();
-  
-  const now = new Date().toISOString();
-  
-  if (existingProgress) {
-    // 기존 진행 상태 업데이트
-    const { error } = await supabase
-      .from('course_progress')
-      .update({
-        completed: true,
-        last_accessed: now
-      })
-      .eq('id', existingProgress.id);
-    
-    if (error) throw error;
-  } else {
-    // 새 진행 상태 생성
-    const { error } = await supabase
-      .from('course_progress')
-      .insert({
-        user_id: userId,
-        course_id: courseId,
-        item_id: itemId,
-        completed: true,
-        last_accessed: now
-      });
-    
-    if (error) throw error;
-  }
-  
-  return true;
-};
-
-const getUserWritingStatus = async (supabase: SupabaseClient<Database>, courseId: string, userId: string): Promise<boolean> => {
-  if (!userId) return false;
-  
-  const { data, error } = await supabase
-    .from('course_writings')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('course_id', courseId)
-    .maybeSingle();
-  
-  if (error) throw error;
-  return !!data;
-};
-
-const markCourseCompleted = async (supabase: SupabaseClient<Database>, courseId: string, userId: string): Promise<boolean> => {
-  if (!userId) return false;
-  
-  // 코스의 모든 아이템 가져오기
-  const courseData = await fetchCourseDetail(supabase, courseId);
-  
-  // sections가 undefined일 수 있으므로 체크
-  if (!courseData.sections) {
-    console.warn('코스에 섹션이 없습니다:', courseId);
-    return false;
-  }
-  
-  const allItemIds = courseData.sections.flatMap(section => 
-    section.items.map(item => item.id)
-  );
-  
-  // 각 아이템 완료 처리
-  for (const itemId of allItemIds) {
-    await markItemAsCompleted(supabase, courseId, itemId, userId);
-  }
-  
-  return true;
-};
-
-const markWritingCompleted = async (supabase: SupabaseClient<Database>, courseId: string, content: string, userId: string): Promise<boolean> => {
-  if (!userId) return false;
-  
-  // 사용자 프로필 정보 가져오기
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('name, nickname')
-    .eq('id', userId)
-    .single();
-  
-  if (!profile) throw new Error('프로필 정보를 찾을 수 없습니다.');
-  
-  const userName = profile.nickname || profile.name || '익명';
-  
-  // 이미 작성한 글이 있는지 확인
-  const { data: existingWriting } = await supabase
-    .from('course_writings')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('course_id', courseId)
-    .maybeSingle();
-  
-  if (existingWriting) {
-    // 기존 글 업데이트
-    const { error } = await supabase
-      .from('course_writings')
-      .update({
-        content: content,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', existingWriting.id);
-    
-    if (error) throw error;
-  } else {
-    // 새 글 작성
-    const { error } = await supabase
-      .from('course_writings')
-      .insert({
-        user_id: userId,
-        user_name: userName,
-        course_id: courseId,
-        item_id: 'default', // 일반적인 글쓰기 (특정 아이템과 연결되지 않음)
-        content: content,
-        is_public: false
-      });
-    
-    if (error) throw error;
-  }
-  
-  return true;
-};
-
-// 코스 목록 조회를 위한 훅
+// 코스 목록 조회 훅
 export function useCourseList(category?: string) {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<CourseWithSections[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
-  const { supabase } = useSupabase();
 
   useEffect(() => {
     const loadCourses = async () => {
       try {
         setIsLoading(true);
-        let data: Course[];
+        const supabase = createClient();
 
-        if (category) {
-          data = await fetchCoursesByCategory(supabase, category);
-        } else {
-          data = await fetchCourses(supabase);
+        // 코스와 아이템을 한 번에 조회 (섹션 구조 없이)
+        let query = supabase
+          .from('courses')
+          .select(`
+            *,
+            course_items(
+              id,
+              title,
+              description,
+              youtube_id,
+              order_num,
+              created_at
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (category && category !== 'all') {
+          query = query.eq('category', category);
         }
 
-        setCourses(data);
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // 타입 캐스팅과 함께 데이터 변환
+        const rawCourses = data as CourseWithItems[];
+        
+        // 데이터를 CourseWithSections 형태로 변환
+        const coursesWithSections: CourseWithSections[] = rawCourses.map((course) => ({
+          ...course,
+          sections: [
+            {
+              id: 'main-section',
+              title: '강의 목록',
+              items: (course.course_items || [])
+                .sort((a: CourseItem, b: CourseItem) => a.order_num - b.order_num)
+            }
+          ]
+        }));
+
+        setCourses(coursesWithSections);
       } catch (error) {
         console.error('코스 목록 로드 실패:', error);
         showToast('코스 목록을 불러오는데 실패했습니다.', 'error');
@@ -248,12 +74,12 @@ export function useCourseList(category?: string) {
     };
 
     loadCourses();
-  }, [category, showToast, supabase]);
+  }, [category, showToast]);
 
-  return { courses, isLoading };
+  return { courses, isLoading, setCourses };
 }
 
-// 코스 상세 정보 조회를 위한 훅
+// 코스 상세 정보 조회 훅
 export function useCourseDetail(courseId: string) {
   const [course, setCourse] = useState<CourseWithSections | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -261,14 +87,52 @@ export function useCourseDetail(courseId: string) {
   const { supabase } = useSupabase();
 
   useEffect(() => {
+    if (!courseId) return;
+
     const loadCourseDetail = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchCourseDetail(supabase, courseId);
-        setCourse(data);
+
+        // 코스와 아이템을 한 번에 조회
+        const { data, error } = await supabase
+          .from('courses')
+          .select(`
+            *,
+            course_items(
+              id,
+              title,
+              description,
+              youtube_id,
+              order_num,
+              created_at,
+              content
+            )
+          `)
+          .eq('id', courseId)
+          .single();
+
+        if (error) throw error;
+
+        // 타입 캐스팅
+        const rawCourse = data as CourseWithItems;
+
+        // CourseWithSections 형태로 변환
+        const courseWithSections: CourseWithSections = {
+          ...rawCourse,
+          sections: [
+            {
+              id: 'main-section',
+              title: '강의 목록',
+              items: (rawCourse.course_items || [])
+                .sort((a: CourseItem, b: CourseItem) => a.order_num - b.order_num)
+            }
+          ]
+        };
+
+        setCourse(courseWithSections);
       } catch (error) {
         console.error('코스 상세 정보 로드 실패:', error);
-        showToast('코스 상세 정보를 불러오는데 실패했습니다.', 'error');
+        showToast('코스 정보를 불러오는데 실패했습니다.', 'error');
       } finally {
         setIsLoading(false);
       }
@@ -280,177 +144,247 @@ export function useCourseDetail(courseId: string) {
   return { course, isLoading };
 }
 
-// 코스 진행 상황 관리를 위한 훅
-export function useCourseProgress(courseId: string) {
-  const [completedItems, setCompletedItems] = useState<string[]>([]);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [hasWriting, setHasWriting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const { showToast } = useToast();
-  const { supabase, user } = useSupabase();
-
-  // 진행 상황 로드
-  useEffect(() => {
-    const loadProgress = async () => {
-      if (!user || !courseId) {
-        setCompletedItems([]);
-        setIsCompleted(false);
-        setHasWriting(false);
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        setIsLoading(true);
-
-        // 1. 완료된 아이템 목록 조회
-        const progressData = await getUserCourseProgress(supabase, courseId, user.id);
-        const completedItemIds = progressData
-          .filter((item: CourseProgress) => item.completed)
-          .map((item: CourseProgress) => item.item_id);
-        
-        setCompletedItems(completedItemIds);
-
-        // 2. 코스가 완료되었는지 확인 (하나 이상의 아이템이 완료됨)
-        setIsCompleted(completedItemIds.length > 0);
-        
-        // 3. 글쓰기 완료 여부 확인
-        const writingStatus = await getUserWritingStatus(supabase, courseId, user.id);
-        setHasWriting(writingStatus);
-      } catch (error) {
-        console.error('코스 진행 상황 로드 실패:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProgress();
-  }, [courseId, supabase, user]);
-
-  // 아이템 완료 처리
-  const markComplete = useCallback(async (itemId: string) => {
-    if (!user) {
-      showToast('로그인이 필요합니다.', 'error');
-      return false;
-    }
-    
-    try {
-      // 이미 완료된 항목이면 스킵
-      if (completedItems.includes(itemId)) {
-        return true;
-      }
-
-      // DB에 완료 상태 저장
-      const success = await markItemAsCompleted(supabase, courseId, itemId, user.id);
-
-      if (success) {
-        // 상태 업데이트
-        setCompletedItems(prev => [...prev, itemId]);
-        setIsCompleted(true);
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('아이템 완료 처리 실패:', error);
-      showToast('아이템 완료 처리에 실패했습니다.', 'error');
-      return false;
-    }
-  }, [courseId, completedItems, showToast, supabase, user]);
-
-  // 전체 코스 완료 처리
-  const completeAllItems = useCallback(async () => {
-  if (!user) {
-    showToast('로그인이 필요합니다.', 'error');
-    return false;
-  }
-  
-  try {
-    const success = await markCourseCompleted(supabase, courseId, user.id);
-    
-    if (success) {
-      showToast('코스 학습이 완료되었습니다!', 'success');
-      setIsCompleted(true);
-      
-      // 코스 상세 정보를 다시 불러와서 모든 아이템 ID 가져오기
-      const courseData = await fetchCourseDetail(supabase, courseId);
-      
-      // sections가 있는지 확인 후 flatMap 사용
-      if (courseData.sections && courseData.sections.length > 0) {
-        const allItemIds = courseData.sections.flatMap(section => 
-          section.items.map(item => item.id)
-        );
-        setCompletedItems(allItemIds);
-      } else {
-        // sections가 없는 경우 빈 배열 설정
-        setCompletedItems([]);
-      }
-      
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('코스 완료 처리 실패:', error);
-    showToast('코스 완료 처리에 실패했습니다.', 'error');
-    return false;
-  }
-}, [courseId, showToast, supabase, user]);
-
-  // 글쓰기 완료 처리
-  const completeWriting = useCallback(async (content: string) => {
-    if (!user) {
-      showToast('로그인이 필요합니다.', 'error');
-      return false;
-    }
-    
-    try {
-      const success = await markWritingCompleted(supabase, courseId, content, user.id);
-
-      if (success) {
-        setHasWriting(true);
-        showToast('글쓰기가 저장되었습니다!', 'success');
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('글쓰기 완료 처리 실패:', error);
-      showToast('글쓰기 저장에 실패했습니다.', 'error');
-      return false;
-    }
-  }, [courseId, showToast, supabase, user]);
-
-  return {
-    completedItems,
-    isCompleted,
-    hasWriting,
-    isLoading,
-    markComplete,
-    completeAllItems,
-    completeWriting
-  };
-}
-
-// 사용자 권한 확인을 위한 훅
+// 코스 권한 확인 훅
 export function useCoursePermission() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useSupabase();
 
   useEffect(() => {
-    async function checkPermission() {
+    const checkPermission = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const admin = await isAdminUser();
-        setIsAdmin(admin);
+        const adminStatus = await isAdminUser();
+        setIsAdmin(adminStatus);
       } catch (error) {
         console.error('권한 확인 실패:', error);
         setIsAdmin(false);
       } finally {
         setIsLoading(false);
       }
-    }
+    };
 
     checkPermission();
-  }, []);
+  }, [user]);
+
   return { isAdmin, isLoading };
+}
+
+// 코스 생성 훅
+export function useCourseCreate() {
+  const [isLoading, setIsLoading] = useState(false);
+  const { showToast } = useToast();
+  const { supabase, user } = useSupabase();
+
+  const createCourse = async (courseData: Partial<Course>) => {
+    if (!user) {
+      showToast('로그인이 필요합니다.', 'error');
+      return null;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // 관리자 권한 확인
+      const adminStatus = await isAdminUser();
+      if (!adminStatus) {
+        showToast('관리자만 코스를 생성할 수 있습니다.', 'error');
+        return null;
+      }
+
+      // 사용자 프로필 정보 가져오기
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, nickname')
+        .eq('id', user.id)
+        .single();
+
+      const instructorName = profile?.nickname || profile?.name || '익명';
+
+      const { data, error } = await supabase
+        .from('courses')
+        .insert({
+          ...courseData,
+          instructor_id: user.id,
+          instructor_name: instructorName,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      showToast('코스가 성공적으로 생성되었습니다.', 'success');
+      return data;
+    } catch (error) {
+      console.error('코스 생성 실패:', error);
+      showToast('코스 생성에 실패했습니다.', 'error');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { createCourse, isLoading };
+}
+
+// 코스 업데이트 훅
+export function useCourseUpdate() {
+  const [isLoading, setIsLoading] = useState(false);
+  const { showToast } = useToast();
+  const { supabase } = useSupabase();
+
+  const updateCourse = async (courseId: string, courseData: Partial<Course>) => {
+    try {
+      setIsLoading(true);
+
+      // 관리자 권한 확인
+      const adminStatus = await isAdminUser();
+      if (!adminStatus) {
+        showToast('관리자만 코스를 수정할 수 있습니다.', 'error');
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('courses')
+        .update({
+          ...courseData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', courseId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      showToast('코스가 성공적으로 수정되었습니다.', 'success');
+      return data;
+    } catch (error) {
+      console.error('코스 수정 실패:', error);
+      showToast('코스 수정에 실패했습니다.', 'error');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { updateCourse, isLoading };
+}
+
+// 코스 삭제 훅
+export function useCourseDelete() {
+  const [isLoading, setIsLoading] = useState(false);
+  const { showToast } = useToast();
+  const { supabase } = useSupabase();
+
+  const deleteCourse = async (courseId: string) => {
+    try {
+      setIsLoading(true);
+
+      // 관리자 권한 확인
+      const adminStatus = await isAdminUser();
+      if (!adminStatus) {
+        showToast('관리자만 코스를 삭제할 수 있습니다.', 'error');
+        return false;
+      }
+
+      // 코스와 관련된 모든 데이터 삭제 (CASCADE 설정 필요)
+      const { error } = await supabase
+        .from('courses')
+        .delete()
+        .eq('id', courseId);
+
+      if (error) throw error;
+
+      showToast('코스가 성공적으로 삭제되었습니다.', 'success');
+      return true;
+    } catch (error) {
+      console.error('코스 삭제 실패:', error);
+      showToast('코스 삭제에 실패했습니다.', 'error');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { deleteCourse, isLoading };
+}
+
+// 코스 검색 훅
+export function useCourseSearch(searchQuery: string, filters?: {
+  category?: string;
+  level?: string;
+}) {
+  const [courses, setCourses] = useState<CourseWithSections[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setCourses([]);
+      return;
+    }
+
+    const searchCourses = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = createClient();
+
+        let query = supabase
+          .from('courses')
+          .select(`
+            *,
+            course_items(
+              id,
+              title,
+              description,
+              youtube_id,
+              order_num,
+              created_at
+            )
+          `)
+          .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+
+        if (filters?.category && filters.category !== 'all') {
+          query = query.eq('category', filters.category);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // 타입 캐스팅
+        const rawCourses = data as CourseWithItems[];
+
+        // CourseWithSections 형태로 변환
+        const coursesWithSections: CourseWithSections[] = rawCourses.map((course) => ({
+          ...course,
+          sections: [
+            {
+              id: 'main-section',
+              title: '강의 목록',
+              items: (course.course_items || [])
+                .sort((a: CourseItem, b: CourseItem) => a.order_num - b.order_num)
+            }
+          ]
+        }));
+
+        setCourses(coursesWithSections);
+      } catch (error) {
+        console.error('코스 검색 실패:', error);
+        showToast('코스 검색에 실패했습니다.', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchCourses, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery, filters, showToast]);
+
+  return { courses, isLoading };
 }
