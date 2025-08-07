@@ -19,14 +19,15 @@ import { userAtom } from '@/store/auth';
 import { useAllCoursesProgress } from '@/hooks/api/useCourseProgress';
 
 interface DashboardStatsProps {
-  enrollmentCourseCount: number;
-  completedCoursesCount: number;
+  enrolledLecturesCount: number;
+  completedLecturesCount: number;
+  completedCoursesCount: number; // 코스 완료 수 (수료증용)
   wishlistedCount: number;
   totalStudyTime: number;
   lastActiveDate: string | null;
   streakDays: number;
-  studyParticipationCount: number; // 참여 중인 스터디 수
-  studyCreatedCount: number; // 생성한 스터디 수
+  studyParticipationCount: number;
+  studyCreatedCount: number;
 }
 
 // 스터디 정보 타입 정의
@@ -43,6 +44,11 @@ interface Study {
   role?: 'owner' | 'participant';
 }
 
+interface StudyParticipantResult {
+  study_id: string;
+  studies: Study | null;
+}
+
 const DashboardPage = () => {
   const user = useAtomValue(userAtom);
 
@@ -50,7 +56,8 @@ const DashboardPage = () => {
     useAllCoursesProgress();
 
   const [stats, setStats] = useState<DashboardStatsProps>({
-    enrollmentCourseCount: 0,
+    enrolledLecturesCount: 0,
+    completedLecturesCount: 0,
     completedCoursesCount: 0,
     wishlistedCount: 0,
     totalStudyTime: 0,
@@ -90,66 +97,206 @@ const DashboardPage = () => {
       try {
         const supabase = createClient();
 
-        // 병렬로 데이터 로드
-        const [
-          enrollmentsResult,
-          bookmarksResult,
-          coursesResult,
-          lecturesResult,
-          studiesResult,
-        ] = await Promise.all([
-          // 수강 중인 강의
-          supabase
-            .from('enrollments')
-            .select('course_id, courses(*)')
-            .eq('user_id', user.id)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(5),
+        // 1. 수강 중인 강의 ID 목록 조회
+        const { data: enrollments, error: enrollmentsError } = await supabase
+          .from('enrollments')
+          .select('lecture_id, enrolled_at')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .order('enrolled_at', { ascending: false });
 
-          // 찜 목록
-          supabase
-            .from('bookmarks')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id),
+        if (enrollmentsError) {
+          console.error('수강 정보 조회 실패:', enrollmentsError);
+          throw enrollmentsError;
+        }
 
-          // 최근 강의 목록
-          supabase
-            .from('courses')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(6),
+        // 2. 완료된 강의 수 계산 (진행률 기반)
+        let completedLecturesCount = 0;
+        if (enrollments && enrollments.length > 0) {
+          for (const enrollment of enrollments) {
+            try {
+              // 각 강의의 총 아이템 수 조회
+              const { data: sectionsData } = await supabase
+                .from('lecture_sections')
+                .select('id')
+                .eq('lecture_id', enrollment.lecture_id);
 
-          // 최근 지식 강의
-          supabase
-            .from('lectures')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(6),
+              if (sectionsData && sectionsData.length > 0) {
+                const sectionIds = sectionsData.map((s) => s.id);
 
-          // 참여 중인 스터디
-          supabase
-            .from('study_participants')
-            .select(
-              `
-              studies (
-                id,
-                title,
-                category,
-                owner_id,
-                max_participants,
-                current_participants,
-                status,
-                start_date,
-                end_date
-              )
+                const { count: totalItems } = await supabase
+                  .from('lecture_items')
+                  .select('*', { count: 'exact', head: true })
+                  .in('section_id', sectionIds);
+
+                // 완료된 아이템 수 조회
+                const { count: completedItems } = await supabase
+                  .from('lecture_progress')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('user_id', user.id)
+                  .eq('lecture_id', enrollment.lecture_id)
+                  .eq('completed', true);
+
+                // 완료율이 100%인 강의 카운트
+                if (
+                  totalItems &&
+                  completedItems &&
+                  completedItems >= totalItems
+                ) {
+                  completedLecturesCount++;
+                }
+              }
+            } catch (error) {
+              console.error(
+                `강의 ${enrollment.lecture_id} 완료 상태 확인 실패:`,
+                error
+              );
+            }
+          }
+        }
+
+        // 3. 최근 학습일 조회 (코스와 강의 진행 상황에서 가장 최근 날짜)
+        const [courseProgressResult, lectureProgressResult] = await Promise.all(
+          [
+            // 코스 진행 상황에서 최근 학습일
+            supabase
+              .from('course_progress')
+              .select('last_accessed')
+              .eq('user_id', user.id)
+              .order('last_accessed', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+
+            // 강의 진행 상황에서 최근 학습일
+            supabase
+              .from('lecture_progress')
+              .select('updated_at')
+              .eq('user_id', user.id)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+          ]
+        );
+
+        // 가장 최근 학습일 찾기
+        let lastActiveDate: string | null = null;
+        const courseLastDate = courseProgressResult.data?.last_accessed;
+        const lectureLastDate = lectureProgressResult.data?.updated_at;
+
+        if (courseLastDate && lectureLastDate) {
+          lastActiveDate =
+            new Date(courseLastDate) > new Date(lectureLastDate)
+              ? courseLastDate
+              : lectureLastDate;
+        } else if (courseLastDate) {
+          lastActiveDate = courseLastDate;
+        } else if (lectureLastDate) {
+          lastActiveDate = lectureLastDate;
+        }
+
+        // 4. 나머지 데이터 병렬 조회
+        const [bookmarksResult, coursesResult, lecturesResult] =
+          await Promise.all([
+            // 찜 목록
+            supabase
+              .from('bookmarks')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id),
+
+            // 최근 강의 목록
+            supabase
+              .from('courses')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(6),
+
+            // 최근 지식 강의
+            supabase
+              .from('lectures')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(6),
+          ]);
+
+        // 5. 스터디 데이터 별도 조회
+        const { data: rawStudiesData, error: studiesError } = await supabase
+          .from('study_participants')
+          .select(
             `
+            study_id,
+            studies (
+              id,
+              title,
+              category,
+              owner_id,
+              max_participants,
+              current_participants,
+              status,
+              start_date,
+              end_date
             )
-            .eq('user_id', user.id)
-            .eq('status', 'active'),
-        ]);
+          `
+          )
+          .eq('user_id', user.id)
+          .eq('status', 'approved');
 
-        // 완료된 코스 수 계산 (progressData 사용)
+        if (studiesError) {
+          console.error('스터디 데이터 조회 실패:', studiesError);
+        }
+
+        // 타입 가드를 사용한 안전한 타입 변환
+        const typedStudiesData: StudyParticipantResult[] = rawStudiesData
+          ? (rawStudiesData as unknown[]).map(
+              (item): StudyParticipantResult => {
+                const typedItem = item as Record<string, unknown>;
+                return {
+                  study_id: String(typedItem.study_id || ''),
+                  studies: typedItem.studies
+                    ? {
+                        id: String(
+                          (typedItem.studies as Record<string, unknown>).id ||
+                            ''
+                        ),
+                        title: String(
+                          (typedItem.studies as Record<string, unknown>)
+                            .title || ''
+                        ),
+                        category: String(
+                          (typedItem.studies as Record<string, unknown>)
+                            .category || ''
+                        ),
+                        owner_id: String(
+                          (typedItem.studies as Record<string, unknown>)
+                            .owner_id || ''
+                        ),
+                        max_participants: Number(
+                          (typedItem.studies as Record<string, unknown>)
+                            .max_participants || 0
+                        ),
+                        current_participants: Number(
+                          (typedItem.studies as Record<string, unknown>)
+                            .current_participants || 0
+                        ),
+                        status: String(
+                          (typedItem.studies as Record<string, unknown>)
+                            .status || 'recruiting'
+                        ) as 'recruiting' | 'in_progress' | 'completed',
+                        start_date: String(
+                          (typedItem.studies as Record<string, unknown>)
+                            .start_date || ''
+                        ),
+                        end_date: String(
+                          (typedItem.studies as Record<string, unknown>)
+                            .end_date || ''
+                        ),
+                      }
+                    : null,
+                };
+              }
+            )
+          : [];
+
+        // 완료된 코스 수 계산 (progressData 사용 - 수료증용)
         const completedCoursesCount =
           progressData && typeof progressData === 'object'
             ? Object.values(progressData).filter(
@@ -159,30 +306,31 @@ const DashboardPage = () => {
 
         // 통계 업데이트
         setStats({
-          enrollmentCourseCount: enrollmentsResult.data?.length || 0,
+          enrolledLecturesCount: enrollments?.length || 0,
+          completedLecturesCount,
           completedCoursesCount,
           wishlistedCount: bookmarksResult.count || 0,
           totalStudyTime: 0, // 추후 구현
-          lastActiveDate: null, // 추후 구현
+          lastActiveDate: lastActiveDate,
           streakDays: 0, // 추후 구현
-          studyParticipationCount: studiesResult.data?.length || 0,
+          studyParticipationCount: typedStudiesData.length,
           studyCreatedCount: 0, // 추후 구현
         });
 
-        // 최근 강의 설정 - 타입 캐스팅 추가
+        // 최근 강의 설정
         setRecentCourses((coursesResult.data as Course[]) || []);
         setRecentLectures((lecturesResult.data as Lecture[]) || []);
 
-        // 스터디 데이터 설정 - 타입 단언으로 any 제거
-        const studyData: Study[] = studiesResult.data
-          ? studiesResult.data.map((item: unknown) => {
-              const typedItem = item as { studies: Study };
-              return {
-                ...typedItem.studies,
-                role: 'participant' as const,
-              };
-            })
-          : [];
+        // 스터디 데이터 설정 - 완전 타입 안전하게 처리
+        const studyData: Study[] = typedStudiesData
+          .filter(
+            (item): item is StudyParticipantResult & { studies: Study } =>
+              item.studies !== null
+          )
+          .map((item) => ({
+            ...item.studies,
+            role: 'participant' as const,
+          }));
         setRecentStudies(studyData);
       } catch (error) {
         console.error('대시보드 데이터 로드 실패:', error);
@@ -219,7 +367,7 @@ const DashboardPage = () => {
             <div>
               <p className="text-sm text-gray-500">수강 중인 강의</p>
               <p className="text-xl font-bold">
-                {stats.enrollmentCourseCount}개
+                {stats.enrolledLecturesCount}개
               </p>
             </div>
           </div>
@@ -233,7 +381,7 @@ const DashboardPage = () => {
             <div>
               <p className="text-sm text-gray-500">완료한 강의</p>
               <p className="text-xl font-bold">
-                {stats.completedCoursesCount}개
+                {stats.completedLecturesCount}개
               </p>
             </div>
           </div>
@@ -251,7 +399,7 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* 스터디 통계 카드 추가 */}
+        {/* 스터디 통계 카드 */}
         <div className="rounded-lg border bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="rounded-full bg-purple-100 p-2">
@@ -268,21 +416,21 @@ const DashboardPage = () => {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 학습 현황 */}
+        {/* 학습 현황 - 강의 기준 */}
         <div className="col-span-2 rounded-lg border bg-white p-6 shadow-sm">
           <div className="mb-4 flex justify-between">
             <h2 className="text-lg font-bold">학습 현황</h2>
             <div className="flex items-center rounded-lg border border-gold-start bg-light px-2 text-center text-sm font-medium text-black hover:bg-gold-start hover:text-white">
-              <Link href="/my/certificates">전체보기</Link>
+              <Link href="/my/learning">전체보기</Link>
             </div>
           </div>
 
           <div className="mb-6">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm text-gray-600">총 진행률</span>
+              <span className="text-sm text-gray-600">강의 진행률</span>
               <span className="text-sm font-medium">
-                {stats.completedCoursesCount}/{stats.enrollmentCourseCount} 강의
-                완료
+                {stats.completedLecturesCount}/{stats.enrolledLecturesCount}{' '}
+                강의 완료
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
@@ -290,9 +438,9 @@ const DashboardPage = () => {
                 className="h-2 rounded-full bg-blue-500"
                 style={{
                   width: `${
-                    stats.enrollmentCourseCount > 0
-                      ? (stats.completedCoursesCount /
-                          stats.enrollmentCourseCount) *
+                    stats.enrolledLecturesCount > 0
+                      ? (stats.completedLecturesCount /
+                          stats.enrolledLecturesCount) *
                         100
                       : 0
                   }%`,
@@ -316,7 +464,7 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* 수료증 */}
+        {/* 수료증 - 코스 기준 */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
           <div className="mb-4 flex justify-between">
             <h2 className="text-lg font-bold">코스 수료증</h2>
@@ -365,7 +513,7 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* 스터디 참여 현황 섹션 추가 */}
+      {/* 스터디 참여 현황 섹션 */}
       <div className="mb-8">
         <h2 className="mb-4 text-lg font-bold">참여 중인 스터디</h2>
 
