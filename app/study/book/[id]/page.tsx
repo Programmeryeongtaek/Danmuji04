@@ -192,8 +192,6 @@ export default function BookDetailPage() {
           .delete()
           .eq('id', existingRec.id);
 
-        console.log('추천 삭제 결과:', deleteError);
-
         if (deleteError) {
           console.error('추천 삭제 오류:', deleteError);
           throw deleteError;

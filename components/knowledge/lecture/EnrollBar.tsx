@@ -100,7 +100,10 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
   };
 
   const isLoading =
-    enrollmentLoading || enrollMutation.isPending || cancelMutation.isPending;
+    enrollmentLoading ||
+    enrollMutation.isPending ||
+    cancelMutation.isPending ||
+    !lectureInfo; // 강의 정보가 없으면 로딩 중
 
   // 로딩 중일 때
   if (isLoading) {
@@ -128,7 +131,7 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
               수강 취소
             </Button>
             <Link href={`/knowledge/lecture/${lectureId}/watch`}>
-              <Button>학습 계속하기</Button>
+              <Button>계속하기</Button>
             </Link>
           </div>
         </div>

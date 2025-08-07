@@ -25,8 +25,10 @@ export const useComments = (postId: number) => {
     queryKey: commentKeys.list(postId),
     queryFn: () => fetchCommentsByPostId(postId),
     enabled: !!postId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // 항상 최신 데이터를 가져오도록 설정
     gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 };
 
@@ -49,92 +51,47 @@ export const useCreateComment = () => {
       if (!user) throw new Error('로그인이 필요합니다.');
       return createCommentService(postId, content, parentId);
     },
-    onMutate: async ({ postId, content, parentId }) => {
-      // 댓글 목록 쿼리 취소
-      await queryClient.cancelQueries({ queryKey: commentKeys.list(postId) });
-
-      // 이전 데이터 백업
-      const previousComments = queryClient.getQueryData<Comment[]>(commentKeys.list(postId));
-
-      // 낙관적 업데이트
-      if (previousComments && user) {
-        const tempComment: Comment = {
-          id: Date.now(), // 임시 ID
-          post_id: postId,
-          author_id: user.id,
-          author_name: user.user_metadata?.full_name || user.email || '사용자',
-          author_avatar: user.user_metadata?.avatar_url || null,
-          content,
-          parent_id: parentId ?? null, // undefined를 null로 변환
-          likes_count: 0,
-          is_liked: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          replies: [],
-        };
-
-        if (parentId) {
-          // 답글인 경우
-          const updatedComments = previousComments.map(comment => {
-            if (comment.id === parentId) {
-              return {
-                ...comment,
-                replies: [...(comment.replies || []), tempComment],
-              };
-            }
-            return comment;
-          });
-          queryClient.setQueryData(commentKeys.list(postId), updatedComments);
-        } else {
-          // 일반 댓글인 경우
-          queryClient.setQueryData(commentKeys.list(postId), [...previousComments, tempComment]);
-        }
-      }
-
-      return { previousComments };
-    },
-    onError: (error, { postId }, context) => {
-      // 실패 시 이전 상태로 롤백
-      if (context?.previousComments) {
-        queryClient.setQueryData(commentKeys.list(postId), context.previousComments);
-      }
-      
-      if (error instanceof Error && error.message === '로그인이 필요합니다.') {
-        showToast('로그인이 필요합니다.', 'error');
-      } else {
-        showToast('댓글 작성에 실패했습니다.', 'error');
-      }
-    },
     onSuccess: (newComment, { postId, parentId }) => {
       // 서버에서 받은 실제 데이터로 업데이트
-      queryClient.setQueryData<Comment[]>(commentKeys.list(postId), (oldData) => {
-        if (!oldData) return [newComment];
+      const previousComments = queryClient.getQueryData<Comment[]>(commentKeys.list(postId));
+
+      if (previousComments) {
+        let updatedComments: Comment[];
 
         if (parentId) {
           // 답글인 경우
-          return oldData.map(comment => {
+          updatedComments = previousComments.map(comment => {
             if (comment.id === parentId) {
               return {
                 ...comment,
-                replies: [
-                  ...(comment.replies?.filter(reply => reply.id !== newComment.id) || []),
-                  newComment
-                ],
+                replies: [...(comment.replies || []), newComment]
               };
             }
             return comment;
           });
         } else {
-          // 일반 댓글인 경우 - 임시 댓글 제거하고 실제 댓글 추가
-          const filteredComments = oldData.filter(comment => comment.id !== newComment.id);
-          return [...filteredComments, newComment];
+          // 일반 댓글인 경우
+          updatedComments = [...previousComments, newComment];
         }
-      });
+
+        queryClient.setQueryData(commentKeys.list(postId), updatedComments);
+      }
+
+      // 더 안전하게 전체 댓글 목록을 다시 불러오기
+      queryClient.invalidateQueries({ queryKey: commentKeys.list(postId) });
 
       showToast(
         parentId ? '답글이 등록되었습니다.' : '댓글이 등록되었습니다.',
         'success'
       );
+    },
+    onError: (error) => {
+      console.error('댓글 작성 실패:', error);
+      if (error instanceof Error && error.message === '로그인이 필요합니다.') {
+        showToast('로그인이 필요합니다.', 'error');
+      } else {
+        showToast('댓글 작성에 실패했습니다.', 'error');
+      }
     },
   });
 };
@@ -217,8 +174,17 @@ export const useUpdateComment = () => {
         });
       }
 
-      if (error instanceof Error && error.message === '로그인이 필요합니다.') {
-        showToast('로그인이 필요합니다.', 'error');
+      // 에러 메시지에 따른 토스트 분기 처리
+      if (error instanceof Error) {
+        if (error.message === '로그인이 필요합니다.') {
+          showToast('로그인이 필요합니다.', 'error');
+        } else if (error.message === '작성 후 24시간이 지난 댓글은 수정할 수 없습니다.') {
+          showToast('작성 후 24시간이 지난 댓글은 수정할 수 없습니다.', 'error');
+        } else if (error.message.includes('24시간')) {
+          showToast('작성 후 24시간이 지난 댓글은 수정할 수 없습니다.', 'error');
+        } else {
+          showToast('댓글 수정에 실패했습니다.', 'error');
+        }
       } else {
         showToast('댓글 수정에 실패했습니다.', 'error');
       }

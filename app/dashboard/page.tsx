@@ -15,7 +15,8 @@ import { useEffect, useState } from 'react';
 import { useAllCertificates } from '@/hooks/useAllCertificates';
 import { getCategoryTitle } from '../types/course/categories';
 import { useAtomValue } from 'jotai';
-import { courseProgressAtom } from '@/store/course/progressAtom';
+import { userAtom } from '@/store/auth';
+import { useAllCoursesProgress } from '@/hooks/api/useCourseProgress';
 
 interface DashboardStatsProps {
   enrollmentCourseCount: number;
@@ -43,6 +44,11 @@ interface Study {
 }
 
 const DashboardPage = () => {
+  const user = useAtomValue(userAtom);
+
+  const { data: progressData = {}, isLoading: progressLoading } =
+    useAllCoursesProgress();
+
   const [stats, setStats] = useState<DashboardStatsProps>({
     enrollmentCourseCount: 0,
     completedCoursesCount: 0,
@@ -53,160 +59,131 @@ const DashboardPage = () => {
     studyParticipationCount: 0,
     studyCreatedCount: 0,
   });
+
   const [recentCourses, setRecentCourses] = useState<Course[]>([]);
   const [recentLectures, setRecentLectures] = useState<Lecture[]>([]);
   const [recentStudies, setRecentStudies] = useState<Study[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const progressState = useAtomValue(courseProgressAtom);
-  const { progressData, isLoading: progressLoading } = progressState;
-  const { certificates, isLoading: certificatesLoading } = useAllCertificates();
+
+  // certificates 변수 선언 없이 직접 사용 - 타입 명시
+  const { data: certificatesData } = useAllCertificates() as {
+    data?: {
+      certificates: { id: number; category: string; issued_at: string }[];
+    };
+  };
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const loadDashboardData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        setIsLoading(true);
         const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
 
-        if (!user) return;
+        // 병렬로 데이터 로드
+        const [
+          enrollmentsResult,
+          bookmarksResult,
+          coursesResult,
+          lecturesResult,
+          studiesResult,
+        ] = await Promise.all([
+          // 수강 중인 강의
+          supabase
+            .from('enrollments')
+            .select('course_id, courses(*)')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(5),
 
-        // 수강 중인 강의 수 가져오기
-        const { count: enrolledCount } = await supabase
-          .from('enrollments')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('status', 'active');
+          // 찜 목록
+          supabase
+            .from('bookmarks')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id),
 
-        // 찜한 강의 수 가져오기
-        const { count: wishlistedCount } = await supabase
-          .from('bookmarks')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id);
-
-        // 최근 활동한 날짜 가져오기
-        const { data: lastActivity } = await supabase
-          .from('course_progress')
-          .select('last_accessed')
-          .eq('user_id', user.id)
-          .order('last_accessed', { ascending: false })
-          .limit(1)
-          .single();
-
-        // 최근 수강한 강의 가져오기
-        const { data: recentEnrollments } = await supabase
-          .from('enrollments')
-          .select('lecture_id, enrolled_at')
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .order('enrolled_at', { ascending: false })
-          .limit(3);
-
-        if (recentEnrollments && recentEnrollments.length > 0) {
-          const lectureIds = recentEnrollments.map((e) => e.lecture_id);
-          const { data: lectures } = await supabase
-            .from('lectures')
-            .select('*')
-            .in('id', lectureIds);
-
-          setRecentLectures(lectures || []);
-        }
-
-        // 최근 수강한 코스 가져오기
-        const { data: recentProgress } = await supabase
-          .from('course_progress')
-          .select('course_id, last_accessed')
-          .eq('user_id', user.id)
-          .order('last_accessed', { ascending: false })
-          .limit(3);
-
-        if (recentProgress && recentProgress.length > 0) {
-          const courseIds = recentProgress.map((p) => p.course_id);
-          const { data: courses } = await supabase
+          // 최근 강의 목록
+          supabase
             .from('courses')
             .select('*')
-            .in('id', courseIds);
+            .order('created_at', { ascending: false })
+            .limit(6),
 
-          setRecentCourses(courses || []);
-        }
-
-        // 참여 중인 스터디 수 계산
-        const { count: participationCount } = await supabase
-          .from('study_participants')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('status', 'approved');
-
-        // 생성한 스터디 수 계산
-        const { count: createdCount } = await supabase
-          .from('studies')
-          .select('id', { count: 'exact', head: true })
-          .eq('owner_id', user.id);
-
-        // 최근 참여 중인 스터디 가져오기
-        const { data: participatedStudies } = await supabase
-          .from('study_participants')
-          .select('study_id, role')
-          .eq('user_id', user.id)
-          .eq('status', 'approved')
-          .order('joined_at', { ascending: false })
-          .limit(3);
-
-        let studyIds: string[] = [];
-        const roleMap: Record<string, 'owner' | 'participant'> = {};
-
-        if (participatedStudies && participatedStudies.length > 0) {
-          studyIds = participatedStudies.map((p) => p.study_id);
-          participatedStudies.forEach((p) => {
-            roleMap[p.study_id] = p.role as 'owner' | 'participant';
-          });
-        }
-
-        // 스터디 상세 정보 가져오기
-        if (studyIds.length > 0) {
-          const { data: studies } = await supabase
-            .from('studies')
+          // 최근 지식 강의
+          supabase
+            .from('lectures')
             .select('*')
-            .in('id', studyIds)
-            .order('updated_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(6),
 
-          if (studies) {
-            // 역할 정보 추가
-            const studiesWithRole = studies.map((study) => ({
-              ...study,
-              role: roleMap[study.id],
-            }));
-            setRecentStudies(studiesWithRole);
-          }
-        }
+          // 참여 중인 스터디
+          supabase
+            .from('study_participants')
+            .select(
+              `
+              studies (
+                id,
+                title,
+                category,
+                owner_id,
+                max_participants,
+                current_participants,
+                status,
+                start_date,
+                end_date
+              )
+            `
+            )
+            .eq('user_id', user.id)
+            .eq('status', 'active'),
+        ]);
 
-        // 완료한 코스 수 계산
-        let completedCount = 0;
-        if (progressData) {
-          completedCount = Object.values(progressData).filter(
-            (p) => p.completed
-          ).length;
-          // 완료한 강의 수가 수강 중인 강의 수를 초과하지 않도록 제한
-          completedCount = Math.min(completedCount, enrolledCount || 0);
-        }
+        // 완료된 코스 수 계산 (progressData 사용)
+        const completedCoursesCount =
+          progressData && typeof progressData === 'object'
+            ? Object.values(progressData).filter(
+                (progress) => progress && progress.isCompleted
+              ).length
+            : 0;
 
-        // 임의의 학습 시간 (실제로는 저장된 데이터를 사용)
-        const totalStudyTime = Math.floor(Math.random() * 50) + 10;
-
-        // 연속 학습일 (임의 값 - 실제로는 저장된 데이터 사용)
-        const streakDays = Math.floor(Math.random() * 10) + 1;
-
+        // 통계 업데이트
         setStats({
-          enrollmentCourseCount: enrolledCount || 0,
-          completedCoursesCount: completedCount,
-          wishlistedCount: wishlistedCount || 0,
-          totalStudyTime: totalStudyTime,
-          lastActiveDate: lastActivity?.last_accessed || null,
-          streakDays: streakDays,
-          studyParticipationCount: participationCount || 0,
-          studyCreatedCount: createdCount || 0,
+          enrollmentCourseCount: enrollmentsResult.data?.length || 0,
+          completedCoursesCount,
+          wishlistedCount: bookmarksResult.count || 0,
+          totalStudyTime: 0, // 추후 구현
+          lastActiveDate: null, // 추후 구현
+          streakDays: 0, // 추후 구현
+          studyParticipationCount: studiesResult.data?.length || 0,
+          studyCreatedCount: 0, // 추후 구현
         });
+
+        // 최근 강의 설정 - 타입 캐스팅 추가
+        setRecentCourses((coursesResult.data as Course[]) || []);
+        setRecentLectures((lecturesResult.data as Lecture[]) || []);
+
+        // 스터디 데이터 설정 - 타입 단언으로 any 제거
+        const studyData: Study[] = studiesResult.data
+          ? studiesResult.data.map((item: unknown) => {
+              const typedItem = item as { studies: Study };
+              return {
+                ...typedItem.studies,
+                role: 'participant' as const,
+              };
+            })
+          : [];
+        setRecentStudies(studyData);
       } catch (error) {
         console.error('대시보드 데이터 로드 실패:', error);
       } finally {
@@ -214,23 +191,16 @@ const DashboardPage = () => {
       }
     };
 
-    fetchDashboardData();
-  }, [progressData]);
+    loadDashboardData();
+  }, [user, progressData]);
 
-  // 날짜 포맷 함수
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(date);
-  };
-
-  if (isLoading || progressLoading || certificatesLoading) {
+  if (isLoading || progressLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg">대시보드 로딩 중...</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <p className="text-gray-600">대시보드를 불러오는 중...</p>
+        </div>
       </div>
     );
   }
@@ -355,23 +325,33 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {certificates && certificates.length > 0 ? (
+          {certificatesData?.certificates &&
+          certificatesData.certificates.length > 0 ? (
             <div className="space-y-4">
-              {certificates.slice(0, 3).map((cert) => (
-                <div key={cert.id} className="flex items-center gap-3">
-                  <div className="rounded-full bg-yellow-100 p-2">
-                    <GraduationCap className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      {getCategoryTitle(cert.category)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      발급일: {new Date(cert.issued_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              {certificatesData.certificates
+                .slice(0, 3)
+                .map(
+                  (cert: {
+                    id: number;
+                    category: string;
+                    issued_at: string;
+                  }) => (
+                    <div key={cert.id} className="flex items-center gap-3">
+                      <div className="rounded-full bg-yellow-100 p-2">
+                        <GraduationCap className="h-5 w-5 text-yellow-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {getCategoryTitle(cert.category)}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          발급일:{' '}
+                          {new Date(cert.issued_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-6 text-center text-gray-500">

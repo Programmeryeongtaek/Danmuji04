@@ -12,11 +12,12 @@ import { useBookmarks } from '@/hooks/useBookmarks';
 import Pagination from '../common/Pagination';
 import { useAtom, useAtomValue } from 'jotai';
 import {
-  initializeFromUrlAtom,
   searchFilterAtom,
+  updateKeywordsAtom,
   updateSortOptionAtom,
 } from '@/store/knowledge/searchFilterAtom';
 import { useLectureList, useLectureSearch } from '@/hooks/api/useLectureApi';
+import { X } from 'lucide-react';
 
 interface ExtendedLectureSectionProps extends LectureSectionProps {
   searchQuery?: string;
@@ -35,8 +36,8 @@ const LectureSection = ({
   const searchFilter = useAtomValue(searchFilterAtom);
   const { selectedKeywords, filters: activeFilters, sortOption } = searchFilter;
 
-  const [, initializeFromUrl] = useAtom(initializeFromUrlAtom);
   const [, updateSortOption] = useAtom(updateSortOptionAtom);
+  const [, updateKeywords] = useAtom(updateKeywordsAtom);
 
   // TanStack Query 훅들
   const {
@@ -56,67 +57,95 @@ const LectureSection = ({
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 로딩 상태와 데이터 계산
-  const isLoading = effectiveSearchQuery ? searchLoading : categoryLoading;
-  const error = effectiveSearchQuery ? searchError : categoryError;
-  const lectures = effectiveSearchQuery ? searchResults : categoryLectures;
+  // 로딩 상태와 데이터 계산 - 조건 수정
+  const shouldUseSearch = Boolean(
+    effectiveSearchQuery && effectiveSearchQuery.trim() !== ''
+  );
+  const isLoading = shouldUseSearch ? searchLoading : categoryLoading;
+  const error = shouldUseSearch ? searchError : categoryError;
+  const lectures = shouldUseSearch ? searchResults : categoryLectures;
 
-  // URL 파라미터 초기화
+  // 강의 목록 업데이트 - 필터링 로직 개선
   useEffect(() => {
-    const params = {
-      q: searchParams.get('q') || undefined,
-      category: selectedCategory !== 'all' ? selectedCategory : undefined,
-      keywords: searchParams.get('keywords') || undefined,
-      depth: searchParams.get('depth') || undefined,
-      fields: searchParams.get('fields') || undefined,
-      hasGroup: searchParams.get('hasGroup') || undefined,
-      sort: searchParams.get('sort') || undefined,
-    };
+    if (!lectures) {
+      setLectureList([]);
+      return;
+    }
 
-    initializeFromUrl(params);
-  }, [searchParams, selectedCategory, initializeFromUrl]);
+    // 기본 필터링된 강의 목록
+    let filteredLectures = [...lectures];
 
-  // 강의 목록 업데이트 - lectures 변경 시마다 필터링 및 정렬 적용
-  useEffect(() => {
-    if (lectures) {
-      // 키워드 필터링
-      let filteredLectures = lectures;
-
-      if (selectedKeywords.length > 0) {
-        filteredLectures = lectures.filter((lecture) =>
-          selectedKeywords.some(
-            (keyword) =>
-              lecture.keyword?.toLowerCase().includes(keyword.toLowerCase()) ||
-              lecture.title.toLowerCase().includes(keyword.toLowerCase())
-          )
-        );
+    // 카테고리별 조회인 경우 추가 필터 적용
+    if (!shouldUseSearch) {
+      // 깊이 필터 적용
+      if (activeFilters.depth?.length > 0) {
+        filteredLectures = filteredLectures.filter((lecture) => {
+          const lectureDepth = lecture.depth || '';
+          return activeFilters.depth.some((depth) => {
+            // "중급 이상"과 "중급" 매핑 처리
+            if (depth === '중급 이상' && lectureDepth === '중급') return true;
+            return lectureDepth === depth;
+          });
+        });
       }
 
-      // 정렬 적용
-      const sortedLectures = [...filteredLectures].sort((a, b) => {
-        switch (sortOption) {
-          case 'latest':
-            return (
-              new Date(b.createdAt || 0).getTime() -
-              new Date(a.createdAt || 0).getTime()
-            );
-          case 'popular':
-            return (b.students || 0) - (a.students || 0);
-          case 'likes':
-            return (b.likes || 0) - (a.likes || 0);
-          default:
-            return 0;
-        }
-      });
+      // 분야 필터 적용 - 수정된 로직
+      if (activeFilters.fields?.length > 0) {
+        filteredLectures = filteredLectures.filter((lecture) => {
+          const lectureCategory = lecture.category || '';
+          return activeFilters.fields.includes(lectureCategory);
+        });
+      }
 
-      setLectureList(sortedLectures);
-      setCurrentPage(1); // 새 데이터 로드 시 첫 페이지로
+      // 오프라인 모임 필터 적용
+      if (activeFilters.hasGroup) {
+        filteredLectures = filteredLectures.filter(
+          (lecture) => lecture.group_type !== 'online'
+        );
+      }
     }
-  }, [lectures, selectedKeywords, sortOption]);
 
-  // 정렬 옵션 변경 핸들러 수정 (SortOption은 string 타입)
+    // 키워드 필터링
+    if (selectedKeywords.length > 0) {
+      filteredLectures = filteredLectures.filter((lecture) =>
+        selectedKeywords.some(
+          (keyword) =>
+            lecture.keyword?.toLowerCase().includes(keyword.toLowerCase()) ||
+            lecture.title.toLowerCase().includes(keyword.toLowerCase())
+        )
+      );
+    }
+
+    // 정렬 적용
+    const sortedLectures = [...filteredLectures].sort((a, b) => {
+      switch (sortOption) {
+        case 'latest':
+          return (
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime()
+          );
+        case 'popular':
+          return (b.students || 0) - (a.students || 0);
+        case 'likes':
+          return (b.likes || 0) - (a.likes || 0);
+        default:
+          return 0;
+      }
+    });
+
+    setLectureList(sortedLectures);
+    setCurrentPage(1); // 새 데이터 로드 시 첫 페이지로
+  }, [lectures, selectedKeywords, sortOption, activeFilters, shouldUseSearch]);
+
+  // 정렬 옵션 변경 핸들러
   const handleSortChange = (option: SortOption) => {
-    updateSortOption(option); // option 자체가 string이므로 직접 사용
+    updateSortOption(option);
+  };
+
+  // 키워드 제거 핸들러
+  const removeKeyword = (keywordToRemove: string) => {
+    const newKeywords = selectedKeywords.filter((k) => k !== keywordToRemove);
+    updateKeywords(newKeywords);
   };
 
   // 페이지네이션 처리
@@ -163,8 +192,28 @@ const LectureSection = ({
       {/* 필터 및 정렬 영역 */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <KeywordSelector />
           <Filter />
+          <KeywordSelector />
+
+          {/* 활성화된 키워드 표시 */}
+          {selectedKeywords.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedKeywords.map((keyword) => (
+                <div
+                  key={keyword}
+                  className="flex items-center gap-1 rounded-full border border-gold-start bg-light px-3 py-1 text-sm font-medium text-black"
+                >
+                  <span>{keyword}</span>
+                  <button
+                    onClick={() => removeKeyword(keyword)}
+                    className="rounded-full p-0.5 hover:bg-gold-start/20"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="relative z-40 hover:bg-light">
@@ -195,7 +244,7 @@ const LectureSection = ({
           paginatedLectures.map((lecture) => (
             <Card
               key={lecture.id}
-              {...lecture} // lecture 객체의 모든 속성을 spread
+              {...lecture}
               isBookmarked={isBookmarked(lecture.id)}
               onToggleBookmark={() => handleToggleBookmark(lecture.id)}
             />
@@ -218,7 +267,7 @@ const LectureSection = ({
         )}
       </div>
 
-      {/* 컴파운드 패턴 페이지네이션 */}
+      {/* 페이지네이션 */}
       {lectureList.length > ITEMS_PER_PAGE && (
         <div className="mt-8 flex justify-center">
           <Pagination.Root

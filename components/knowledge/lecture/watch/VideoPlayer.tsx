@@ -55,7 +55,6 @@ export default function VideoPlayer({
     // 비디오 완료 감지
     const handleVideoEnded = () => {
       if (!hasMarkedAsComplete) {
-        console.log('비디오 종료됨, 완료 처리 시작');
         setHasMarkedAsComplete(true);
         showToast('학습을 완료했습니다!', 'success');
         setShowCompletionModal(true);
@@ -87,7 +86,6 @@ export default function VideoPlayer({
         !hasMarkedAsComplete &&
         !showCompletionModal
       ) {
-        console.log('95% 이상 시청, 완료 처리 시작');
         setHasMarkedAsComplete(true);
         showToast('학습을 완료했습니다!', 'success');
         setShowCompletionModal(true);

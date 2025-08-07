@@ -103,7 +103,7 @@ const KeywordSelector = () => {
     initializeFromUrl(params);
   }, []);
 
-  // 전역상태 변기 시 URL 업데이트
+  // 전역상태 변경 시 URL 업데이트
   useEffect(() => {
     const urlParams = getUrlParams;
     if (urlParams) {
@@ -146,24 +146,30 @@ const KeywordSelector = () => {
 
   return (
     <>
-      {/* 버튼 */}
+      {/* 버튼 - 필터와 동일한 스타일로 변경 */}
       <button
         onClick={openModal}
-        className={`flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm transition-colors hover:border-gold-start hover:bg-light hover:text-black ${
+        className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm transition-colors hover:border-gold-start hover:bg-light hover:text-black ${
           selectedKeywords.length > 0
-            ? 'font-medium text-black'
-            : 'text-gray-700'
+            ? 'border-gold-start bg-light font-medium text-black'
+            : 'border-gray-200 text-gray-700'
         }`}
       >
         <Tag className="h-4 w-4" />
         <span>키워드</span>
+        {selectedKeywords.length > 0 && (
+          <span className="ml-1 rounded-full bg-gold-start/20 px-1.5 py-0.5 text-xs">
+            {selectedKeywords.length}
+          </span>
+        )}
       </button>
 
-      {/* 모달 - 직접 구현으로 변경 */}
+      {/* 모달 */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={closeModal}
         >
           <div
             className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
@@ -192,7 +198,7 @@ const KeywordSelector = () => {
                       onClick={() => toggleKeywordLocal(keyword)}
                       className={`rounded-full px-3 py-1 text-sm transition-colors ${
                         tempSelectedKeywords.includes(keyword)
-                          ? 'bg-gradient-to-r from-gold-start to-gold-end text-white'
+                          ? 'bg-gradient-to-r from-gold-start to-gold-end text-white shadow-sm'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -206,7 +212,7 @@ const KeywordSelector = () => {
                   <div className="mb-6 rounded-lg border border-gray-100 bg-gray-50 p-3">
                     <div className="mb-2 flex items-center justify-between">
                       <h3 className="text-sm font-medium text-gray-700">
-                        선택된 키워드
+                        선택된 키워드 ({tempSelectedKeywords.length}개)
                       </h3>
                       <button
                         onClick={clearAllKeywords}
@@ -220,7 +226,7 @@ const KeywordSelector = () => {
                       {tempSelectedKeywords.map((keyword) => (
                         <div
                           key={`selected-${keyword}`}
-                          className="flex items-center gap-1 rounded-full bg-white px-2 py-1 text-sm"
+                          className="flex items-center gap-1 rounded-full bg-white px-2 py-1 text-sm shadow-sm"
                         >
                           <span>{keyword}</span>
                           <button

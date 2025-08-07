@@ -132,17 +132,27 @@ export const useBookmarkStatus = (id: string | number, type: BookmarkType) => {
       }
 
       const supabase = createClient();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from(config.tableName)
         .select('id')
         .eq(config.foreignKey, id)
         .eq('user_id', user.id)
         .maybeSingle();
 
+      if (error) {
+        console.error(`북마크 상태 조회 실패 (${type}):`, error);
+        return { isBookmarked: false };
+      }
+
       return { isBookmarked: !!data };
     },
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000,
+    enabled: !!id && !!user,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 
@@ -203,7 +213,7 @@ export const useBookmarksStatus = (items: BookmarkItem[]) => {
 export const useToggleBookmark = () => {
   const user = useAtomValue(userAtom);
   const queryClient = useQueryClient();
-  const { showToast } = useToast(); // () 추가
+  const { showToast } = useToast();
 
   return useMutation({
     mutationFn: async ({ id, type }: { id: string | number; type: BookmarkType }): Promise<boolean> => {
@@ -230,7 +240,7 @@ export const useToggleBookmark = () => {
         if (error) throw error;
         return false;
       } else {
-        // 북마크 추가 - 타입별로 정확한 데이터 구조 생성
+        // 북마크 추가
         let insertData: BookmarkInsertData;
         
         if (type === 'post') {
@@ -320,10 +330,33 @@ export const useToggleBookmark = () => {
       if (error instanceof Error && error.message === '로그인이 필요합니다.') {
         showToast('로그인이 필요합니다.', 'error');
       } else {
+        console.error('북마크 토글 실패:', error);
         showToast('북마크 처리에 실패했습니다.', 'error');
       }
     },
-    onSuccess: (isBookmarked, { type }) => {
+    onSuccess: (isBookmarked, { id, type }) => {
+      const config = BOOKMARK_CONFIGS[type];
+      
+      // 성공 시 관련 쿼리들 무효화하여 최신 상태 보장
+      queryClient.invalidateQueries({ 
+        queryKey: [config.queryPrefix, 'status', id]
+      });
+      
+      queryClient.invalidateQueries({ 
+        queryKey: [config.queryPrefix, 'list'] 
+      });
+
+      // 배치 쿼리들도 무효화
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === 'bookmarks-batch-status'
+      });
+
+      // 게시글 목록 등 다른 관련 쿼리들도 무효화
+      if (type === 'post') {
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+      }
+
       const messages = {
         post: isBookmarked ? '게시글이 북마크에 추가되었습니다.' : '게시글 북마크가 취소되었습니다.',
         study: isBookmarked ? '스터디가 북마크에 추가되었습니다.' : '스터디 북마크가 취소되었습니다.',
@@ -331,11 +364,6 @@ export const useToggleBookmark = () => {
       };
 
       showToast(messages[type], 'success');
-      
-      // 해당 타입의 북마크 목록 무효화
-      queryClient.invalidateQueries({ 
-        queryKey: [BOOKMARK_CONFIGS[type].queryPrefix, 'list'] 
-      });
     },
   });
 };

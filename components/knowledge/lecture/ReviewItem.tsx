@@ -319,7 +319,7 @@ export function ReviewItem({
                   className="rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
                   disabled={!editContent.trim() || editContent === content}
                 >
-                  수정완료
+                  수정
                 </button>
               </div>
             </div>
@@ -374,7 +374,7 @@ export function ReviewItem({
                   className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
                   disabled={!replyContent.trim()}
                 >
-                  답글 작성
+                  작성
                 </button>
               </div>
             </form>

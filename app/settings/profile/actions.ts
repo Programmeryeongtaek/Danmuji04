@@ -7,8 +7,6 @@ export async function updateProfile(formData: FormData) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    console.log('업데이트 시작 - 유저:', user);
-
     if (!user) {
       return { error: '로그인 후 이용해주세요.' };
     }
@@ -19,16 +17,12 @@ export async function updateProfile(formData: FormData) {
       updated_at: new Date().toISOString()
     };
 
-    console.log('업데이트할 데이터:', updateData);
-
     // update 쿼리 실행 및 결과 가져오기
     const { data, error: updateError } = await supabase
       .from('profiles')
       .update(updateData)
       .eq('id', user.id)
       .select(); // 업데이트된 데이터 반환 요청
-
-    console.log('업데이트 결과:', { data, error: updateError });
 
     if (updateError) {
       console.error('업데이트 에러:', updateError);

@@ -103,7 +103,6 @@ export default function ContactPage() {
         .eq('role', 'admin');
 
       if (!admins || admins.length === 0) {
-        console.log('알림을 보낼 관리자가 없습니다.');
         return;
       }
 
@@ -118,7 +117,6 @@ export default function ContactPage() {
       }));
 
       await supabase.from('notifications').insert(notifications);
-      console.log('관리자 알림 생성 완료');
     } catch (error) {
       console.error('관리자 알림 생성 실패:', error);
       // 주요 기능 완료했으므로 알림 실패는 사용자에게 표시하지 않음

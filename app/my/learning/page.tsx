@@ -18,6 +18,7 @@ import {
 interface EnrolledLecture extends Lecture {
   enrollment_status: 'active' | 'cancelled';
   progress: number;
+  enrolled_at?: string;
 }
 
 export default function MyLearningPage() {
@@ -36,6 +37,7 @@ export default function MyLearningPage() {
     const loadLecturesWithProgress = async () => {
       if (!enrollments || !user || enrollments.length === 0) {
         setEnrolledLectures([]);
+        setIsLoadingProgress(false);
         return;
       }
 
@@ -50,6 +52,7 @@ export default function MyLearningPage() {
 
         if (activeEnrollments.length === 0) {
           setEnrolledLectures([]);
+          setIsLoadingProgress(false);
           return;
         }
 
@@ -61,16 +64,30 @@ export default function MyLearningPage() {
           .select('*')
           .in('id', lectureIds);
 
-        if (lecturesError) throw lecturesError;
+        if (lecturesError) {
+          console.error('강의 정보 조회 에러:', lecturesError);
+          showToast('강의 정보를 불러오는데 실패했습니다.', 'error');
+          setEnrolledLectures([]);
+          setIsLoadingProgress(false);
+          return;
+        }
 
-        // 각 강의의 진행률 계산
+        if (!lectures || lectures.length === 0) {
+          setEnrolledLectures([]);
+          setIsLoadingProgress(false);
+          return;
+        }
+
+        // 각 강의의 진행률 계산 - 개별 에러 처리
         const lecturesWithProgress = await Promise.all(
           lectures.map(async (lecture) => {
             let progress = 0;
             try {
               progress = await calculateEnrollmentProgress(lecture.id, user.id);
             } catch (error) {
-              console.error(`강의 ${lecture.id}의 진행률 계산 중 오류:`, error);
+              console.warn(`강의 ${lecture.id}의 진행률 계산 중 오류:`, error);
+              // 진행률 계산 실패 시 0으로 설정
+              progress = 0;
             }
 
             const enrollment = activeEnrollments.find(
@@ -79,7 +96,8 @@ export default function MyLearningPage() {
 
             return {
               ...lecture,
-              enrollment_status: enrollment?.status || 'cancelled',
+              enrollment_status:
+                (enrollment?.status as 'active' | 'cancelled') || 'cancelled',
               progress: Math.round(progress),
               enrolled_at: enrollment?.enrolled_at || '',
             } as EnrolledLecture;
@@ -90,6 +108,7 @@ export default function MyLearningPage() {
       } catch (error) {
         console.error('수강 강의 목록 로드 실패:', error);
         showToast('수강 중인 강의 목록을 불러오는데 실패했습니다.', 'error');
+        setEnrolledLectures([]);
       } finally {
         setIsLoadingProgress(false);
       }

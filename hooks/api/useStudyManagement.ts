@@ -75,79 +75,122 @@ export const useStudyDetails = (studyId: string) => {
     queryFn: async (): Promise<StudyDetails> => {
       const supabase = await createClient();
 
-      // 1. 스터디 기본 정보 조회
-      const { data: studyData, error: studyError } = await supabase
-        .from('studies')
-        .select('*')
-        .eq('id', studyId)
-        .single();
-
-      if (studyError) throw studyError;
-      if (!studyData) throw new Error('스터디를 찾을 수 없습니다.');
-
-      // 2. 도서 정보 조회
-      let bookData: BookInfo | null = null;
-      if (studyData.book_id) {
-        const { data, error } = await supabase
-          .from('books')
-          .select('id, title, author, cover_url')
-          .eq('id', studyData.book_id)
+      try {
+        // 1. 스터디 기본 정보 조회
+        const { data: studyData, error: studyError } = await supabase
+          .from('studies')
+          .select('*')
+          .eq('id', studyId)
           .single();
 
-        if (!error && data) {
-          bookData = data;
+        if (studyError) throw studyError;
+        if (!studyData) throw new Error('스터디를 찾을 수 없습니다.');
+
+        // 2. 도서 정보 조회
+        let bookData: BookInfo | null = null;
+        if (studyData.book_id) {
+          const { data, error } = await supabase
+            .from('books')
+            .select('id, title, author, cover_url')
+            .eq('id', studyData.book_id)
+            .single();
+
+          if (!error && data) {
+            bookData = data;
+          }
         }
+
+        // 3. 참여자 정보 조회 - 조인 방식 변경
+        const { data: participantsData, error: participantsError } = await supabase
+          .from('study_participants')
+          .select('*')
+          .eq('study_id', studyId)
+          .order('joined_at', { ascending: true });
+
+        if (participantsError) throw participantsError;
+
+        // 4. 참여자들의 프로필 정보 별도 조회
+        let participants: Participant[] = [];
+        if (participantsData && participantsData.length > 0) {
+          // 사용자 ID 목록 추출
+          const userIds = [...new Set(participantsData.map(p => p.user_id))];
+
+          // 프로필 정보 별도 조회
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, name, nickname, avatar_url')
+            .in('id', userIds);
+
+          if (profilesError) {
+            console.warn('프로필 조회 실패:', profilesError);
+          }
+
+          // 프로필 정보 맵 생성
+          const profileMap = new Map(
+            profilesData?.map(profile => [profile.id, profile]) || []
+          );
+
+          // 참여자 데이터와 프로필 정보 병합
+          participants = participantsData.map(participant => {
+            const profile = profileMap.get(participant.user_id);
+            return {
+              ...participant,
+              user_name: profile?.nickname || profile?.name || participant.user_name || '사용자',
+              avatar_url: profile?.avatar_url 
+                ? `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${profile.avatar_url}`
+                : null,
+            };
+          });
+        }
+
+        // 5. 참여자 분류 - 안전한 접근
+        const pendingParticipants = participants.filter(p => p.status === 'pending');
+        const approvedParticipants = participants.filter(p => 
+          p.status === 'approved' || (!p.status && p.role === 'owner') // 방장은 자동 승인으로 간주
+        );
+
+        // 6. 사용자 참여 상태 확인
+        let userParticipationStatus: 'not_joined' | 'pending' | 'approved' | 'rejected' = 'not_joined';
+        if (user) {
+          const userParticipation = participants.find(p => p.user_id === user.id);
+          if (userParticipation) {
+            // 방장인 경우 자동으로 approved 처리
+            if (userParticipation.role === 'owner') {
+              userParticipationStatus = 'approved';
+            } else {
+              userParticipationStatus = userParticipation.status || 'approved';
+            }
+          }
+        }
+
+        // 7. 소유자 여부 확인
+        const isOwner = user?.id === studyData.owner_id;
+
+        return {
+          study: studyData,
+          book: bookData,
+          participants,
+          pendingParticipants,
+          approvedParticipants,
+          userParticipationStatus,
+          isOwner,
+        };
+
+      } catch (error) {
+        console.error('스터디 상세 조회 에러:', error);
+        throw error;
       }
-
-      // 3. 참여자 정보 조회 (프로필 포함)
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('study_participants')
-        .select(`
-          *,
-          profiles!study_participants_user_id_fkey (
-            avatar_url
-          )
-        `)
-        .eq('study_id', studyId)
-        .order('joined_at', { ascending: true });
-
-      if (participantsError) throw participantsError;
-
-      // 4. 참여자 데이터 처리 및 아바타 URL 변환
-      const participants: Participant[] = (participantsData || []).map(participant => ({
-        ...participant,
-        avatar_url: participant.profiles?.avatar_url 
-          ? `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${participant.profiles.avatar_url}`
-          : null,
-      }));
-
-      // 5. 참여자 분류
-      const pendingParticipants = participants.filter(p => p.status === 'pending');
-      const approvedParticipants = participants.filter(p => p.status === 'approved');
-
-      // 6. 사용자 참여 상태 확인
-      let userParticipationStatus: 'not_joined' | 'pending' | 'approved' | 'rejected' = 'not_joined';
-      const userParticipation = participants.find(p => p.user_id === user?.id);
-      if (userParticipation) {
-        userParticipationStatus = userParticipation.status;
-      }
-
-      // 7. 소유자 여부 확인
-      const isOwner = user?.id === studyData.owner_id;
-
-      return {
-        study: studyData,
-        book: bookData,
-        participants,
-        pendingParticipants,
-        approvedParticipants,
-        userParticipationStatus,
-        isOwner,
-      };
     },
     enabled: !!studyId,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      // 400 에러는 재시도하지 않음
+      if (error?.message?.includes('400')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 };
 

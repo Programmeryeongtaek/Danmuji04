@@ -57,8 +57,6 @@ export function useNotifications(): UseNotificationsReturn {
         }
       )
       .subscribe((status) => {
-        console.log('Realtime 구독 상태:', status);
-        
         if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
           showToast('실시간 알림 연결에 실패했습니다.', 'error');
         }

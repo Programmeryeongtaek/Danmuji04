@@ -162,14 +162,19 @@ export function useCoursePermission() {
         const adminStatus = await isAdminUser();
         setIsAdmin(adminStatus);
       } catch (error) {
-        console.error('권한 확인 실패:', error);
+        console.error('useCoursePermission 권한 확인 실패:', error);
         setIsAdmin(false);
       } finally {
         setIsLoading(false);
       }
     };
-
-    checkPermission();
+    
+    if (user) {
+      checkPermission();
+    } else if (user === null) {
+      setIsAdmin(false);
+      setIsLoading(false);
+    }
   }, [user]);
 
   return { isAdmin, isLoading };

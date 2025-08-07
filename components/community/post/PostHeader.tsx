@@ -13,6 +13,8 @@ interface PostHeaderProps {
   onLike: () => void;
   onBookmark: () => void;
   onShare: () => void;
+  isLikeLoading?: boolean;
+  isBookmarkLoading?: boolean;
 }
 
 const PostHeader = memo(
@@ -24,6 +26,8 @@ const PostHeader = memo(
     onLike,
     onBookmark,
     onShare,
+    isLikeLoading = false,
+    isBookmarkLoading = false,
   }: PostHeaderProps) => {
     // 날짜 포맷팅 메모이제이션
     const formattedDate = useMemo(() => {
@@ -86,29 +90,39 @@ const PostHeader = memo(
 
             <button
               onClick={onBookmark}
-              className={`${
+              disabled={isBookmarkLoading}
+              className={`relative transition-colors ${
                 bookmarkStatus
                   ? 'text-gold-start'
                   : 'text-gray-700 hover:text-gold-start'
-              }`}
-              aria-label="북마크"
+              } ${isBookmarkLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+              aria-label={bookmarkStatus ? '북마크 해제' : '북마크 추가'}
+              title={bookmarkStatus ? '북마크 해제' : '북마크 추가'}
             >
               <BookmarkPlus className="h-5 w-5" />
+              {isBookmarkLoading && (
+                <div className="absolute -right-1 -top-1 h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+              )}
             </button>
 
             <button
               onClick={onLike}
-              className={`flex gap-1 ${
+              disabled={isLikeLoading}
+              className={`relative flex gap-1 transition-colors ${
                 likeStatus.isLiked
                   ? 'text-gold-start'
                   : 'text-gray-700 hover:text-gold-start'
-              }`}
-              aria-label="좋아요"
+              } ${isLikeLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+              aria-label={likeStatus.isLiked ? '좋아요 취소' : '좋아요'}
+              title={likeStatus.isLiked ? '좋아요 취소' : '좋아요'}
             >
               <ThumbsUp className="h-5 w-5" />
               <span className="ml-1 text-sm text-black">
                 {likeStatus.likesCount}
               </span>
+              {isLikeLoading && (
+                <div className="absolute -right-1 -top-1 h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+              )}
             </button>
           </div>
         </div>

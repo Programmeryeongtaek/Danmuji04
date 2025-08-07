@@ -11,7 +11,6 @@ export interface EnrollmentData {
   lecture_id: number;
   status: EnrollmentStatus;
   enrolled_at: string;
-  completed_at?: string;
 }
 
 export interface EnrollmentStats {
@@ -50,12 +49,17 @@ export const useEnrollmentList = () => {
       
       const { data, error } = await supabase
         .from('enrollments')
-        .select('lecture_id, status, enrolled_at, completed_at')
+        .select('lecture_id, status, enrolled_at')
         .eq('user_id', user.id)
         .order('enrolled_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      
+      return (data || []).map(item => ({
+        lecture_id: item.lecture_id,
+        status: item.status,
+        enrolled_at: item.enrolled_at,
+      }));
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
@@ -87,7 +91,7 @@ export const useEnrollmentStatus = (lectureId: number) => {
       // 마지막 시청 아이템 조회
       const { data: progress } = await supabase
         .from('lecture_progress')
-        .select('last_watched_item_id')
+        .select('*')
         .eq('lecture_id', lectureId)
         .eq('user_id', user.id)
         .maybeSingle();

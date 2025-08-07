@@ -11,8 +11,6 @@ export function CertificateList({ userName }: CertificateListProps) {
   const { certificates, isLoading, refetch } = useAllCertificates();
 
   const handleDownload = (certificateId: number) => {
-    // 다운로드 로직 구현
-    console.log(`수료증 ${certificateId} 다운로드 중...`);
     // 실제 구현에서는 서버에 요청하여 PDF 다운로드
     window.open(`/api/certificates/download/${certificateId}`, '_blank');
   };

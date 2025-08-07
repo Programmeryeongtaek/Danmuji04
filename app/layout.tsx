@@ -10,13 +10,12 @@ import {
 } from '@/components/Course/NotificationContext';
 import { queryClient } from '@/lib/queryClient';
 import { isLoadingAtom, userAtom } from '@/store/auth';
-import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
 import { initializeUserProfileAtom } from '@/store/my/userProfileAtom';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useAtom, useSetAtom } from 'jotai';
+import { useSetAtom } from 'jotai';
 import { Inter } from 'next/font/google';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useCallback, useEffect, useRef } from 'react';
@@ -54,7 +53,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
   const initializeUserProfile = useSetAtom(initializeUserProfileAtom);
-  const [, initializeCourseProgress] = useAtom(initializeCourseProgressAtom);
 
   // 초기화 상태를 추적하는 ref
   const initializationRef = useRef<{
@@ -83,11 +81,9 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         if (user) {
           // 사용자 프로필과 코스 진도만 초기화
           await initializeUserProfile(user.id);
-          await initializeCourseProgress();
         } else {
           // 로그아웃 시에는 빈 상태로 초기화
           await initializeUserProfile('');
-          await initializeCourseProgress();
 
           // 로그아웃 시 TanStack Query 캐시도 정리
           queryClient.clear();
@@ -98,7 +94,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         initializationRef.current.isInitializing = false;
       }
     },
-    [initializeUserProfile, initializeCourseProgress]
+    [initializeUserProfile]
   );
 
   useEffect(() => {

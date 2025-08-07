@@ -52,8 +52,6 @@ export function CertificateModal({
       // 카테고리를 영어 key로 변환
       const categoryKey = convertCategoryToKey(categoryName);
 
-      console.log(`카테고리 변환: "${categoryName}" → "${categoryKey}"`); // 디버깅 로그
-
       // 수료증 발급 서비스 호출
       const success = await generateCertificate(categoryKey);
 

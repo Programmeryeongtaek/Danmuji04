@@ -37,6 +37,7 @@ import {
   fetchPostById,
   fetchRelatedPosts,
 } from '@/utils/services/community/postService';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAtomValue } from 'jotai';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -48,6 +49,7 @@ export default function PostDetailPage() {
   const router = useRouter();
   const postId = params.id as string;
   const numericPostId = parseInt(postId, 10);
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const user = useAtomValue(userAtom);
@@ -68,8 +70,17 @@ export default function PostDetailPage() {
 
   const { data: comments = [], isLoading: commentsLoading } =
     useComments(numericPostId);
-  const { data: postLikeStatus } = usePostLikeStatus(numericPostId);
-  const { data: bookmarkStatus } = useBookmarkStatus(numericPostId, 'post');
+  const {
+    data: postLikeStatus,
+    isLoading: likeStatusLoading,
+    error: likeStatusError,
+  } = usePostLikeStatus(numericPostId);
+  const {
+    data: bookmarkStatus,
+    isLoading: bookmarkStatusLoading,
+    error: bookmarkStatusError,
+    refetch: refetchBookmarkStatus,
+  } = useBookmarkStatus(numericPostId, 'post');
   const { mutate: togglePostLike } = useTogglePostLike();
   const { mutate: toggleBookmark } = useToggleBookmark();
 
@@ -88,6 +99,16 @@ export default function PostDetailPage() {
   const { data: postViewData } = usePostViewCount(numericPostId);
   const incrementPostView = useIncrementPostView();
   const { hasViewed, markAsViewed } = usePostViewSession();
+
+  // 에러 처리
+  useEffect(() => {
+    if (bookmarkStatusError) {
+      console.error('북마크 상태 조회 에러:', bookmarkStatusError);
+    }
+    if (likeStatusError) {
+      console.error('좋아요 상태 조회 에러:', likeStatusError);
+    }
+  }, [bookmarkStatusError, likeStatusError]);
 
   // 이미지 preload 함수
   const preloadFirstImage = useCallback((content: string) => {
@@ -170,43 +191,95 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     if (post && !hasViewed(numericPostId)) {
-      markAsViewed(numericPostId);
-      incrementPostView.mutate(numericPostId);
+      // 1초 후에 조회수 증가
+      const timer = setTimeout(() => {
+        if (!hasViewed(numericPostId)) {
+          markAsViewed(numericPostId);
+          incrementPostView.mutate(numericPostId);
+        }
+      }, 1000);
+
+      return () => clearTimeout(timer);
     }
   }, [post, hasViewed, markAsViewed, incrementPostView, numericPostId]);
 
-  // TanStack Query v5: mutation 성공 시 상태 초기화를 useEffect로 처리
+  // TanStack Query mutation 성공 시 상태 초기화를 useEffect로 처리
   useEffect(() => {
     if (createCommentMutation.isSuccess) {
       setNewComment('');
       setNewReply({ commentId: null, content: '' });
+
+      // 댓글 목록 쿼리 무효화하여 최신 프로필 정보 반영
+      queryClient.invalidateQueries({
+        queryKey: ['comments', 'list', numericPostId],
+      });
+
+      // 사용자 프로필 관련 쿼리도 무효화 (프로필이 업데이트된 경우)
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['profiles', user.id],
+        });
+      }
+
+      // 댓글 좋아요 상태 관련 쿼리도 무효화
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === 'comments-like-status' ||
+          query.queryKey[0] === 'comment-like-status',
+      });
     }
-  }, [createCommentMutation.isSuccess]);
+  }, [createCommentMutation.isSuccess, queryClient, numericPostId, user?.id]);
 
   useEffect(() => {
     if (updateCommentMutation.isSuccess) {
       setEditingComment(null);
+
+      // 댓글 목록 쿼리 무효화
+      queryClient.invalidateQueries({
+        queryKey: ['comments', 'list', numericPostId],
+      });
+
+      // 사용자 프로필 쿼리도 무효화
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['profiles', user.id],
+        });
+      }
     }
-  }, [updateCommentMutation.isSuccess]);
+  }, [updateCommentMutation.isSuccess, queryClient, numericPostId, user?.id]);
 
   // 좋아요 처리
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
-    if (!post) return;
-    togglePostLike(post.id);
+    if (!post || likeStatusLoading) return;
+
+    try {
+      await togglePostLike(post.id);
+    } catch (error) {
+      console.error('좋아요 처리 실패:', error);
+    }
   };
 
   // 북마크 처리
-  const handleBookmark = () => {
+  const handleBookmark = async () => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
-    if (!post) return;
-    toggleBookmark({ id: post.id, type: 'post' });
+    if (!post || bookmarkStatusLoading) return;
+
+    try {
+      await toggleBookmark({ id: post.id, type: 'post' });
+      // 성공 후 명시적으로 상태 재조회 (추가 보장)
+      setTimeout(() => {
+        refetchBookmarkStatus();
+      }, 100);
+    } catch (error) {
+      console.error('북마크 처리 실패:', error);
+    }
   };
 
   // 공유하기
@@ -267,8 +340,24 @@ export default function PostDetailPage() {
     });
   };
 
+  // 24시간 확인 함수 추가
+  const isCommentEditable = (comment: Comment): boolean => {
+    const createdAt = new Date(comment.created_at);
+    const now = new Date();
+    const hoursSinceCreation =
+      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+    return hoursSinceCreation <= 24;
+  };
+
   // 댓글 수정 시작
   const handleEditComment = (comment: Comment, isReply: boolean = false) => {
+    // 24시간 체크를 여기서 먼저 수행
+    if (!isCommentEditable(comment)) {
+      showToast('작성 후 24시간이 지난 댓글은 수정할 수 없습니다.', 'error');
+      return; // 수정 창을 열지 않고 여기서 종료
+    }
+
     setEditingComment({
       id: comment.id,
       content: comment.content,
@@ -317,7 +406,7 @@ export default function PostDetailPage() {
     });
   };
 
-  // 답글 제출 - TanStack Query 방식
+  // 답글 제출
   const handleSubmitReply = (e: React.FormEvent, commentId: number) => {
     e.preventDefault();
 
@@ -376,10 +465,13 @@ export default function PostDetailPage() {
   const isOwner = user && user.id === post.author_id;
 
   const likeStatus: LikeStatus = {
-    isLiked: postLikeStatus?.isLiked || false,
-    likesCount: postLikeStatus?.likesCount || 0,
+    isLiked: likeStatusLoading ? false : postLikeStatus?.isLiked || false,
+    likesCount: likeStatusLoading ? 0 : postLikeStatus?.likesCount || 0,
   };
-  const bookmarkStatusValue = bookmarkStatus?.isBookmarked || false;
+
+  const bookmarkStatusValue = bookmarkStatusLoading
+    ? false
+    : bookmarkStatus?.isBookmarked || false;
 
   return (
     <div className="mx-auto max-w-4xl mobile:p-4 tablet:p-6">
@@ -402,6 +494,8 @@ export default function PostDetailPage() {
         onLike={handleLike}
         onBookmark={handleBookmark}
         onShare={handleShare}
+        isLikeLoading={likeStatusLoading}
+        isBookmarkLoading={bookmarkStatusLoading}
       />
 
       {/* 게시글 본문 */}

@@ -17,25 +17,20 @@ interface PostBookmarkStatus {
 }
 
 // 게시글 좋아요 상태 조회
+// usePostInteractions.ts의 usePostLikeStatus 수정
 export const usePostLikeStatus = (postId: number) => {
   const user = useAtomValue(userAtom);
 
   return useQuery({
     queryKey: ['post-like-status', postId],
     queryFn: async (): Promise<PostLikeStatus> => {
-      const supabase = createClient();
-
-      // 좋아요 수 조회
-      const { count: likesCount } = await supabase
-        .from('post_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('post_id', postId);
-
       if (!user) {
-        return { isLiked: false, likesCount: likesCount || 0 };
+        return { isLiked: false, likesCount: 0 };
       }
 
-      // 사용자 좋아요 여부 조회
+      const supabase = createClient();
+
+      // 1. 좋아요 여부 확인
       const { data: likeData } = await supabase
         .from('post_likes')
         .select('id')
@@ -43,14 +38,27 @@ export const usePostLikeStatus = (postId: number) => {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      // 2. 전체 좋아요 수 조회
+      const { count: likesCount, error: countError } = await supabase
+        .from('post_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId);
+
+      if (countError) {
+        console.error('좋아요 수 조회 실패:', countError);
+      }
+
       return {
         isLiked: !!likeData,
         likesCount: likesCount || 0,
       };
     },
-    enabled: !!postId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    enabled: !!postId && !!user,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    retry: 3,
   });
 };
 

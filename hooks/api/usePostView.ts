@@ -3,6 +3,29 @@
 import { createClient } from '@/utils/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+// 전역 변수로 조회한 게시글 추적
+const viewedPosts = new Set<number>();
+const viewTimestamps = new Map<number, number>();
+
+// 조회 여부 확인 함수
+const hasViewedRecently = (postId: number): boolean => {
+  const lastViewTime = viewTimestamps.get(postId);
+  const now = Date.now();
+  
+  // 2초 이내에 조회한 게시글은 다시 조회하지 않음
+  if (lastViewTime && (now - lastViewTime) < 2000) {
+    return true;
+  }
+  
+  return viewedPosts.has(postId);
+};
+
+// 조회 기록 함수
+const markAsViewedGlobal = (postId: number): void => {
+  viewedPosts.add(postId);
+  viewTimestamps.set(postId, Date.now());
+};
+
 // 쿼리 키 정의
 export const postViewKeys = {
   all: ['postView'] as const,
@@ -26,7 +49,7 @@ export const usePostViewCount = (postId: number) => {
   return useQuery({
     queryKey: postViewKeys.detail(postId),
     queryFn: async (): Promise<PostViewCount> => {
-      const supabase = await createClient();
+      const supabase = createClient();
 
       const { data, error } = await supabase
         .from('community_posts')
@@ -80,6 +103,18 @@ export const useIncrementPostView = () => {
 
   return useMutation({
     mutationFn: async (postId: number): Promise<number> => {
+      // 중복 조회 체크
+      if (hasViewedRecently(postId)) {
+        // 현재 캐시된 조회수 반환 (DB 호출 없이)
+        const cachedData = queryClient.getQueryData<PostViewCount>(
+          postViewKeys.detail(postId)
+        );
+        return cachedData?.views || 0;
+      }
+
+      // 조회 기록
+      markAsViewedGlobal(postId);
+
       const supabase = createClient();
       
       // Supabase RPC 함수 호출하여 조회수 증가
@@ -87,14 +122,21 @@ export const useIncrementPostView = () => {
         post_id: postId 
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`조회수 증가 실패: ${postId}`, error);
+        // 실패 시 조회 기록 제거
+        viewedPosts.delete(postId);
+        viewTimestamps.delete(postId);
+        throw error;
+      }
 
       // 증가된 조회수 반환 (낙관적 업데이트용)
       const currentData = queryClient.getQueryData<PostViewCount>(
         postViewKeys.detail(postId)
       );
       
-      return (currentData?.views || 0) + 1;
+      const newViewCount = (currentData?.views || 0) + 1; 
+      return newViewCount;
     },
     onMutate: async (postId: number) => {
       // 진행 중인 쿼리 취소
@@ -105,8 +147,8 @@ export const useIncrementPostView = () => {
         postViewKeys.detail(postId)
       );
 
-      // 낙관적 업데이트
-      if (previousData) {
+      // 낙관적 업데이트 (이미 조회한 게시글이 아닌 경우만)
+      if (previousData && !hasViewedRecently(postId)) {
         queryClient.setQueryData<PostViewCount>(
           postViewKeys.detail(postId),
           {
@@ -149,14 +191,12 @@ export const useIncrementPostView = () => {
 
 // 세션 기반 중복 조회 방지를 위한 훅
 export const usePostViewSession = () => {
-  const viewedPosts = new Set<number>();
-
-  const hasViewed = (postId: number) => {
-    return viewedPosts.has(postId);
+  const hasViewed = (postId: number): boolean => {
+    return hasViewedRecently(postId);
   };
 
   const markAsViewed = (postId: number): void => {
-    viewedPosts.add(postId);
+    markAsViewedGlobal(postId);
   };
 
   return { hasViewed, markAsViewed };

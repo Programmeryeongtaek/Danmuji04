@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
 export interface CachedLecture {
-    id: number;
+  id: number;
   title: string;
   instructor: string;
   category: string;
@@ -19,7 +19,7 @@ export interface CachedLecture {
 }
 
 export interface LectureSection {
-    id: number;
+  id: number;
   lecture_id: number;
   title: string;
   order_index: number;
@@ -44,6 +44,31 @@ export const lectureKeys = {
   section: (lectureId: number) => [...lectureKeys.sections(), lectureId] as const,
 };
 
+// 카테고리 매핑 함수
+const getCategoryMapping = (uiCategory: string): string => {
+  const categoryMap: Record<string, string> = {
+    'humanities': '인문학',
+    'philosophy': '철학', 
+    'psychology': '심리학',
+    'economics': '경제학',
+    'self-development': '자기계발',
+    'leadership': '리더십'
+  };
+  
+  return categoryMap[uiCategory] || uiCategory;
+};
+
+// 깊이 매핑 함수
+const getDepthMapping = (uiDepth: string): string => {
+  const depthMap: Record<string, string> = {
+    '입문': '입문',
+    '초급': '초급', 
+    '중급 이상': '중급'
+  };
+  
+  return depthMap[uiDepth] || uiDepth;
+};
+
 // 강의 목록 조회 (카테고리별)
 export const useLectureList = (category: string) => {
   return useQuery({
@@ -59,14 +84,19 @@ export const useLectureList = (category: string) => {
           likes, students, created_at, updated_at
         `);
       
-      if (category !== 'all') {
-        query = query.eq('category', category);
+      // 카테고리 필터링 - 매핑 함수 사용
+      if (category !== 'all' && category !== 'search') {
+        const dbCategory = getCategoryMapping(category);
+        query = query.eq('category', dbCategory);
       }
       
       query = query.order('created_at', { ascending: false });
       
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('강의 목록 조회 오류:', error);
+        throw error;
+      }
       
       return (data || []).map(item => ({
         id: item.id,
@@ -106,19 +136,25 @@ export const useLectureSearch = (searchQuery: string, filters?: SearchFilters) =
         `);
       
       // 검색어 필터링
-      if (searchQuery) {
+      if (searchQuery && searchQuery.trim() !== '') {
         query = query.or(
           `title.ilike.%${searchQuery}%,instructor.ilike.%${searchQuery}%,keyword.ilike.%${searchQuery}%`
         );
       }
       
-      // 추가 필터 적용
+      // 깊이 필터 적용 - 매핑 함수 사용
       if (filters?.depth?.length) {
-        query = query.in('depth', filters.depth);
+        const dbDepths = filters.depth.map(getDepthMapping);
+        query = query.in('depth', dbDepths);
       }
+      
+      // 분야(카테고리) 필터 적용 - 매핑 함수 사용
       if (filters?.fields?.length) {
-        query = query.in('category', filters.fields);
+        const dbCategories = filters.fields.map(getCategoryMapping);
+        query = query.in('category', dbCategories);
       }
+      
+      // 오프라인 모임 필터 적용
       if (filters?.hasGroup) {
         query = query.neq('group_type', 'online');
       }
@@ -126,7 +162,10 @@ export const useLectureSearch = (searchQuery: string, filters?: SearchFilters) =
       query = query.order('created_at', { ascending: false });
       
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('강의 검색 오류:', error);
+        throw error;
+      }
       
       return (data || []).map(item => ({
         id: item.id,
@@ -145,7 +184,7 @@ export const useLectureSearch = (searchQuery: string, filters?: SearchFilters) =
         href: `/knowledge/lecture/${item.id}`,
       }));
     },
-    enabled: Boolean(searchQuery),
+    enabled: Boolean(searchQuery && searchQuery.trim() !== ''), // 검색어가 있을 때만 실행
     staleTime: 3 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });

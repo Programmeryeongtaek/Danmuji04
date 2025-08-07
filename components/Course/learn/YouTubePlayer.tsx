@@ -52,7 +52,6 @@ export default function YouTubePlayer({ youtubeId }: YouTubePlayerProps) {
     function onPlayerStateChange() {
       // 여기서 필요한 이벤트 처리 (예: 시청 완료 시 처리)
       // if (event.data === window.YT.PlayerState.ENDED) {
-      //   console.log('Video ended');
       //   // 시청 완료 처리 로직
       // }
     }
