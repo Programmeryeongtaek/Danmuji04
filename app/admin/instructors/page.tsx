@@ -1,122 +1,38 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
-import { createClient } from '@/utils/supabase/client';
+import { ToastType } from '@/components/common/Toast/type';
+import {
+  useInstructors,
+  useRevokeInstructor,
+} from '@/hooks/api/useInstructors';
 import { ArrowLeft, Eye, Search, ShieldOff, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-
-interface Instructor {
-  id: string;
-  name: string | null;
-  nickname: string | null;
-  email: string | null;
-  avatar_url: string | null;
-  role: string;
-  created_at: string;
-}
+import { useMemo, useState } from 'react';
 
 export default function InstructorsManagePage() {
-  const [instructors, setInstructors] = useState<Instructor[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredInstructors, setFilteredInstructors] = useState<Instructor[]>(
-    []
-  );
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  const router = useRouter();
   const { showToast } = useToast();
 
-  useEffect(() => {
-    const checkAdminAndLoadInstructors = async () => {
-      const supabase = createClient();
+  const { data: instructors = [], isLoading, error } = useInstructors();
 
-      // 1. 먼저 관리자 권한 확인
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  const revokeInstructor = useRevokeInstructor();
 
-      if (!user) {
-        router.push('/');
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile || profile.role !== 'admin') {
-        router.push('/');
-        showToast('관리자 권한이 필요합니다.', 'error');
-        return;
-      }
-
-      setIsAdmin(true);
-
-      // 2. 강사 목록 로드
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('role', 'instructor')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        // 프로필 이미지 URL 처리
-        const enhancedInstructors = await Promise.all(
-          (data || []).map(async (instructor) => {
-            let avatarUrl = instructor.avatar_url;
-
-            if (avatarUrl) {
-              const { data } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(avatarUrl);
-
-              avatarUrl = data.publicUrl;
-            }
-
-            return {
-              ...instructor,
-              avatar_url: avatarUrl,
-            };
-          })
-        );
-
-        setInstructors(enhancedInstructors);
-        setFilteredInstructors(enhancedInstructors);
-      } catch (error) {
-        console.error('Error loading instructors:', error);
-        showToast('강사 목록을 불러오는데 실패했습니다.', 'error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAdminAndLoadInstructors();
-  }, [router, showToast]);
-
-  // 검색 필터링
-  useEffect(() => {
+  // 검색 필터링을 useMemo로 처리
+  const filteredInstructors = useMemo(() => {
     if (!searchQuery.trim()) {
-      setFilteredInstructors(instructors);
-      return;
+      return instructors;
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = instructors.filter(
+    return instructors.filter(
       (instructor) =>
         (instructor.name?.toLowerCase().includes(query) ?? false) ||
         (instructor.nickname?.toLowerCase().includes(query) ?? false) ||
         (instructor.email?.toLowerCase().includes(query) ?? false)
     );
-
-    setFilteredInstructors(filtered);
   }, [searchQuery, instructors]);
 
   const handleRevokeInstructor = async (
@@ -132,27 +48,10 @@ export default function InstructorsManagePage() {
     }
 
     try {
-      const supabase = createClient();
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: 'normal' })
-        .eq('id', instructorId);
-
-      if (error) throw error;
-
+      await revokeInstructor.mutateAsync(instructorId);
       showToast('강사 권한이 해제되었습니다.', 'success');
-
-      // UI에서 강사 제거
-      setInstructors((prev) =>
-        prev.filter((instr) => instr.id !== instructorId)
-      );
-      setFilteredInstructors((prev) =>
-        prev.filter((instr) => instr.id !== instructorId)
-      );
     } catch (error) {
-      console.error('강사 권한 해제 실패:', error);
-      showToast('강사 권한 해제에 실패했습니다.', 'error');
+      showToast('강사 권한 해제에 실패했습니다.', error as ToastType);
     }
   };
 
@@ -164,8 +63,16 @@ export default function InstructorsManagePage() {
     );
   }
 
-  if (!isAdmin) {
-    return null;
+  // 에러 처리
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="mb-4 text-red-500">데이터를 불러오는데 실패했습니다.</p>
+          <p className="text-sm text-gray-500">{error.message}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
