@@ -1,7 +1,6 @@
 'use client';
 
 import { MouseEvent, useEffect, useState } from 'react';
-import EnrollBar from './EnrollBar';
 import ReviewSection from './ReviewSection';
 import { createClient } from '@/utils/supabase/client';
 import { Lecture } from '@/app/types/knowledge/lecture';
@@ -22,7 +21,19 @@ import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
 import { useToast } from '@/components/common/Toast/Context';
 import { fetchAverageRating } from '@/utils/services/knowledge/lectureService';
+import dynamic from 'next/dynamic';
 
+const EnrollBar = dynamic(() => import('./EnrollBar'), {
+  ssr: false,
+  loading: () => (
+    <div className="sticky bottom-0 z-50 border-t bg-white px-4 py-3 shadow-lg">
+      <div className="flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+        <span className="ml-2 text-gray-600">처리 중...</span>
+      </div>
+    </div>
+  ),
+});
 interface LectureContentProps {
   lecture: Lecture;
 }
@@ -53,7 +64,6 @@ function useIsMounted(): boolean {
 export default function LectureContent({ lecture }: LectureContentProps) {
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [sections, setSections] = useState<LectureSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -70,19 +80,6 @@ export default function LectureContent({ lecture }: LectureContentProps) {
         setAverageRating(averageRating);
 
         const supabase = createClient();
-
-        // 로그인한 경우 북마크 상태와 수강 상태 확인
-        if (user) {
-          // 북마크 상태 확인
-          const { data: bookmark } = await supabase
-            .from('bookmarks')
-            .select('id')
-            .eq('lecture_id', lecture.id)
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          setIsBookmarked(!!bookmark);
-        }
 
         // 수강평 정보 조회 (로그인 여부와 무관하게 처리)
         const { data: reviews, error: reviewError } = await supabase
@@ -275,10 +272,7 @@ export default function LectureContent({ lecture }: LectureContentProps) {
                 <div className="flex justify-end">
                   {isMounted && user ? (
                     <div className="flex flex-wrap gap-3">
-                      <BookmarkButton
-                        lectureId={lecture.id}
-                        initialIsBookmarked={isBookmarked}
-                      />
+                      <BookmarkButton lectureId={lecture.id} />
                       <ShareButton lectureId={lecture.id} />
                     </div>
                   ) : (

@@ -13,39 +13,32 @@ import PostContent from '@/components/community/post/PostContent';
 import PostHeader from '@/components/community/post/PostHeader';
 import RelatedPosts from '@/components/community/post/RelatedPosts';
 import LoginModal from '@/components/home/LoginModal';
+import { useBookmarkStatus, useToggleBookmark } from '@/hooks/api/useBookmarks';
+import { useCommentsLikeStatus } from '@/hooks/api/useCommentInteraction';
+import {
+  useComments,
+  useCreateComment,
+  useDeleteComment,
+  useUpdateComment,
+  useValidateCommentDeletion,
+} from '@/hooks/api/useComments';
+import {
+  usePostLikeStatus,
+  useTogglePostLike,
+} from '@/hooks/api/usePostInteractions';
+import {
+  useIncrementPostView,
+  usePostViewCount,
+  usePostViewSession,
+} from '@/hooks/api/usePostView';
 import { userAtom } from '@/store/auth';
-import {
-  getCommentLikeStatusAtom,
-  initializeCommentsLikeAtom,
-  removeCommentFromLikeStateAtom,
-  toggleCommentLikeAtom,
-} from '@/store/community/commentLikeAtom';
-import {
-  initializePostBookmarkAtom,
-  isPostBookmarkedAtom,
-  togglePostBookmarkAtom,
-} from '@/store/community/postBookmarkAtom';
-import {
-  getPostLikeStatusAtom,
-  initializePostLikeAtom,
-  togglePostLikeAtom,
-} from '@/store/community/postLikeAtom';
-import {
-  initializePostViewCountsAtom,
-  viewPostAtom,
-} from '@/store/community/postViewAtom';
-import {
-  createComment,
-  deleteComment,
-  fetchCommentsByPostId,
-  updateComment,
-} from '@/utils/services/community/commentService';
 import {
   deletePost,
   fetchPostById,
   fetchRelatedPosts,
 } from '@/utils/services/community/postService';
-import { useAtom, useAtomValue } from 'jotai';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAtomValue } from 'jotai';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -55,27 +48,13 @@ export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
   const postId = params.id as string;
+  const numericPostId = parseInt(postId, 10);
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const user = useAtomValue(userAtom);
-  const getPostLikeStatus = useAtomValue(getPostLikeStatusAtom);
-  const isPostBookmarked = useAtomValue(isPostBookmarkedAtom);
-  const getCommentLikeStatus = useAtomValue(getCommentLikeStatusAtom);
-
-  const [, initializePostLike] = useAtom(initializePostLikeAtom);
-  const [, initializePostBookmark] = useAtom(initializePostBookmarkAtom);
-  const [, initializeCommentsLike] = useAtom(initializeCommentsLikeAtom);
-  const [, initializePostViewCounts] = useAtom(initializePostViewCountsAtom);
-  const [, togglePostLike] = useAtom(togglePostLikeAtom);
-  const [, togglePostBookmark] = useAtom(togglePostBookmarkAtom);
-  const [, toggleCommentLikeAction] = useAtom(toggleCommentLikeAtom);
-  const [, removeCommentFromLikeState] = useAtom(
-    removeCommentFromLikeStateAtom
-  );
-  const [, viewPost] = useAtom(viewPostAtom);
 
   const [post, setPost] = useState<Post | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -89,13 +68,54 @@ export default function PostDetailPage() {
     content: '',
   });
 
+  const { data: comments = [], isLoading: commentsLoading } =
+    useComments(numericPostId);
+  const {
+    data: postLikeStatus,
+    isLoading: likeStatusLoading,
+    error: likeStatusError,
+  } = usePostLikeStatus(numericPostId);
+  const {
+    data: bookmarkStatus,
+    isLoading: bookmarkStatusLoading,
+    error: bookmarkStatusError,
+    refetch: refetchBookmarkStatus,
+  } = useBookmarkStatus(numericPostId, 'post');
+  const { mutate: togglePostLike } = useTogglePostLike();
+  const { mutate: toggleBookmark } = useToggleBookmark();
+
+  const createCommentMutation = useCreateComment();
+  const updateCommentMutation = useUpdateComment();
+  const deleteCommentMutation = useDeleteComment();
+  const validateCommentDeletion = useValidateCommentDeletion();
+
+  // 댓글 ID 목록 추출
+  const allCommentIds = comments.flatMap((comment) => [
+    comment.id,
+    ...(comment.replies?.map((reply) => reply.id) || []),
+  ]);
+
+  const { data: commentsLikeStatus } = useCommentsLikeStatus(allCommentIds);
+  const { data: postViewData } = usePostViewCount(numericPostId);
+  const incrementPostView = useIncrementPostView();
+  const { hasViewed, markAsViewed } = usePostViewSession();
+
+  // 에러 처리
+  useEffect(() => {
+    if (bookmarkStatusError) {
+      console.error('북마크 상태 조회 에러:', bookmarkStatusError);
+    }
+    if (likeStatusError) {
+      console.error('좋아요 상태 조회 에러:', likeStatusError);
+    }
+  }, [bookmarkStatusError, likeStatusError]);
+
   // 이미지 preload 함수
   const preloadFirstImage = useCallback((content: string) => {
     const imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
     const match = content.match(imageLinkRegex);
 
     if (match && match[2]) {
-      // 첫 번째 이미지를 preload
       const link = document.createElement('link');
       link.rel = 'preload';
       link.as = 'image';
@@ -103,13 +123,11 @@ export default function PostDetailPage() {
       link.fetchPriority = 'high';
       document.head.appendChild(link);
 
-      // DNS prefetch도 추가
       const dnsLink = document.createElement('link');
       dnsLink.rel = 'dns-prefetch';
       dnsLink.href = new URL(match[2]).origin;
       document.head.appendChild(dnsLink);
 
-      // 정리 함수 반환
       return () => {
         document.head.removeChild(link);
         document.head.removeChild(dnsLink);
@@ -117,20 +135,18 @@ export default function PostDetailPage() {
     }
   }, []);
 
-  // 초기 데이터 로드 - 최적화됨
+  // 초기 데이터 로드
   useEffect(() => {
     const fetchPostData = async () => {
       try {
         setIsLoading(true);
-        const numericPostId = parseInt(postId, 10);
 
         if (isNaN(numericPostId)) {
           router.push('/community?error=post-not-found');
           return;
         }
 
-        // 1. 게시글 먼저 로드
-        const postData = await fetchPostById(numericPostId, false);
+        const postData = await fetchPostById(numericPostId);
         if (!postData) {
           router.push('/community?error=post-not-found');
           return;
@@ -138,52 +154,23 @@ export default function PostDetailPage() {
 
         setPost(postData);
 
-        // 조회수 관련 처리 추가
-        if (postData) {
-          // 전역 상태에 조회수 초기화
-          await initializePostViewCounts([
-            { id: postData.id, views: postData.views },
-          ]);
-
-          // 조회수 증가 처리 (중복 렌더링 자동 방지)
-          await viewPost(postData.id);
-        }
-
-        // 2. 첫 번째 이미지 preload (게시글 설정 직후)
+        // 첫 번째 이미지 preload
         let cleanupPreload: (() => void) | undefined;
         if (postData.content) {
           cleanupPreload = preloadFirstImage(postData.content);
         }
 
-        // 3. 전역 상태 초기화 (비동기로 처리)
-        if (user) {
-          Promise.all([
-            initializePostLike(numericPostId),
-            initializePostBookmark(numericPostId),
-          ]).catch(console.error);
+        // 관련 게시글 백그라운드 로드
+        if (
+          postData.tags &&
+          Array.isArray(postData.tags) &&
+          postData.tags.length > 0
+        ) {
+          fetchRelatedPosts(numericPostId, 3)
+            .then(setRelatedPosts)
+            .catch(console.error);
         }
 
-        // 4. 댓글과 관련 게시글은 백그라운드에서 로드
-        Promise.all([
-          fetchCommentsByPostId(numericPostId),
-          fetchRelatedPosts(numericPostId),
-        ])
-          .then(async ([commentsData, relatedPostsData]) => {
-            setComments(commentsData);
-            setRelatedPosts(relatedPostsData);
-
-            // 댓글 좋아요 상태 초기화
-            if (user && commentsData.length > 0) {
-              const allCommentIds = commentsData.flatMap((comment) => [
-                comment.id,
-                ...(comment.replies?.map((reply) => reply.id) || []),
-              ]);
-              await initializeCommentsLike(allCommentIds);
-            }
-          })
-          .catch(console.error);
-
-        // 정리 함수 등록
         return cleanupPreload;
       } catch (error) {
         console.error('게시글 데이터 로드 실패:', error);
@@ -196,21 +183,70 @@ export default function PostDetailPage() {
 
     if (postId) {
       const cleanup = fetchPostData();
-
-      // cleanup 함수 반환
       return () => {
         cleanup?.then((cleanupFn) => cleanupFn?.());
       };
     }
-  }, [
-    postId,
-    router,
-    showToast,
-    user,
-    initializePostLike,
-    initializePostBookmark,
-    preloadFirstImage,
-  ]);
+  }, [postId, router, showToast, numericPostId, preloadFirstImage]);
+
+  useEffect(() => {
+    if (post && !hasViewed(numericPostId)) {
+      // 1초 후에 조회수 증가
+      const timer = setTimeout(() => {
+        if (!hasViewed(numericPostId)) {
+          markAsViewed(numericPostId);
+          incrementPostView.mutate(numericPostId);
+        }
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [post, hasViewed, markAsViewed, incrementPostView, numericPostId]);
+
+  // TanStack Query mutation 성공 시 상태 초기화를 useEffect로 처리
+  useEffect(() => {
+    if (createCommentMutation.isSuccess) {
+      setNewComment('');
+      setNewReply({ commentId: null, content: '' });
+
+      // 댓글 목록 쿼리 무효화하여 최신 프로필 정보 반영
+      queryClient.invalidateQueries({
+        queryKey: ['comments', 'list', numericPostId],
+      });
+
+      // 사용자 프로필 관련 쿼리도 무효화 (프로필이 업데이트된 경우)
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['profiles', user.id],
+        });
+      }
+
+      // 댓글 좋아요 상태 관련 쿼리도 무효화
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === 'comments-like-status' ||
+          query.queryKey[0] === 'comment-like-status',
+      });
+    }
+  }, [createCommentMutation.isSuccess, queryClient, numericPostId, user?.id]);
+
+  useEffect(() => {
+    if (updateCommentMutation.isSuccess) {
+      setEditingComment(null);
+
+      // 댓글 목록 쿼리 무효화
+      queryClient.invalidateQueries({
+        queryKey: ['comments', 'list', numericPostId],
+      });
+
+      // 사용자 프로필 쿼리도 무효화
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['profiles', user.id],
+        });
+      }
+    }
+  }, [updateCommentMutation.isSuccess, queryClient, numericPostId, user?.id]);
 
   // 좋아요 처리
   const handleLike = async () => {
@@ -218,18 +254,12 @@ export default function PostDetailPage() {
       setIsLoginModalOpen(true);
       return;
     }
-
-    if (!post) return;
+    if (!post || likeStatusLoading) return;
 
     try {
-      const result = await togglePostLike(post.id);
-      showToast(
-        result ? '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.',
-        'success'
-      );
+      await togglePostLike(post.id);
     } catch (error) {
       console.error('좋아요 처리 실패:', error);
-      showToast('좋아요 처리에 실패했습니다.', 'error');
     }
   };
 
@@ -239,18 +269,16 @@ export default function PostDetailPage() {
       setIsLoginModalOpen(true);
       return;
     }
-
-    if (!post) return;
+    if (!post || bookmarkStatusLoading) return;
 
     try {
-      const result = await togglePostBookmark(post.id);
-      showToast(
-        result ? '북마크에 추가되었습니다.' : '북마크가 취소되었습니다.',
-        'success'
-      );
+      await toggleBookmark({ id: post.id, type: 'post' });
+      // 성공 후 명시적으로 상태 재조회 (추가 보장)
+      setTimeout(() => {
+        refetchBookmarkStatus();
+      }, 100);
     } catch (error) {
       console.error('북마크 처리 실패:', error);
-      showToast('북마크 처리에 실패했습니다.', 'error');
     }
   };
 
@@ -295,8 +323,8 @@ export default function PostDetailPage() {
     }
   };
 
-  // 댓글 작성
-  const handleSubmitComment = async (e: FormEvent) => {
+  // 댓글 작성 - TanStack Query 방식
+  const handleSubmitComment = (e: FormEvent) => {
     e.preventDefault();
 
     if (!user) {
@@ -306,43 +334,30 @@ export default function PostDetailPage() {
 
     if (!newComment.trim() || !post) return;
 
-    try {
-      const postIdNum = parseInt(postId, 10);
-      const createdComment = await createComment(postIdNum, newComment);
-
-      // 새 댓글의 좋아요 상태 초기화
-      await initializeCommentsLike([createdComment.id]);
-
-      setComments((prev) => [...prev, createdComment]);
-      setNewComment('');
-      showToast('댓글이 등록되었습니다.', 'success');
-    } catch (error) {
-      console.error('댓글 등록 실패:', error);
-      showToast('댓글 등록에 실패했습니다.', 'error');
-    }
+    createCommentMutation.mutate({
+      postId: numericPostId,
+      content: newComment,
+    });
   };
 
-  // 댓글 좋아요
-  const handleCommentLike = async (commentId: number) => {
-    if (!user) {
-      setIsLoginModalOpen(true);
-      return;
-    }
+  // 24시간 확인 함수 추가
+  const isCommentEditable = (comment: Comment): boolean => {
+    const createdAt = new Date(comment.created_at);
+    const now = new Date();
+    const hoursSinceCreation =
+      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
-    try {
-      const result = await toggleCommentLikeAction(commentId);
-      showToast(
-        result ? '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.',
-        'success'
-      );
-    } catch (error) {
-      console.error('댓글 좋아요 실패:', error);
-      showToast('좋아요 처리에 실패했습니다.', 'error');
-    }
+    return hoursSinceCreation <= 24;
   };
 
   // 댓글 수정 시작
   const handleEditComment = (comment: Comment, isReply: boolean = false) => {
+    // 24시간 체크를 여기서 먼저 수행
+    if (!isCommentEditable(comment)) {
+      showToast('작성 후 24시간이 지난 댓글은 수정할 수 없습니다.', 'error');
+      return; // 수정 창을 열지 않고 여기서 종료
+    }
+
     setEditingComment({
       id: comment.id,
       content: comment.content,
@@ -355,110 +370,44 @@ export default function PostDetailPage() {
     setEditingComment(null);
   };
 
-  // 댓글 수정 제출
-  const handleSubmitEdit = async (e: FormEvent) => {
+  // 댓글 수정 제출 - TanStack Query 방식
+  const handleSubmitEdit = (e: FormEvent) => {
     e.preventDefault();
 
     if (!editingComment) return;
 
-    try {
-      const updatedComment = await updateComment(
-        editingComment.id,
-        editingComment.content
-      );
-
-      setComments((prevComments) =>
-        prevComments.map((comment) => {
-          if (comment.id === editingComment.id) {
-            return {
-              ...comment,
-              content: updatedComment.content,
-              updated_at: updatedComment.updated_at,
-            };
-          }
-
-          if (comment.replies) {
-            return {
-              ...comment,
-              replies: comment.replies.map((reply) =>
-                reply.id === editingComment.id
-                  ? {
-                      ...reply,
-                      content: updatedComment.content,
-                      updated_at: updatedComment.updated_at,
-                    }
-                  : reply
-              ),
-            };
-          }
-
-          return comment;
-        })
-      );
-
-      setEditingComment(null);
-      showToast('댓글이 수정되었습니다.', 'success');
-    } catch (error) {
-      console.error('댓글 수정 실패:', error);
-      showToast('댓글 수정에 실패했습니다.', 'error');
-    }
+    updateCommentMutation.mutate({
+      commentId: editingComment.id,
+      content: editingComment.content,
+    });
   };
 
-  // 댓글 삭제
-  const handleDeleteComment = async (
-    commentId: number,
-    isReply: boolean = false,
-    parentId?: number
-  ) => {
-    if (isReply) {
-      if (!window.confirm('정말로 이 답글을 삭제하시겠습니까?')) return;
-    } else {
-      const comment = comments.find((c) => c.id === commentId);
-      if (comment?.replies && comment.replies.length > 0) {
-        showToast('답글이 있는 댓글은 삭제할 수 없습니다.', 'error');
-        return;
-      }
+  // 댓글 삭제 - TanStack Query 방식
+  const handleDeleteComment = (commentId: number, isReply: boolean = false) => {
+    const comment = comments.find((c) => {
+      if (c.id === commentId) return c;
+      return c.replies?.find((r) => r.id === commentId);
+    });
 
-      if (!window.confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
+    const targetComment =
+      comment?.id === commentId
+        ? comment
+        : comment?.replies?.find((r) => r.id === commentId);
+
+    if (!targetComment) return;
+
+    // 삭제 전 검증
+    if (!validateCommentDeletion(targetComment, isReply)) {
+      return;
     }
 
-    try {
-      const success = await deleteComment(commentId);
-
-      if (success) {
-        // 전역 상태에서 댓글 제거
-        removeCommentFromLikeState(commentId);
-
-        if (isReply && parentId) {
-          setComments((prevComments) =>
-            prevComments.map((comment) => {
-              if (comment.id === parentId && comment.replies) {
-                return {
-                  ...comment,
-                  replies: comment.replies.filter(
-                    (reply) => reply.id !== commentId
-                  ),
-                };
-              }
-              return comment;
-            })
-          );
-        } else {
-          setComments((prevComments) =>
-            prevComments.filter((comment) => comment.id !== commentId)
-          );
-        }
-
-        showToast('댓글이 삭제되었습니다.', 'success');
-      }
-    } catch (error) {
-      console.error('댓글 삭제 실패:', error);
-      showToast('댓글 삭제에 실패했습니다.', 'error');
-    }
+    deleteCommentMutation.mutate({
+      commentId,
+    });
   };
 
   // 답글 제출
-  const handleSubmitReply = async (e: React.FormEvent, commentId: number) => {
+  const handleSubmitReply = (e: React.FormEvent, commentId: number) => {
     e.preventDefault();
 
     if (!user) {
@@ -468,42 +417,22 @@ export default function PostDetailPage() {
 
     if (!newReply.content.trim() || !post) return;
 
-    try {
-      const postIdNum = parseInt(postId, 10);
-      const createdReply = await createComment(
-        postIdNum,
-        newReply.content,
-        commentId
-      );
-
-      // 새 답글의 좋아요 상태 초기화
-      await initializeCommentsLike([createdReply.id]);
-
-      setComments((prevComments) =>
-        prevComments.map((comment) => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              replies: [...(comment.replies || []), createdReply],
-            };
-          }
-          return comment;
-        })
-      );
-
-      setNewReply({ commentId: null, content: '' });
-      showToast('답글이 등록되었습니다.', 'success');
-    } catch (error) {
-      console.error('답글 등록 실패:', error);
-      showToast('답글 등록에 실패했습니다.', 'error');
-    }
+    createCommentMutation.mutate({
+      postId: numericPostId,
+      content: newReply.content,
+      parentId: commentId,
+    });
   };
 
-  // 로딩 상태 최적화 - 스켈레톤 UI 대신 빠른 콘텐츠 표시
+  // 댓글별 좋아요 상태 가져오기
+  const getCommentLikeStatus = (commentId: number) => {
+    return commentsLikeStatus?.[commentId] || { isLiked: false, likesCount: 0 };
+  };
+
+  // 로딩 상태
   if (isLoading && !post) {
     return (
       <div className="mx-auto max-w-4xl mobile:p-4 tablet:p-6">
-        {/* 뒤로가기 버튼 */}
         <div className="mobile:mb-4 tablet:mb-6">
           <Link
             href="/community"
@@ -513,7 +442,6 @@ export default function PostDetailPage() {
           </Link>
         </div>
 
-        {/* 로딩 스켈레톤 */}
         <div className="animate-pulse mobile:mb-4 tablet:mb-6 laptop:mb-8">
           <div className="mb-4 rounded bg-gray-200 mobile:h-8 tablet:h-9"></div>
           <div className="mb-6 h-10 rounded bg-gray-200"></div>
@@ -534,14 +462,16 @@ export default function PostDetailPage() {
     );
   }
 
-  // 현재 사용자가 작성자인지 확인
   const isOwner = user && user.id === post.author_id;
 
-  // 전역 상태에서 좋아요, 북마크 상태 가져오기
-  const likeStatus: LikeStatus = post
-    ? getPostLikeStatus(post.id)
-    : { isLiked: false, likesCount: 0 };
-  const bookmarkStatus = post ? isPostBookmarked(post.id) : false;
+  const likeStatus: LikeStatus = {
+    isLiked: likeStatusLoading ? false : postLikeStatus?.isLiked || false,
+    likesCount: likeStatusLoading ? 0 : postLikeStatus?.likesCount || 0,
+  };
+
+  const bookmarkStatusValue = bookmarkStatusLoading
+    ? false
+    : bookmarkStatus?.isBookmarked || false;
 
   return (
     <div className="mx-auto max-w-4xl mobile:p-4 tablet:p-6">
@@ -559,13 +489,16 @@ export default function PostDetailPage() {
       <PostHeader
         post={post}
         likeStatus={likeStatus}
-        bookmarkStatus={bookmarkStatus}
+        bookmarkStatus={bookmarkStatusValue}
+        viewCount={postViewData?.views ?? post.views ?? 0}
         onLike={handleLike}
         onBookmark={handleBookmark}
         onShare={handleShare}
+        isLikeLoading={likeStatusLoading}
+        isBookmarkLoading={bookmarkStatusLoading}
       />
 
-      {/* 게시글 본문 - 즉시 렌더링 */}
+      {/* 게시글 본문 */}
       <PostContent
         content={post.content}
         isOwner={!!isOwner}
@@ -589,31 +522,31 @@ export default function PostDetailPage() {
         </div>
       )}
 
-      {/* 관련 게시글 - 데이터가 있을 때만 렌더링 */}
+      {/* 관련 게시글 */}
       {relatedPosts.length > 0 && <RelatedPosts posts={relatedPosts} />}
 
-      {/* 댓글 섹션 - 백그라운드 로딩 */}
+      {/* 댓글 섹션 - TanStack Query 방식 */}
       <CommentsSection
         comments={comments}
-        user={user}
+        isLoading={commentsLoading}
         newComment={newComment}
         setNewComment={setNewComment}
         onSubmitComment={handleSubmitComment}
-        onCommentLike={handleCommentLike}
-        getCommentLikeStatus={getCommentLikeStatus}
-        onEditComment={handleEditComment}
-        onDeleteComment={handleDeleteComment}
-        onSubmitReply={handleSubmitReply}
         editingComment={editingComment}
         setEditingComment={setEditingComment}
-        newReply={newReply}
-        setNewReply={setNewReply}
+        onEditComment={handleEditComment}
         onCancelEdit={handleCancelEdit}
         onSubmitEdit={handleSubmitEdit}
-        onLoginRequired={() => setIsLoginModalOpen(true)}
+        onDeleteComment={handleDeleteComment}
+        newReply={newReply}
+        setNewReply={setNewReply}
+        onSubmitReply={handleSubmitReply}
+        getCommentLikeStatus={getCommentLikeStatus}
+        createCommentLoading={createCommentMutation.isPending}
+        updateCommentLoading={updateCommentMutation.isPending}
+        deleteCommentLoading={deleteCommentMutation.isPending}
       />
 
-      {/* 로그인 모달 */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}

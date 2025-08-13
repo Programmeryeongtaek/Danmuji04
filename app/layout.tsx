@@ -8,16 +8,14 @@ import {
   NotificationProvider,
   useNotificationSubscription,
 } from '@/components/Course/NotificationContext';
+import { queryClient } from '@/lib/queryClient';
 import { isLoadingAtom, userAtom } from '@/store/auth';
-import { initializeCourseProgressAtom } from '@/store/course/progressAtom';
-import { initializeLectureBookmarksAtom } from '@/store/lecture/bookmarkAtom';
 import { initializeUserProfileAtom } from '@/store/my/userProfileAtom';
-import { initializeNotificationsAtom } from '@/store/notification/notificationAtom';
-import { initializeBookmarksAtom } from '@/store/study/bookmarkAtom';
-import { initializeParticipationAtom } from '@/store/study/participationAtom';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { useAtom, useSetAtom } from 'jotai';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { useSetAtom } from 'jotai';
 import { Inter } from 'next/font/google';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useCallback, useEffect, useRef } from 'react';
@@ -55,13 +53,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   const setUser = useSetAtom(userAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
   const initializeUserProfile = useSetAtom(initializeUserProfileAtom);
-  const [, initializeBookmarks] = useAtom(initializeBookmarksAtom);
-  const [, initializeParticipation] = useAtom(initializeParticipationAtom);
-  const [, initializeLectureBookmarks] = useAtom(
-    initializeLectureBookmarksAtom
-  );
-  const [, initializeNotifications] = useAtom(initializeNotificationsAtom);
-  const [, initializeCourseProgress] = useAtom(initializeCourseProgressAtom);
 
   // 초기화 상태를 추적하는 ref
   const initializationRef = useRef<{
@@ -88,24 +79,14 @@ const RootLayout = ({ children }: RootLayoutProps) => {
 
       try {
         if (user) {
+          // 사용자 프로필과 코스 진도만 초기화
           await initializeUserProfile(user.id);
-          await Promise.all([
-            initializeBookmarks(),
-            initializeParticipation(),
-            initializeLectureBookmarks(),
-            initializeNotifications(),
-            initializeCourseProgress(),
-          ]);
         } else {
           // 로그아웃 시에는 빈 상태로 초기화
           await initializeUserProfile('');
-          await Promise.all([
-            initializeBookmarks(),
-            initializeParticipation(),
-            initializeLectureBookmarks(),
-            initializeNotifications(),
-            initializeCourseProgress(),
-          ]);
+
+          // 로그아웃 시 TanStack Query 캐시도 정리
+          queryClient.clear();
         }
       } catch (error) {
         console.error('상태 초기화 중 오류 발생:', error);
@@ -113,15 +94,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         initializationRef.current.isInitializing = false;
       }
     },
-    [
-      setIsLoading,
-      initializeUserProfile,
-      initializeBookmarks,
-      initializeParticipation,
-      initializeLectureBookmarks,
-      initializeNotifications,
-      initializeCourseProgress,
-    ]
+    [initializeUserProfile]
   );
 
   useEffect(() => {
@@ -183,7 +156,13 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   if (isSignUpPage) {
     return (
       <html lang="ko">
-        <body className={inter.className}>{children}</body>
+        <body className={inter.className}>
+          {/* 회원가입 페이지도 QueryClient로 감싸기 */}
+          <QueryClientProvider client={queryClient}>
+            {children}
+            <ReactQueryDevtools initialIsOpen={false} />
+          </QueryClientProvider>
+        </body>
       </html>
     );
   }
@@ -191,25 +170,30 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html lang="ko">
       <body className={inter.className}>
-        <Toast.Provider>
-          <NotificationProvider>
-            <NotificationSubscriptionWrapper>
-              <div className="flex min-h-screen flex-col">
-                <Header />
-                <main className="pb-[60px] mobile:pb-0">{children}</main>
-                {!isLecturePage &&
-                  !isSettingsPage &&
-                  !lectureCreate &&
-                  !editLecture &&
-                  !learning &&
-                  !isCoursePage &&
-                  !studyPage &&
-                  !communityPostPage &&
-                  !communityCreatePage && <Navbar />}
-              </div>
-            </NotificationSubscriptionWrapper>
-          </NotificationProvider>
-        </Toast.Provider>
+        {/* QueryClientProvider로 전체 앱을 감싸기 */}
+        <QueryClientProvider client={queryClient}>
+          <Toast.Provider>
+            <NotificationProvider>
+              <NotificationSubscriptionWrapper>
+                <div className="flex min-h-screen flex-col">
+                  <Header />
+                  <main className="pb-[60px] mobile:pb-0">{children}</main>
+                  {!isLecturePage &&
+                    !isSettingsPage &&
+                    !lectureCreate &&
+                    !editLecture &&
+                    !learning &&
+                    !isCoursePage &&
+                    !studyPage &&
+                    !communityPostPage &&
+                    !communityCreatePage && <Navbar />}
+                </div>
+              </NotificationSubscriptionWrapper>
+            </NotificationProvider>
+          </Toast.Provider>
+          {/* ReactQuery DevTools 추가 */}
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
       </body>
     </html>
   );

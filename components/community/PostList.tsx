@@ -9,6 +9,7 @@ import {
   CommunityCategory,
   getCategoryStyle,
 } from './Const';
+import { usePostViewCounts } from '@/hooks/api/usePostView';
 
 interface PostListProps {
   posts: Post[];
@@ -21,6 +22,9 @@ export default function PostList({
   isLoading,
   onTagClick,
 }: PostListProps) {
+  const postIds = posts.map((post) => post.id);
+  const { data: viewCounts } = usePostViewCounts(postIds);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -114,7 +118,7 @@ export default function PostList({
               <div className="mt-1 flex items-center gap-3 sm:hidden">
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Eye className="h-3 w-3" />
-                  <span>{post.views}</span>
+                  <span>{viewCounts?.[post.id] ?? post.views ?? 0}</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <MessageSquare className="h-3 w-3" />
@@ -149,7 +153,7 @@ export default function PostList({
               </div>
             </div>
             <div className="min-w-[80px] text-center text-sm text-gray-600 mobile:hidden tablet:block">
-              {post.views}
+              {viewCounts?.[post.id] ?? post.views ?? 0}
             </div>
             <div className="min-w-[120px] text-center text-sm text-gray-600 mobile:hidden tablet:block">
               {formatDate(post.created_at)}

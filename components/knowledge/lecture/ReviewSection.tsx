@@ -13,19 +13,17 @@ import {
   deleteReview,
   fetchReviewsByLectureId,
 } from '@/utils/services/knowledge/reviewService';
-import {
-  fetchAverageRating,
-  getActiveEnrollment,
-} from '@/utils/services/knowledge/lectureService';
+import { fetchAverageRating } from '@/utils/services/knowledge/lectureService';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
+import { useEnrollmentStatus } from '@/hooks/api/useEnrollment';
 
 interface ReviewSectionProps {
   lectureId: number;
   currentUserId?: string | null;
 }
 
-const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
+const ReviewSection = ({ lectureId }: ReviewSectionProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reviews, setReviews] = useState<ReviewProps[]>([]);
   const [averageRating, setAverageRating] = useState(0);
@@ -34,6 +32,10 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
   const { showToast } = useToast();
 
   const user = useAtomValue(userAtom);
+
+  // TanStack Query로 수강 상태 확인
+  const { data: enrollmentInfo } = useEnrollmentStatus(lectureId);
+  const isEnrolled = enrollmentInfo?.isEnrolled || false;
 
   // 데이터 불러오기
   const loadReviews = async () => {
@@ -46,11 +48,10 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       setReviews(reviewsData);
       setAverageRating(averageRating);
 
-      // 로그인 상태라면 사용자의 리뷰 존재 여부와 수강 상태 확인
+      // 로그인 상태라면 사용자의 리뷰 존재 여부 확인
       if (user) {
         const supabase = createClient();
 
-        // 리뷰 존재 여부 확인
         const { data: existingReview } = await supabase
           .from('reviews')
           .select('id')
@@ -94,26 +95,21 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
       return;
     }
 
+    // TanStack Query로 수강 상태 확인
+    if (!isEnrolled) {
+      showToast('수강생만 수강평을 작성할 수 있습니다.', 'error');
+      return;
+    }
+
     const supabase = createClient();
 
     try {
-      // 1. 수강 여부 확인
-      const { data: enrollment } = await getActiveEnrollment(
-        lectureId,
-        user.id
-      );
-
-      if (!enrollment?.status) {
-        showToast('수강생만 수강평을 작성할 수 있습니다.', 'error');
-        return;
-      }
-
-      // 2. 기존 수강평 확인
+      // 기존 수강평 재확인 (더블 체크)
       const { data: existingReview } = await supabase
         .from('reviews')
         .select('id')
         .eq('lecture_id', lectureId)
-        .eq('user_id', currentUserId)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (existingReview) {
@@ -121,13 +117,12 @@ const ReviewSection = ({ lectureId, currentUserId }: ReviewSectionProps) => {
         return;
       }
 
-      // 3. 모든 조건 통과시 모달 열기
+      // 모든 조건 통과시 모달 열기
       setIsModalOpen(true);
     } catch (error) {
       console.error('Error checking review status:', error);
       showToast('오류가 발생했습니다. 다시 시도해주세요.', 'error');
     }
-    setIsModalOpen(true);
   };
 
   return (

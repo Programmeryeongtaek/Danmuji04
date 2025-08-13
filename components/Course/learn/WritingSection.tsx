@@ -3,9 +3,11 @@
 import { CourseWriting } from '@/app/types/course/courseModel';
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
-import { updateWritingCompletionAtom } from '@/store/course/progressAtom';
+import { courseProgressKeys } from '@/hooks/api/useCourseProgress';
+import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
-import { useAtom } from 'jotai';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAtomValue } from 'jotai';
 import { Edit, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -33,7 +35,58 @@ export default function WritingSection({
   const [error, setError] = useState('');
   const { showToast } = useToast();
 
-  const [, updateWritingCompletion] = useAtom(updateWritingCompletionAtom);
+  const user = useAtomValue(userAtom);
+  const queryClient = useQueryClient();
+
+  // 글쓰기 완료 상태 업데이트 함수
+  const updateWritingCompletion = (courseId: string, hasWriting: boolean) => {
+    if (!user) return;
+
+    queryClient.setQueryData(
+      courseProgressKeys.detail(courseId, user.id),
+      (
+        oldData:
+          | {
+              completedItems: string[];
+              isCompleted: boolean;
+              hasWriting: boolean;
+            }
+          | undefined
+      ) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          hasWriting,
+        };
+      }
+    );
+
+    // 전체 진도 캐시 업데이트
+    queryClient.setQueryData(
+      courseProgressKeys.list(user.id),
+      (
+        oldData:
+          | Record<
+              string,
+              {
+                completedItems: string[];
+                isCompleted: boolean;
+                hasWriting: boolean;
+              }
+            >
+          | undefined
+      ) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          [courseId]: {
+            ...oldData[courseId],
+            hasWriting,
+          },
+        };
+      }
+    );
+  };
 
   async function handleSave() {
     if (!content.trim()) {
@@ -47,10 +100,10 @@ export default function WritingSection({
 
       const supabase = createClient();
       const {
-        data: { user },
+        data: { user: currentUser },
       } = await supabase.auth.getUser();
 
-      if (!user) {
+      if (!currentUser) {
         setError('로그인이 필요합니다.');
         return;
       }
@@ -59,7 +112,7 @@ export default function WritingSection({
       const { data: profile } = await supabase
         .from('profiles')
         .select('name, nickname')
-        .eq('id', user.id)
+        .eq('id', currentUser.id)
         .single();
 
       const userName = profile?.nickname || profile?.name;
@@ -85,7 +138,7 @@ export default function WritingSection({
         const { data, error: insertError } = await supabase
           .from('course_writings')
           .insert({
-            user_id: user.id,
+            user_id: currentUser.id,
             user_name: userName,
             course_id: courseId,
             item_id: itemId,
@@ -99,26 +152,26 @@ export default function WritingSection({
         onWritingSaved(data);
         showToast('내용이 저장되었습니다.', 'success');
 
-        // 새 글 작성 시에만 Jotai 상태 업데이트 (글쓰기 완료)
+        // 글쓰기 완료 상태 업데이트
         updateWritingCompletion(courseId, true);
       }
 
       setIsEditing(false);
     } catch (error) {
-      console.error('글 저장 중 오류:', error);
-      showToast('글을 저장하는 중 오류가 발생했습니다.', 'error');
+      console.error('저장 실패:', error);
+      setError('저장에 실패했습니다. 다시 시도해주세요.');
+      showToast('저장에 실패했습니다.', 'error');
     } finally {
       setIsSaving(false);
     }
   }
 
   // 글 삭제 기능
-  const handleDelete = async () => {
-    if (!userWriting || !confirm('정말로 글을 삭제하시겠습니까?')) return;
+  async function handleDelete() {
+    if (!userWriting || !confirm('정말로 삭제하시겠습니까?')) return;
 
     try {
       const supabase = createClient();
-
       const { error } = await supabase
         .from('course_writings')
         .delete()
@@ -127,15 +180,15 @@ export default function WritingSection({
       if (error) throw error;
 
       onWritingDeleted();
-      showToast('글이 삭제되었습니다.', 'success');
+      showToast('내용이 삭제되었습니다.', 'success');
 
-      // 글 삭제 시 Jotai 상태 업데이트 (글쓰기 미완료)
+      // 글쓰기 완료 상태 업데이트
       updateWritingCompletion(courseId, false);
     } catch (error) {
-      console.error('글 삭제 중 오류:', error);
-      showToast('글 삭제 중 오류가 발생했습니다.', 'error');
+      console.error('삭제 실패:', error);
+      showToast('삭제에 실패했습니다.', 'error');
     }
-  };
+  }
 
   return (
     <div className="flex flex-col">

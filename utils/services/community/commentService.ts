@@ -1,6 +1,5 @@
 import { Comment } from '@/app/types/community/communityType';
 import { fetchCommentsWithDetails } from '@/utils/common/commentUtils';
-import { getProfileWithAvatar } from '@/utils/common/profileUtils';
 import { toggleRelation } from '@/utils/common/toggleUtils';
 import { requireAuth } from '@/utils/supabase/auth';
 import { createClient } from '@/utils/supabase/client';
@@ -32,34 +31,57 @@ export async function createComment(
     const supabase = createClient();
     const user = await requireAuth();
 
+    const cleanContent = content.trim();
+
     // 1. 댓글 추가
     const { data, error } = await supabase
       .from('post_comments')
       .insert({
         post_id: postId,
         author_id: user.id,
-        content: content,
+        content: cleanContent,
         parent_id: parentId
       })
-      .select();
+      .select()
+      .single();
 
     if (error) {
       console.error('댓글 생성 오류:', error);
       throw error;
     }
 
-    if (!data || data.length === 0) {
+    if (!data) {
       throw new Error('댓글 생성 결과가 없습니다');
     }
-    
-    // 2. 프로필 정보를 기반으로 댓글 객체 생성
-    const profile = await getProfileWithAvatar(user.id);
 
-    // 3. 완성된 댓글 객체 생성
+    // 2. 최신 프로필 정보 조회 (캐시 우회)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, name, nickname, avatar_url')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('프로필 조회 실패:', profileError);
+    }
+
+    // 3. 프로필 정보 구성
+    const authorName = profile?.nickname || profile?.name || '익명';
+    const authorAvatar = profile?.avatar_url ? 
+      `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${profile.avatar_url}` : 
+      null;
+
+    // 4. 완성된 댓글 객체 생성
     const comment: Comment = {
-      ...data[0],
-      author_name: profile.name,
-      author_avatar: profile.avatar_url,
+      id: data.id,
+      post_id: data.post_id,
+      author_id: data.author_id,
+      content: data.content,
+      parent_id: data.parent_id,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      author_name: authorName,
+      author_avatar: authorAvatar,
       likes_count: 0,
       is_liked: false,
       replies: []
@@ -116,6 +138,7 @@ export async function updateComment(commentId: number, content: string): Promise
       throw new Error('작성 후 24시간이 지난 댓글은 수정할 수 없습니다.');
     }
 
+    // 댓글 업데이트
     const { data, error } = await supabase
       .from('post_comments')
       .update({
@@ -128,7 +151,29 @@ export async function updateComment(commentId: number, content: string): Promise
       .single();
 
     if (error) throw error;
-    return data as Comment;
+
+    // 최신 프로필 정보 조회
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, name, nickname, avatar_url')
+      .eq('id', user.id)
+      .single();
+
+    // 프로필 정보 구성
+    const authorName = profile?.nickname || profile?.name || '익명';
+    const authorAvatar = profile?.avatar_url ? 
+      `https://hcqusfewtyxmpdvzpeor.supabase.co/storage/v1/object/public/avatars/${profile.avatar_url}` : 
+      null;
+
+    // 완성된 댓글 객체 반환
+    return {
+      ...data,
+      author_name: authorName,
+      author_avatar: authorAvatar,
+      likes_count: 0, // 수정 시에는 기존 좋아요 수 유지하도록 별도 조회 필요
+      is_liked: false,
+      replies: []
+    } as Comment;
   } catch (error) {
     console.error('댓글 수정 실패:', error);
     throw error;

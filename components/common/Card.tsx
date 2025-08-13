@@ -1,6 +1,6 @@
 'use client';
 
-import { Lecture } from '@/app/types/knowledge/lecture';
+import { useBookmarkStatus, useToggleBookmark } from '@/hooks/api/useBookmarks';
 import { userAtom } from '@/store/auth';
 import { useAtom } from 'jotai';
 import { Bookmark, User } from 'lucide-react';
@@ -8,9 +8,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { MouseEvent, useEffect, useState } from 'react';
 
-interface CardProps extends Lecture {
-  isBookmarked?: boolean;
-  onToggleBookmark?: (lectureId: number) => void;
+interface CardDisplayProps {
+  id: number;
+  title: string;
+  thumbnail_url: string;
+  category: string;
+  instructor: string;
+  depth: string;
+  keyword: string;
+  group_type: string;
+  students: number;
   showBookmark?: boolean;
   isMyLecture?: boolean;
 }
@@ -25,15 +32,17 @@ const Card = ({
   keyword,
   group_type,
   students,
-  isBookmarked = false,
-  onToggleBookmark,
   showBookmark = true,
   isMyLecture = false,
-}: CardProps) => {
-  const [isMarked, setIsMarked] = useState(isBookmarked);
+}: CardDisplayProps) => {
   const [visibleBookmark, setVisibleBookmark] = useState(showBookmark);
   const [user] = useAtom(userAtom);
   const fallbackImageUrl = '/images/danmuji.png';
+
+  const { data: bookmarkStatus, isLoading } = useBookmarkStatus(id, 'lecture');
+  const { mutate: toggleBookmark } = useToggleBookmark();
+
+  const isBookmarked = bookmarkStatus?.isBookmarked || false;
 
   useEffect(() => {
     setVisibleBookmark(!!user && showBookmark);
@@ -42,10 +51,8 @@ const Card = ({
   const handleBookmarkClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // 링크 이벤트 전파 방지
     e.stopPropagation(); // 이벤트 버블링 방지
-    setIsMarked(!isMarked);
-    if (onToggleBookmark) {
-      onToggleBookmark(id);
-    }
+
+    toggleBookmark({ id, type: 'lecture' });
   };
 
   return (
@@ -70,12 +77,15 @@ const Card = ({
         {visibleBookmark && (
           <button
             onClick={handleBookmarkClick}
+            disabled={isLoading}
             className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm transition-colors hover:bg-white"
-            aria-label={isMarked ? '북마크 취소' : '북마크 추가'}
+            aria-label={isBookmarked ? '북마크 취소' : '북마크 추가'}
           >
             <Bookmark
               className={`h-5 w-5 ${
-                isMarked ? 'fill-gold-start text-gold-start' : 'text-gray-700'
+                isBookmarked
+                  ? 'fill-gold-start text-gold-start'
+                  : 'text-gray-700'
               }`}
             />
           </button>

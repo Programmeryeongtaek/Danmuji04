@@ -17,14 +17,14 @@ interface LectureCurriculumProps {
   sections: LectureSection[];
   currentItemId: number;
   onItemSelect: (item: LectureItem) => void;
-  completedItems: number[]; // 부모로부터 완료된 항목 목록 전달받음
+  completedItems: number[];
 }
 
 export default function LectureCurriculum({
   sections,
   currentItemId,
   onItemSelect,
-  completedItems, // 부모로부터 전달받은 props
+  completedItems,
 }: LectureCurriculumProps) {
   // 완료된 항목 상태 관리 (로컬 스토리지 대신 일반 상태 사용)
   const [progressState, setProgressState] = useState({

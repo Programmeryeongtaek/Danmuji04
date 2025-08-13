@@ -75,6 +75,20 @@ export function useInfiniteScroll<T, D = unknown>({
   // observer에 연결할 ref 객체와 콜백
   const observer = useRef<IntersectionObserver | null>(null);
 
+  // 무한 루프를 방지하기 위한 ref
+  const isInitializedRef = useRef(false);
+  const dependenciesRef = useRef<D[]>([]);
+
+  // 의존성이 실제로 변경되었는지 확인하는 함수
+  const dependenciesChanged = useCallback(() => {
+    if (dependenciesRef.current.length !== dependencies.length) {
+      return true;
+    }
+    return dependencies.some(
+      (dep, index) => dep !== dependenciesRef.current[index]
+    );
+  }, [dependencies]);
+
   // 데이터 로드 함수
   const loadData = useCallback(async () => {
     if (isLoading || !hasMore) return;
@@ -135,20 +149,45 @@ export function useInfiniteScroll<T, D = unknown>({
     [isLoading, hasMore, loadData, threshold, rootMargin]
   );
 
-  // 초기 데이터 로드
+  // 의존성 변경 시 데이터 리셋
   useEffect(() => {
-    if (autoLoad && hasMore && data.length === 0 && !isLoading) {
-      loadData();
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      dependenciesRef.current = [...dependencies];
+      return;
     }
 
-    // 컴포넌트 언마운트 시 Observer 정리
+    if (dependenciesChanged()) {
+      setData(initialData);
+      setPage(initialPage);
+      setHasMore(true);
+      setError(null);
+      setIsLoading(false);
+      dependenciesRef.current = [...dependencies];
+    }
+  }, [dependencies, dependenciesChanged, initialData, initialPage]);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    if (
+      autoLoad &&
+      hasMore &&
+      data.length === 0 &&
+      !isLoading &&
+      isInitializedRef.current
+    ) {
+      loadData();
+    }
+  }, [autoLoad, hasMore, data.length, isLoading, loadData]);
+
+  // 컴포넌트 언마운트 시 Observer 정리
+  useEffect(() => {
     return () => {
       if (observer.current) {
         observer.current.disconnect();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoLoad, hasMore, data.length, isLoading, loadData, ...dependencies]);
+  }, []);
 
   // 상태 초기화 함수
   const reset = useCallback(() => {

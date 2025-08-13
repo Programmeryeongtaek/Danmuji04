@@ -1,33 +1,53 @@
 import { CertificateCard } from '@/components/Course/CertificateCard';
-import { useAllCertificates } from '@/hooks/useAllCertificates';
+import { useCertificates } from '@/hooks/api/useCertificates';
 import { updateCertificate } from '@/utils/services/certificate/certificateService';
+import { useQueryClient } from '@tanstack/react-query';
 import { Award } from 'lucide-react';
+import { useToast } from '../common/Toast/Context';
 
 interface CertificateListProps {
   userName: string;
 }
 
 export function CertificateList({ userName }: CertificateListProps) {
-  const { certificates, isLoading, refetch } = useAllCertificates();
+  const { data: certificates = [], isLoading } = useCertificates();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const handleDownload = (certificateId: number) => {
-    // 다운로드 로직 구현
-    console.log(`수료증 ${certificateId} 다운로드 중...`);
     // 실제 구현에서는 서버에 요청하여 PDF 다운로드
     window.open(`/api/certificates/download/${certificateId}`, '_blank');
   };
 
   const handleRefresh = async (certificateId: number) => {
-    // 수료증 갱신 로직
-    const success = await updateCertificate(certificateId);
-    if (success) {
-      refetch();
+    try {
+      const success = await updateCertificate(certificateId);
+      if (success) {
+        showToast('수료증이 갱신되었습니다.', 'success');
+
+        queryClient.invalidateQueries({
+          queryKey: ['certificates'],
+        });
+      } else {
+        showToast('수료증 갱신에 실패했습니다.', 'error');
+      }
+      return success;
+    } catch (error) {
+      console.error('Error refreshing certificate:', error);
+      showToast('수료증 갱신에 실패했습니다.', 'error');
+      return false;
     }
-    return success;
   };
 
   if (isLoading) {
-    return <div className="py-8 text-center">수료증 정보를 불러오는 중...</div>;
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <div className="mb-4 h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+          <p className="text-gray-600">수료증 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
   }
 
   if (certificates.length === 0) {

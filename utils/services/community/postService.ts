@@ -189,21 +189,11 @@ export async function searchPosts(query: string, options: FilterOptions = {}): P
 }
 
 // 게시글 상세 정보 조회
-export async function fetchPostById(postId: number, incrementView: boolean = true): Promise<Post | null> {
+export async function fetchPostById(postId: number): Promise<Post | null> {
   const supabase = createClient();
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
-
-    // 조회수 증가
-    if (incrementView) {
-      try {
-        await supabase.rpc('increment_post_view', { post_id: postId });
-      } catch (viewError) {
-        console.error('조회수 증가 실패:', viewError);
-      // 계속 진행 (조회수 증가 실패해도 게시글을 보여줌)
-    }
-  }
 
     // 게시글 기본 정보 조회
     const { data, error } = await supabase

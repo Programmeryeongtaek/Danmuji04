@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useToast } from '../common/Toast/Context';
-import { cancelEnrollment } from '@/utils/services/knowledge/lectureService';
 import { AlertTriangle } from 'lucide-react';
+import { useCancelEnrollment } from '@/hooks/api/useEnrollment';
 
 interface CancelEnrollmentButtonProps {
   lectureId: number;
@@ -16,16 +16,15 @@ export default function CancelEnrollmentButton({
   progress,
   onCancelSuccess,
 }: CancelEnrollmentButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const { showToast } = useToast();
 
-  // 진행률이 20% 이상인 경우 취소 불가능
-  const isDisabled = progress >= 20;
+  const cancelMutation = useCancelEnrollment();
+  const isLoading = cancelMutation.isPending;
 
   const handleCancel = async () => {
     // 진행률이 20% 이상인 경우 토스트 메시지 표시 후 종료
-    if (isDisabled) {
+    if (progress >= 20) {
       showToast('수강률이 20% 이상인 강의는 취소할 수 없습니다.');
       return;
     }
@@ -38,26 +37,21 @@ export default function CancelEnrollmentButton({
     }
 
     try {
-      setIsLoading(true);
-      const { success, message } = await cancelEnrollment(lectureId);
+      await cancelMutation.mutateAsync(lectureId);
+      showToast('수강 취소가 완료되었습니다.', 'success');
+      setShowConfirm(false);
 
-      if (success) {
-        showToast(message, 'success');
-        setShowConfirm(false);
-
-        if (onCancelSuccess) {
-          onCancelSuccess();
-        }
-      } else {
-        showToast(message || '수강 취소에 실패했습니다.', 'error');
+      if (onCancelSuccess) {
+        onCancelSuccess();
       }
     } catch (error) {
       console.error('수강 취소 처리 중 예외 발생:', error);
       showToast('수강 취소 중 오류가 발생했습니다.', 'error');
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  // 진행률이 20% 이상인 경우 취소 불가능
+  const isDisabled = progress >= 20;
 
   if (!showConfirm) {
     return (

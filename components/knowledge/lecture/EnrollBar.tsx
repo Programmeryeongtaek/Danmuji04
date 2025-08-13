@@ -3,11 +3,13 @@
 import Button from '@/components/common/Button/Button';
 import { useToast } from '@/components/common/Toast/Context';
 import LoginModal from '@/components/home/LoginModal';
-import { userAtom } from '@/store/auth';
 import {
-  enrollLecture,
-  getActiveEnrollment,
-} from '@/utils/services/knowledge/lectureService';
+  useCancelEnrollment,
+  useEnrollLecture,
+  useEnrollmentStatus,
+} from '@/hooks/api/useEnrollment';
+import { userAtom } from '@/store/auth';
+
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
 import { CheckCircle } from 'lucide-react';
@@ -18,12 +20,7 @@ interface EnrollBarProps {
   lectureId: number;
 }
 
-type EnrollmentStatus = 'active' | 'cancelled' | null;
-
 const EnrollBar = ({ lectureId }: EnrollBarProps) => {
-  const [enrollmentStatus, setEnrollmentStatus] =
-    useState<EnrollmentStatus>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [lectureInfo, setLectureInfo] = useState<{
     title: string;
@@ -34,12 +31,19 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
   const { showToast } = useToast();
   const user = useAtomValue(userAtom);
 
+  const { data: enrollmentInfo, isLoading: enrollmentLoading } =
+    useEnrollmentStatus(lectureId);
+  const enrollMutation = useEnrollLecture();
+  const cancelMutation = useCancelEnrollment();
+
+  const isEnrolled = enrollmentInfo?.isEnrolled || false;
+  const enrollmentStatus = enrollmentInfo?.status;
+
   useEffect(() => {
-    const checkEnrollment = async () => {
+    const fetchLectureInfo = async () => {
       try {
         const supabase = createClient();
 
-        // 강의 정보 가져오기
         const { data: lecture } = await supabase
           .from('lectures')
           .select('title, is_free, price')
@@ -49,24 +53,13 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
         if (lecture) {
           setLectureInfo(lecture);
         }
-
-        // 로그인한 경우에만 수강 상태 확인
-        if (user) {
-          const response = await getActiveEnrollment(lectureId, user.id);
-          if (!response.error && response.data) {
-            setEnrollmentStatus(response.data.status as EnrollmentStatus);
-          } else {
-            setEnrollmentStatus(null);
-          }
-        }
       } catch (error) {
-        console.error('Error checking enrollment:', error);
-        setEnrollmentStatus(null);
+        console.error('Error fetching lecture info:', error);
       }
     };
 
-    checkEnrollment();
-  }, [lectureId, user]);
+    fetchLectureInfo();
+  }, [lectureId]);
 
   const handleEnroll = async () => {
     if (!lectureId) {
@@ -74,80 +67,119 @@ const EnrollBar = ({ lectureId }: EnrollBarProps) => {
       return;
     }
 
-    // 로그인 여부 확인
     if (!user) {
       showToast('로그인이 필요합니다.', 'error');
       setIsLoginModalOpen(true);
       return;
     }
 
-    setIsLoading(true);
     try {
-      await enrollLecture(Number(lectureId));
-
-      if (user) {
-        const response = await getActiveEnrollment(Number(lectureId), user.id);
-        if (!response.error && response.data) {
-          setEnrollmentStatus(response.data.status as EnrollmentStatus);
-          showToast('수강 신청이 완료되었습니다.', 'success');
-        }
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        showToast(err.message, 'error');
-      }
-    } finally {
-      setIsLoading(false);
+      await enrollMutation.mutateAsync(lectureId);
+      showToast('수강 신청이 완료되었습니다.', 'success');
+    } catch (error) {
+      console.error('수강 신청 실패:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : '수강 신청에 실패했습니다.';
+      showToast(errorMessage, 'error');
     }
   };
 
-  const handleCloseLoginModal = () => {
-    setIsLoginModalOpen(false);
+  const handleCancel = async () => {
+    if (!user) {
+      showToast('로그인이 필요합니다.', 'error');
+      return;
+    }
+
+    try {
+      await cancelMutation.mutateAsync(lectureId);
+      showToast('수강 취소가 완료되었습니다.', 'success');
+    } catch (error) {
+      console.error('수강 취소 실패:', error);
+      showToast('수강 취소에 실패했습니다.', 'error');
+    }
   };
 
-  return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-light shadow-lg">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex flex-col">
-            <span className="font-medium">{lectureInfo?.title || '강의'}</span>
-            <span className="text-sm text-gray-500">
-              {enrollmentStatus === 'active' ? (
-                <span className="flex items-center text-purple-600">
-                  <CheckCircle className="mr-1 h-4 w-4" />
-                  학습 중
-                </span>
-              ) : (
-                <span>
-                  {lectureInfo?.is_free
-                    ? '무료'
-                    : `${lectureInfo?.price?.toLocaleString() || 0}원`}
-                </span>
-              )}
-            </span>
-          </div>
+  const isLoading =
+    enrollmentLoading ||
+    enrollMutation.isPending ||
+    cancelMutation.isPending ||
+    !lectureInfo; // 강의 정보가 없으면 로딩 중
 
-          <Button
-            onClick={enrollmentStatus === 'active' ? undefined : handleEnroll}
-            disabled={enrollmentStatus !== 'active' && isLoading}
-            className={`flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-3 text-white transition-all hover:from-purple-600 hover:to-indigo-700 ${
-              enrollmentStatus !== 'active' && isLoading ? 'bg-gray-400' : ''
-            }`}
-          >
-            {enrollmentStatus === 'active' ? (
-              <Link href={`/knowledge/lecture/${lectureId}/watch`}>
-                학습하기
-              </Link>
-            ) : (
-              '수강신청'
-            )}
-          </Button>
+  // 로딩 중일 때
+  if (isLoading) {
+    return (
+      <div className="sticky bottom-0 z-50 border-t bg-white px-4 py-3 shadow-lg">
+        <div className="flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+          <span className="ml-2 text-gray-600">처리 중...</span>
         </div>
       </div>
+    );
+  }
 
-      {/* 로그인 모달 */}
-      <LoginModal isOpen={isLoginModalOpen} onClose={handleCloseLoginModal} />
-    </>
+  // 수강 중일 때
+  if (isEnrolled && enrollmentStatus === 'active') {
+    return (
+      <div className="sticky bottom-0 z-50 border-t bg-white px-4 py-3 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+            <span className="font-medium text-green-600">수강 중</span>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleCancel} disabled={isLoading}>
+              수강 취소
+            </Button>
+            <Link href={`/knowledge/lecture/${lectureId}/watch`}>
+              <Button>계속하기</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 수강 완료일 때
+  if (isEnrolled && enrollmentStatus === 'completed') {
+    return (
+      <div className="sticky bottom-0 z-50 border-t bg-white px-4 py-3 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <CheckCircle className="mr-2 h-5 w-5 text-blue-500" />
+            <span className="font-medium text-blue-600">수강 완료</span>
+          </div>
+          <Link href={`/knowledge/lecture/${lectureId}/watch`}>
+            <Button>다시 보기</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 수강 전일 때
+  return (
+    <div className="sticky bottom-0 z-50 border-t bg-white px-4 py-3 shadow-lg">
+      <div className="flex items-center justify-between">
+        <div>
+          {lectureInfo?.is_free ? (
+            <p className="text-lg font-bold text-green-600">무료</p>
+          ) : (
+            <p className="text-lg font-bold">
+              ₩{lectureInfo?.price?.toLocaleString() || '0'}
+            </p>
+          )}
+          <p className="text-sm text-gray-500">{lectureInfo?.title}</p>
+        </div>
+        <Button onClick={handleEnroll} disabled={isLoading}>
+          수강 신청
+        </Button>
+      </div>
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
+    </div>
   );
 };
 

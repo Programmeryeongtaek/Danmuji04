@@ -3,44 +3,16 @@
 import { userAtom } from '@/store/auth';
 import { useAtomValue } from 'jotai';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '../common/Toast/Context';
-import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
-import { Book, Calendar, Filter, Plus, Search, Users, X } from 'lucide-react';
-
-// 스터디 타입 정의
-interface Study {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  owner_id: string;
-  owner_name: string;
-  max_participants: number;
-  current_participants: number;
-  approved_participants: number;
-  start_date: string;
-  end_date: string;
-  location: string;
-  is_online: boolean;
-  status: 'recruiting' | 'in_progress' | 'completed';
-  created_at: string;
-  updated_at: string;
-  book_id?: string | null;
-  book_title?: string | null;
-  role: 'owner' | 'participant';
-  participant_status: 'pending' | 'approved' | 'rejected';
-  last_active_at?: string | null;
-}
+import { Book, Calendar, Filter, Plus, Search, Users } from 'lucide-react';
+import { useMyStudies } from '@/hooks/api/useStudyManagement';
 
 // 탭 타입 정의
 type StudyTab = 'all' | 'participating' | 'created' | 'pending' | 'completed';
 
 export default function MyStudiesPageContent() {
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [filteredStudies, setFilteredStudies] = useState<Study[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<StudyTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -53,6 +25,8 @@ export default function MyStudiesPageContent() {
   const searchParams = useSearchParams();
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
+
+  const { data: studies = [], isLoading, error } = useMyStudies();
 
   // URL에서 초기 탭 설정
   useEffect(() => {
@@ -68,125 +42,54 @@ export default function MyStudiesPageContent() {
     }
   }, [searchParams]);
 
-  // 스터디 데이터 로드
+  // 로그인 체크
   useEffect(() => {
-    const fetchStudies = async () => {
-      if (!user) {
-        showToast('로그인이 필요합니다.', 'error');
-        router.push('/?login=true');
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const supabase = createClient();
-
-        // 사용자가 참여 중인 스터디 ID와 역할 조회
-        const { data: participantData, error: participantError } =
-          await supabase
-            .from('study_participants')
-            .select('study_id, role, status, last_active_at')
-            .eq('user_id', user.id);
-
-        if (participantError) throw participantError;
-
-        if (!participantData || participantData.length === 0) {
-          setStudies([]);
-          setFilteredStudies([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // 참여 중인 스터디 ID 목록
-        const studyIds = participantData.map((p) => p.study_id);
-
-        // 스터디 상세 정보 조회
-        const { data: studiesData, error: studiesError } = await supabase
-          .from('studies')
-          .select(
-            `
-            *,
-            books:book_id (
-              id,
-              title
-            )
-          `
-          )
-          .in('id', studyIds);
-
-        if (studiesError) throw studiesError;
-
-        if (!studiesData) {
-          setStudies([]);
-          setFilteredStudies([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // 스터디와 참여 정보 병합
-        const enrichedStudies: Study[] = studiesData.map((study) => {
-          const participantInfo = participantData.find(
-            (p) => p.study_id === study.id
-          );
-          return {
-            ...study,
-            role: participantInfo?.role as 'owner' | 'participant',
-            participant_status: participantInfo?.status as
-              | 'pending'
-              | 'approved'
-              | 'rejected',
-            last_active_at: participantInfo?.last_active_at || null,
-            book_title: study.books?.title || null,
-          };
-        });
-
-        setStudies(enrichedStudies);
-        setFilteredStudies(enrichedStudies);
-      } catch (error) {
-        console.error('스터디 로드 실패:', error);
-        showToast('스터디 정보를 불러오는데 실패했습니다.', 'error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStudies();
+    if (!user) {
+      showToast('로그인이 필요합니다.', 'error');
+      router.push('/?login=true');
+    }
   }, [user, router, showToast]);
 
-  // 필터링 적용
-  useEffect(() => {
-    if (studies.length === 0) return;
+  // 필터링된 스터디 - useMemo로 최적화
+  const filteredStudies = useMemo(() => {
+    let result = studies;
 
-    let result = [...studies];
-
-    // 탭 필터
-    if (activeTab === 'participating') {
-      result = result.filter(
-        (study) =>
-          study.participant_status === 'approved' &&
-          study.role === 'participant'
-      );
-    } else if (activeTab === 'created') {
-      result = result.filter((study) => study.role === 'owner');
-    } else if (activeTab === 'pending') {
-      result = result.filter((study) => study.participant_status === 'pending');
-    } else if (activeTab === 'completed') {
-      result = result.filter((study) => study.status === 'completed');
+    // 탭별 필터링
+    switch (activeTab) {
+      case 'participating':
+        result = result.filter(
+          (study) =>
+            study.role === 'participant' &&
+            study.participant_status === 'approved'
+        );
+        break;
+      case 'created':
+        result = result.filter((study) => study.role === 'owner');
+        break;
+      case 'pending':
+        result = result.filter(
+          (study) => study.participant_status === 'pending'
+        );
+        break;
+      case 'completed':
+        result = result.filter((study) => study.status === 'completed');
+        break;
+      default:
+        break;
     }
 
-    // 검색어 필터
-    if (searchQuery) {
+    // 검색 필터링
+    if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         (study) =>
           study.title.toLowerCase().includes(query) ||
           study.description.toLowerCase().includes(query) ||
-          study.category.toLowerCase().includes(query) ||
-          (study.book_title && study.book_title.toLowerCase().includes(query))
+          study.category.toLowerCase().includes(query)
       );
     }
 
-    // 추가 필터
+    // 추가 필터링
     if (filters.category !== 'all') {
       result = result.filter((study) => study.category === filters.category);
     }
@@ -195,387 +98,329 @@ export default function MyStudiesPageContent() {
       result = result.filter((study) => study.status === filters.status);
     }
 
-    setFilteredStudies(result);
+    return result;
   }, [studies, activeTab, searchQuery, filters]);
 
-  // 탭 변경 핸들러
+  // 탭별 카운드 - useMemo로 최적화
+  const tabCounts = useMemo(
+    () => ({
+      all: studies.length,
+      participating: studies.filter(
+        (s) => s.role === 'participant' && s.participant_status === 'approved'
+      ).length,
+      created: studies.filter((s) => s.role === 'owner').length,
+      pending: studies.filter((s) => s.participant_status === 'pending').length,
+      completed: studies.filter((s) => s.status === 'completed').length,
+    }),
+    [studies]
+  );
+
   const handleTabChange = (tab: StudyTab) => {
     setActiveTab(tab);
-
-    // URL 업데이트
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams);
     if (tab !== 'all') {
       params.set('type', tab);
     } else {
       params.delete('type');
     }
-
     router.push(`/my/studies?${params.toString()}`);
   };
 
-  // 필터 변경 핸들러
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      recruiting: { color: 'bg-green-100 text-green-800', text: '모집중' },
+      in_progress: { color: 'bg-blue-100 text-blue-800', text: '진행중' },
+      completed: { color: 'bg-gray-100 text-gray-800', text: '완료' },
+    };
+    const config = statusConfig[status as keyof typeof statusConfig];
+    return (
+      <span
+        className={`rounded-full px-2 py-1 text-xs font-medium ${config.color}`}
+      >
+        {config.text}
+      </span>
+    );
   };
 
-  // 검색 핸들러
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // 검색 로직은 useEffect에서 처리
+  const getParticipantStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: 'bg-amber-100 text-amber-800', text: '승인 대기' },
+      approved: { color: 'bg-green-100 text-green-800', text: '참여 중' },
+      rejected: { color: 'bg-red-100 text-red-800', text: '거부됨' },
+    };
+    const config = statusConfig[status as keyof typeof statusConfig];
+    return (
+      <span
+        className={`rounded-full px-2 py-1 text-xs font-medium ${config.color}`}
+      >
+        {config.text}
+      </span>
+    );
   };
 
-  // 날짜 포맷 함수
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('ko-KR', {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(date);
+    });
   };
 
-  // 스터디 카테고리 목록
-  const categories = [
-    { id: 'all', label: '전체' },
-    { id: 'book', label: '도서' },
-    { id: '인문학', label: '인문학' },
-    { id: '철학', label: '철학' },
-    { id: '심리학', label: '심리학' },
-    { id: '경제학', label: '경제학' },
-    { id: '자기계발', label: '자기계발' },
-    { id: '리더십', label: '리더십' },
-  ];
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-gold-start border-t-transparent"></div>
+        <span className="ml-2 text-gray-600">스터디 정보를 불러오는 중...</span>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="py-12 text-center">
+        <p className="mb-4 text-red-600">
+          스터디 정보를 불러오는데 실패했습니다.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-gold-start hover:underline"
+        >
+          재시도
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">내 스터디</h1>
+    <div className="mx-auto max-w-6xl p-6">
+      {/* 헤더 */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="mb-2 text-2xl font-bold">나의 스터디</h1>
+          <p className="text-gray-600">
+            참여 중이거나 개설한 스터디를 관리하세요.
+          </p>
+        </div>
         <Link
           href="/study/create"
-          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:opacity-90"
+          className="flex items-center rounded-lg bg-gold-start px-4 py-2 text-white hover:bg-gold-end"
         >
-          <Plus className="h-5 w-5" />
-          개설하기
+          <Plus className="mr-2 h-4 w-4" />
+          스터디 개설
         </Link>
       </div>
 
-      {/* 스터디 현황 요약 */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-blue-100 p-2">
-              <Users className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">참여 중인 스터디</p>
-              <p className="text-xl font-bold">
-                {
-                  studies.filter((s) => s.participant_status === 'approved')
-                    .length
-                }
-                개
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-amber-100 p-2">
-              <Users className="h-5 w-5 text-amber-500" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">개설한 스터디</p>
-              <p className="text-xl font-bold">
-                {studies.filter((s) => s.role === 'owner').length}개
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-green-100 p-2">
-              <Book className="h-5 w-5 text-green-500" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">도서 추천</p>
-              <p className="text-xl font-bold">
-                {
-                  studies.filter(
-                    (s) => s.book_id && s.participant_status === 'approved'
-                  ).length
-                }
-                개
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-purple-100 p-2">
-              <Calendar className="h-5 w-5 text-purple-500" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">진행 중인 스터디</p>
-              <p className="text-xl font-bold">
-                {
-                  studies.filter(
-                    (s) =>
-                      s.status === 'in_progress' &&
-                      s.participant_status === 'approved'
-                  ).length
-                }
-                개
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* 탭 네비게이션 */}
+      <div className="mb-6 flex flex-wrap gap-2 border-b">
+        {[
+          { key: 'all', label: '전체' },
+          { key: 'participating', label: '참여 중' },
+          { key: 'created', label: '개설한 스터디' },
+          { key: 'pending', label: '승인 대기' },
+          { key: 'completed', label: '완료' },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => handleTabChange(key as StudyTab)}
+            className={`rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium ${
+              activeTab === key
+                ? 'border-gold-start text-gold-start'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {label} ({tabCounts[key as keyof typeof tabCounts]})
+          </button>
+        ))}
       </div>
 
-      {/* 필터 및 검색 */}
-      <div className="mb-6 rounded-lg border bg-white p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
-            >
-              <Filter className="h-4 w-4" />
-              필터
-            </button>
-            {showFilters && (
-              <div className="flex items-center gap-2">
-                <select
-                  value={filters.category}
-                  onChange={(e) =>
-                    handleFilterChange('category', e.target.value)
-                  }
-                  className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
-                >
-                  <option value="all">상태</option>
-                  <option value="recruiting">모집 중</option>
-                  <option value="in_progress">진행 중</option>
-                  <option value="completed">완료</option>
-                </select>
-                <button
-                  onClick={() => {
-                    setFilters({ category: 'all', status: 'all' });
-                    setShowFilters(false);
-                  }}
-                  className="rounded-full bg-gray-200 p-1 hover:bg-gray-300"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <form
-            onSubmit={handleSearch}
-            className="flex w-full max-w-md items-center"
-          >
+      {/* 검색 및 필터 */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
             <input
               type="text"
+              placeholder="스터디 제목, 설명, 카테고리로 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="찾는 스터디를 검색하세요."
-              className="w-full rounded-l-lg border border-gray-300 px-4 py-2 focus:border-gold-start focus:outline-none"
+              className="w-full rounded-lg border py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-gold-start/20"
             />
-            <button
-              type="submit"
-              className="rounded-r-lg border border-gray-300 bg-gray-50 px-4 py-2 hover:bg-gray-100"
-            >
-              <Search className="h-5 w-5 text-gray-500" />
-            </button>
-          </form>
-        </div>
-
-        {/* 탭 메뉴 */}
-        <div className="border-b pb-4">
-          <div className="flex overflow-x-auto">
-            <button
-              onClick={() => handleTabChange('all')}
-              className={`mr-4 border-b-2 pb-2 font-medium ${
-                activeTab === 'all'
-                  ? 'border-gold-start text-gold-start'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              전체
-            </button>
-            <button
-              onClick={() => handleTabChange('participating')}
-              className={`mr-4 border-b-2 pb-2 font-medium ${
-                activeTab === 'participating'
-                  ? 'border-gold-start text-gold-start'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              참여 중
-            </button>
-            <button
-              onClick={() => handleTabChange('created')}
-              className={`mr-4 border-b-2 pb-2 font-medium ${
-                activeTab === 'created'
-                  ? 'border-gold-start text-gold-start'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              개설한 스터디
-            </button>
-            <button
-              onClick={() => handleTabChange('pending')}
-              className={`mr-4 border-b-2 pb-2 font-medium ${
-                activeTab === 'pending'
-                  ? 'border-gold-start text-gold-start'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              승인 대기 중
-            </button>
-            <button
-              onClick={() => handleTabChange('completed')}
-              className={`mr-4 border-b-2 pb-2 font-medium ${
-                activeTab === 'completed'
-                  ? 'border-gold-start text-gold-start'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              완료
-            </button>
           </div>
         </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center rounded-lg border px-4 py-2 hover:bg-gray-50"
+        >
+          <Filter className="mr-2 h-4 w-4" />
+          필터
+        </button>
       </div>
 
-      {/* 스터디 목록 */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-gold-start border-t-transparent"></div>
-        </div>
-      ) : filteredStudies.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredStudies.map((study) => (
-            <Link
-              href={`/study/${study.id}`}
-              key={study.id}
-              className="group flex flex-col rounded-lg border bg-white p-6 shadow-sm transition-shadow hover:border-gold-start hover:bg-light hover:shadow-md"
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <span
-                  className={`rounded-full px-2 py-1 text-xs font-medium ${
-                    study.status === 'recruiting'
-                      ? 'bg-green-100 text-green-800'
-                      : study.status === 'in_progress'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {study.status === 'recruiting'
-                    ? '모집중'
-                    : study.status === 'in_progress'
-                      ? '진행중'
-                      : '완료'}
-                </span>
-                <span className="px-2 text-sm text-gray-500 group-hover:bg-white group-hover:text-black">
-                  {study.category}
-                </span>
-              </div>
-
-              <h2 className="mb-2 text-lg font-semibold">{study.title}</h2>
-              <p className="mb-4 line-clamp-2 text-sm text-gray-600">
-                {study.description}
-              </p>
-
-              {study.book_title && (
-                <div className="mb-3 flex items-center gap-2 text-sm">
-                  <Book className="h-4 w-4 text-amber-500" />
-                  <span className="text-gray-700 group-hover:text-black">
-                    {study.book_title}
-                  </span>
-                </div>
-              )}
-
-              <div className="mt-auto space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center text-gray-600">
-                    <Users className="mr-1 h-4 w-4" />
-                    <span className="group-hover:text-black">
-                      {study.approved_participants}/{study.max_participants}명
-                    </span>
-                  </div>
-                  <div>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        study.role === 'owner'
-                          ? 'bg-amber-100 text-amber-800 group-hover:bg-white group-hover:text-black'
-                          : study.participant_status === 'approved'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {study.role === 'owner'
-                        ? '방장'
-                        : study.participant_status === 'approved'
-                          ? '참여자'
-                          : '승인대기'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Calendar className="mr-1 h-4 w-4" />
-                  <span className="group-hover:text-black">
-                    {formatDate(study.start_date)} ~{' '}
-                    {formatDate(study.end_date)}
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-lg border bg-white p-8 text-center">
-          <div className="mb-4 flex justify-center">
-            <Users className="h-16 w-16 text-gray-300" />
+      {/* 필터 패널 */}
+      {showFilters && (
+        <div className="mb-6 rounded-lg bg-gray-50 p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-medium">카테고리</label>
+              <select
+                value={filters.category}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, category: e.target.value }))
+                }
+                className="w-full rounded border p-2 focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+              >
+                <option value="all">전체</option>
+                <option value="독서">독서</option>
+                <option value="토론">토론</option>
+                <option value="프로젝트">프로젝트</option>
+                <option value="스터디">스터디</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">상태</label>
+              <select
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, status: e.target.value }))
+                }
+                className="w-full rounded border p-2 focus:outline-none focus:ring-2 focus:ring-gold-start/20"
+              >
+                <option value="all">전체</option>
+                <option value="recruiting">모집중</option>
+                <option value="in_progress">진행중</option>
+                <option value="completed">완료</option>
+              </select>
+            </div>
           </div>
-          <h3 className="mb-2 text-lg font-medium">스터디가 없습니다</h3>
-          <p className="mb-6 text-gray-500">
-            {activeTab === 'all'
-              ? '참여 중인 스터디가 없습니다. 새로운 스터디에 참여하거나 직접 개설해보세요.'
-              : activeTab === 'participating'
-                ? '참여 중인 스터디가 없습니다. 새로운 스터디에 참여해보세요.'
-                : activeTab === 'created'
-                  ? '개설한 스터디가 없습니다. 새로운 스터디를 만들어보세요.'
-                  : activeTab === 'pending'
-                    ? '승인 대기 중인 스터디가 없습니다.'
-                    : '완료된 스터디가 없습니다.'}
-          </p>
-          <div className="flex justify-center gap-4">
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => setFilters({ category: 'all', status: 'all' })}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              필터 초기화
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 스터디 목록 */}
+      <div className="space-y-4">
+        {filteredStudies.length === 0 ? (
+          <div className="py-12 text-center">
+            <Users className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+            <h3 className="mb-2 text-lg font-medium text-gray-600">
+              {activeTab === 'all'
+                ? '참여 중인 스터디가 없습니다'
+                : activeTab === 'participating'
+                  ? '참여 중인 스터디가 없습니다'
+                  : activeTab === 'created'
+                    ? '개설한 스터디가 없습니다'
+                    : activeTab === 'pending'
+                      ? '승인 대기 중인 스터디가 없습니다'
+                      : '완료된 스터디가 없습니다'}
+            </h3>
+            <p className="mb-4 text-gray-500">
+              새로운 스터디에 참여하거나 직접 개설해보세요.
+            </p>
             <Link
               href="/study"
-              className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50"
+              className="inline-flex items-center rounded-lg bg-gold-start px-4 py-2 text-white hover:bg-gold-end"
             >
-              둘러보기
-            </Link>
-            <Link
-              href="/study/create"
-              className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white hover:opacity-90"
-            >
-              개설하기
+              스터디 둘러보기
             </Link>
           </div>
+        ) : (
+          filteredStudies.map((study) => (
+            <div
+              key={study.id}
+              className="rounded-lg border bg-white p-6 transition-shadow hover:shadow-md"
+            >
+              <div className="mb-4 flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="mb-2 flex items-center gap-3">
+                    <h3 className="text-lg font-semibold">{study.title}</h3>
+                    {getStatusBadge(study.status)}
+                    {study.role === 'owner' && (
+                      <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                        방장
+                      </span>
+                    )}
+                    {study.role === 'participant' &&
+                      getParticipantStatusBadge(study.participant_status)}
+                  </div>
+                  <p className="mb-3 text-sm text-gray-600">
+                    {study.description}
+                  </p>
+
+                  {/* 연결된 도서 정보 */}
+                  {study.book_title && (
+                    <div className="mb-3 flex items-center text-sm text-blue-600">
+                      <Book className="mr-1 h-4 w-4" />
+                      <span>{study.book_title}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <Users className="mr-1 h-4 w-4" />
+                      <span>
+                        {study.approved_participants}/{study.max_participants}명
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Calendar className="mr-1 h-4 w-4" />
+                      <span>
+                        {formatDate(study.start_date)} ~{' '}
+                        {formatDate(study.end_date)}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="mr-2 h-2 w-2 rounded-full bg-gray-400"></span>
+                      <span>{study.category}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ml-4 flex flex-col gap-2">
+                  <Link
+                    href={`/study/${study.id}`}
+                    className="rounded bg-gold-start px-4 py-2 text-center text-sm text-white hover:bg-gold-end"
+                  >
+                    상세보기
+                  </Link>
+
+                  {study.role === 'owner' && (
+                    <Link
+                      href={`/study/${study.id}/manage`}
+                      className="rounded border border-gray-300 px-4 py-2 text-center text-sm hover:bg-gray-50"
+                    >
+                      관리
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* 최근 활동 */}
+              {study.last_active_at && (
+                <div className="border-t border-gray-100 pt-3">
+                  <p className="text-xs text-gray-500">
+                    최근 활동: {formatDate(study.last_active_at)}
+                  </p>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* 페이지네이션 (필요시 추가) */}
+      {filteredStudies.length > 0 && (
+        <div className="mt-8 flex justify-center">
+          <p className="text-sm text-gray-500">
+            총 {filteredStudies.length}개의 스터디
+          </p>
         </div>
       )}
     </div>

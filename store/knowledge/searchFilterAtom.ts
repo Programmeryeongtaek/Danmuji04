@@ -43,7 +43,7 @@ export const updateSearchQueryAtom = atom(
   }
 );
 
-// 카테고리 업데이트
+// 카테고리 업데이트 - 카테고리 변경시 필터 초기화
 export const updateCategoryAtom = atom(
   null,
   (get, set, selectedCategory: string) => {
@@ -51,6 +51,13 @@ export const updateCategoryAtom = atom(
     set(searchFilterStateAtom, {
       ...currentState,
       selectedCategory,
+      // 카테고리 변경시 필터 초기화
+      filters: {
+        depth: [],
+        fields: [],
+        hasGroup: false,
+      },
+      selectedKeywords: [], // 키워드도 초기화
       lastUpdated: Date.now(),
     });
   }
@@ -205,18 +212,23 @@ export const initializeFromUrlAtom = atom(
     hasGroup?: string;
     sort?: string;
   }) => {
+    const currentState = get(searchFilterStateAtom);
+    
     const keywordsArray = params.keywords ? params.keywords.split(',') : [];
     const depthArray = params.depth ? params.depth.split(',') : [];
     const fieldsArray = params.fields ? params.fields.split(',') : [];
     
+    // 카테고리가 변경된 경우에만 필터 초기화
+    const categoryChanged = params.category !== currentState.selectedCategory;
+    
     set(searchFilterStateAtom, {
       searchQuery: params.q || '',
       selectedCategory: params.category || 'all',
-      selectedKeywords: keywordsArray,
+      selectedKeywords: categoryChanged ? [] : keywordsArray, // 카테고리 변경시 키워드 초기화
       filters: {
-        depth: depthArray,
-        fields: fieldsArray,
-        hasGroup: params.hasGroup === 'true',
+        depth: categoryChanged ? [] : depthArray, // 카테고리 변경시 필터 초기화
+        fields: categoryChanged ? [] : fieldsArray,
+        hasGroup: categoryChanged ? false : (params.hasGroup === 'true'),
       },
       sortOption: params.sort || 'latest',
       lastUpdated: Date.now(),
@@ -224,32 +236,49 @@ export const initializeFromUrlAtom = atom(
   }
 );
 
-// 현재 상태를 URL 파라미터로 변환
+// URL 파라미터 생성 (필터가 있는 경우에만)
 export const getUrlParamsAtom = atom((get) => {
   const state = get(searchFilterStateAtom);
   const params = new URLSearchParams();
+
+  if (state.searchQuery) {
+    params.set('q', state.searchQuery);
+  }
   
-  if (state.searchQuery) params.set('q', state.searchQuery);
-  if (state.selectedCategory !== 'all') params.set('category', state.selectedCategory);
-  if (state.selectedKeywords.length > 0) params.set('keywords', state.selectedKeywords.join(','));
-  if (state.filters.depth.length > 0) params.set('depth', state.filters.depth.join(','));
-  if (state.filters.fields.length > 0) params.set('fields', state.filters.fields.join(','));
-  if (state.filters.hasGroup) params.set('hasGroup', 'true');
-  if (state.sortOption !== 'latest') params.set('sort', state.sortOption);
+  if (state.selectedCategory && state.selectedCategory !== 'all') {
+    params.set('category', state.selectedCategory);
+  }
   
+  if (state.selectedKeywords.length > 0) {
+    params.set('keywords', state.selectedKeywords.join(','));
+  }
+  
+  if (state.filters.depth.length > 0) {
+    params.set('depth', state.filters.depth.join(','));
+  }
+  
+  if (state.filters.fields.length > 0) {
+    params.set('fields', state.filters.fields.join(','));
+  }
+  
+  if (state.filters.hasGroup) {
+    params.set('hasGroup', 'true');
+  }
+  
+  if (state.sortOption && state.sortOption !== 'latest') {
+    params.set('sort', state.sortOption);
+  }
+
   return params.toString();
 });
 
-// 필터가 활성화되어 있는지 확인
+// 활성화된 필터가 있는지 확인하는 atom (키워드 제외)
 export const hasActiveFiltersAtom = atom((get) => {
   const state = get(searchFilterStateAtom);
+  
   return (
-    state.searchQuery !== '' ||
-    state.selectedCategory !== 'all' ||
-    state.selectedKeywords.length > 0 ||
     state.filters.depth.length > 0 ||
     state.filters.fields.length > 0 ||
-    state.filters.hasGroup ||
-    state.sortOption !== 'latest'
+    state.filters.hasGroup
   );
 });

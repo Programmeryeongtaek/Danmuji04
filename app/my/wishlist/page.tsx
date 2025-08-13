@@ -2,75 +2,69 @@
 
 import Card from '@/components/common/Card';
 import { useToast } from '@/components/common/Toast/Context';
-import { ToastType } from '@/components/common/Toast/type';
-import { Lecture } from '@/app/types/knowledge/lecture';
-import { createClient } from '@/utils/supabase/client';
-import { useEffect, useState } from 'react';
-import { fetchWishlist } from '@/utils/services/knowledge/lectureService';
+import { useEffect } from 'react';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/auth';
+import { useRouter } from 'next/navigation';
+import { BookmarkedLecture, useBookmarksList } from '@/hooks/api/useBookmarks';
 
 export default function WishlistPage() {
-  const [lectures, setLectures] = useState<Lecture[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const user = useAtomValue(userAtom);
+  const router = useRouter();
   const { showToast } = useToast();
 
-  const loadWishlist = async () => {
-    try {
-      const data = await fetchWishlist();
-      setLectures(data.map((item) => item.lecture));
-    } catch (error) {
-      console.error('Error loading wishlist:', error);
-      showToast('위시리스트를 불러오는데 실패했습니다.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    data: bookmarks = [],
+    isLoading,
+    error,
+  } = useBookmarksList('lecture');
 
+  // 로그인 체크
   useEffect(() => {
-    loadWishlist();
-  }, []);
-
-  const handleToggleBookmark = async (lectureId: number) => {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     if (!user) {
-      showToast('로그인이 필요합니다.', 'warning' as ToastType);
-      return;
+      showToast('로그인이 필요합니다.', 'error');
+      router.push('/?login=true');
     }
+  }, [user, router, showToast]);
 
-    try {
-      await supabase
-        .from('bookmarks')
-        .delete()
-        .eq('lecture_id', lectureId)
-        .eq('user_id', user.id);
-
-      // 화면에서 즉시 제거
-      setLectures((prev) => prev.filter((lecture) => lecture.id !== lectureId));
-      showToast('찜하기가 취소되었습니다.', 'success');
-    } catch (error) {
-      showToast('오류가 발생했습니다.', error as ToastType);
-    }
-  };
+  // 강의 북마크만 필터링
+  const lectureBookmarks = bookmarks as BookmarkedLecture[];
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-gold-start border-t-transparent"></div>
+        <span className="ml-2 text-gray-600">로딩 중...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-7xl p-6">
+        <h1 className="mb-8 text-2xl font-bold">찜한 강의</h1>
+        <div className="flex h-64 flex-col items-center justify-center">
+          <p className="mb-4 text-red-500">
+            위시리스트를 불러오는데 실패했습니다.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded bg-gold-start px-4 py-2 text-white hover:bg-gold-end"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-7xl p-6">
       <h1 className="mb-8 text-2xl font-bold">찜한 강의</h1>
-      {lectures.length > 0 ? (
+      {lectureBookmarks.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {lectures.map((lecture) => (
-            <Card
-              key={lecture.id}
-              {...lecture}
-              isBookmarked={true} // 찜한 상태로 표시
-              onToggleBookmark={handleToggleBookmark}
-            />
+          {lectureBookmarks.map((bookmark) => (
+            <Card key={bookmark.lecture_id} {...bookmark.lectures} />
           ))}
         </div>
       ) : (

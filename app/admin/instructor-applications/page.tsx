@@ -1,11 +1,15 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
-import { createClient } from '@/utils/supabase/client';
+import { ToastType } from '@/components/common/Toast/type';
+import {
+  useApproveApplication,
+  useInstructorApplications,
+  useRejectApplication,
+} from '@/hooks/api/useInstructorApplications';
 import { ArrowLeft, Check, ExternalLink, FileImage, X } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface InstructorApplication {
   id: number;
@@ -23,115 +27,37 @@ interface InstructorApplication {
 }
 
 export default function InstructorApplicationsPage() {
-  const [applications, setApplications] = useState<InstructorApplication[]>([]);
   const [selectedApplication, setSelectedApplication] =
     useState<InstructorApplication | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+
   const { showToast } = useToast();
-  const router = useRouter();
 
-  useEffect(() => {
-    const checkAdminAndLoadApplications = async () => {
-      const supabase = createClient();
+  const {
+    data: applications = [],
+    isLoading,
+    error,
+  } = useInstructorApplications();
 
-      // 1. 먼저 관리자 권한 확인
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push('/');
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile || profile.role !== 'admin') {
-        router.push('/');
-        showToast('관리자 권한이 필요합니다.', 'error');
-        return;
-      }
-
-      setIsAdmin(true);
-
-      // 2. 관리자 확인 후 신청서 목록 로드
-      try {
-        const { data, error } = await supabase
-          .from('instructor_applications')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setApplications(data || []);
-      } catch (error) {
-        console.error('Error loading applications:', error);
-        showToast('신청서 목록을 불러오는데 실패했습니다.', 'error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAdminAndLoadApplications();
-  }, [router, showToast]);
+  const approveApplication = useApproveApplication();
+  const rejectApplication = useRejectApplication();
 
   const handleApprove = async (applicationId: number) => {
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc(
-        'approve_instructor_application',
-        { application_id: applicationId }
-      );
-
-      if (error) throw error;
-
-      if (data) {
-        // 성공적으로 승인됨
-        setApplications((prev) =>
-          prev.map((app) =>
-            app.id === applicationId ? { ...app, status: 'approved' } : app
-          )
-        );
-        showToast('강사 신청이 승인되었습니다.', 'success');
-      } else {
-        throw new Error('승인 처리에 실패했습니다.');
-      }
+      await approveApplication.mutateAsync(applicationId);
+      showToast('강사 신청이 승인되었습니다.', 'success');
     } catch (error) {
-      console.error('Error approving application:', error);
-      showToast('승인 처리 중 오류가 발생했습니다.', 'error');
+      showToast('승인 처리 중 오류가 발생했습니다.', error as ToastType);
     }
   };
 
   const handleReject = async (applicationId: number) => {
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc(
-        'reject_instructor_application',
-        { application_id: applicationId }
-      );
-
-      if (error) throw error;
-
-      if (data) {
-        // 성공적으로 거부됨
-        setApplications((prev) =>
-          prev.map((app) =>
-            app.id === applicationId ? { ...app, status: 'rejected' } : app
-          )
-        );
-        showToast('강사 신청이 거부되었습니다.', 'success');
-      } else {
-        throw new Error('거부 처리에 실패했습니다.');
-      }
+      await rejectApplication.mutateAsync(applicationId);
+      showToast('강사 신청이 거부되었습니다.', 'success');
     } catch (error) {
-      console.error('Error rejecting application:', error);
-      showToast('거부 처리 중 오류가 발생했습니다.', 'error');
+      showToast('거부 처리 중 오류가 발생했습니다.', error as ToastType);
     }
   };
 
@@ -145,14 +71,19 @@ export default function InstructorApplicationsPage() {
     setIsImageModalOpen(true);
   };
 
-  if (!isAdmin) {
+  // 에러 처리
+  if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">관리자 권한을 확인하는 중입니다...</div>
+        <div className="text-center">
+          <p className="mb-4 text-red-500">데이터를 불러오는데 실패했습니다.</p>
+          <p className="text-sm text-gray-500">{error.message}</p>
+        </div>
       </div>
     );
   }
 
+  // 로딩 상태
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">

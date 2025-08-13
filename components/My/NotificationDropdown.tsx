@@ -14,7 +14,7 @@ export default function NotificationDropdown() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 전역 상태에서 알림 데이터와 액션들 가져오기
-  const { notifications, markNotificationAsRead, isLoading } =
+  const { notifications, unreadCount, markNotificationAsRead, isLoading } =
     useNotifications();
 
   // 로컬 스토리지에서 숨겨진 알림 ID 불러오기
@@ -82,8 +82,11 @@ export default function NotificationDropdown() {
     (notification) => !hiddenInDropdown.includes(notification.id)
   );
 
-  // 읽지 않은 알림 개수 계산 (숨겨진 알림 제외)
-  const visibleUnreadCount = visibleNotifications.filter((n) => !n.read).length;
+  // 숨겨진 알림을 고려한 읽지 않은 알림 개수 계산
+  const hiddenUnreadCount = notifications.filter(
+    (n) => !n.read && hiddenInDropdown.includes(n.id)
+  ).length;
+  const visibleUnreadCount = unreadCount - hiddenUnreadCount;
 
   if (isLoading) {
     return (

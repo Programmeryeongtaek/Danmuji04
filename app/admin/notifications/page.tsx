@@ -92,16 +92,13 @@ export default function NotificationsManagePage() {
   // 템플릿 로드 함수
   const loadTemplates = async () => {
     try {
-      console.log('템플릿 로드 시작');
       const supabase = createClient();
 
       // 먼저 테이블 존재 여부 확인
-      const { data: tableInfo, error: tableError } = await supabase
+      const { error: tableError } = await supabase
         .from('notification_templates')
         .select('id')
         .limit(1);
-
-      console.log('테이블 존재 확인:', tableInfo, tableError);
 
       if (tableError) {
         console.error('테이블 확인 오류:', tableError);
@@ -142,7 +139,6 @@ export default function NotificationsManagePage() {
         throw error;
       }
 
-      console.log('로드된 템플릿:', data);
       setTemplates(data || []);
     } catch (error) {
       console.error('템플릿 로드 실패:', error);

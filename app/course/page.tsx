@@ -1,13 +1,15 @@
 'use client';
 
 import QuoteSection from '@/components/Course/QuotesSection';
-import { useCoursePermission } from '@/hooks/useCourse';
 import {
   COURSE_CATEGORIES,
   CourseCategory,
 } from '@/app/types/course/categories';
 import { BookOpen, Edit, HelpCircle, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import useSupabase from '@/hooks/useSupabase';
+import { createClient } from '@/utils/supabase/client';
 
 // 주요 카테고리 목록
 const featuredCategories = [
@@ -17,7 +19,55 @@ const featuredCategories = [
 ];
 
 export default function CoursePage() {
-  const { isAdmin, isLoading } = useCoursePermission();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useSupabase();
+
+  // useCoursePermission 훅을 사용하지 않고 직접 구현
+  useEffect(() => {
+    const checkAdminDirectly = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('CoursePage 프로필 조회 실패:', error);
+          setIsAdmin(false);
+        } else {
+          const adminResult = profile?.role === 'admin';
+
+          // 🔥 강제 리렌더링을 위해 상태를 두 번 업데이트
+          setIsAdmin(false); // 먼저 false로 설정
+          setTimeout(() => {
+            setIsAdmin(adminResult); // 그 다음 실제 값으로 설정
+          }, 10);
+        }
+      } catch (error) {
+        console.error('CoursePage 권한 확인 중 예외:', error);
+        setIsAdmin(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      checkAdminDirectly();
+    } else if (user === null) {
+      setIsAdmin(false);
+      setIsLoading(false);
+    }
+  }, [user]);
 
   return (
     <div className="mx-auto max-w-7xl py-12 mobile:px-4 tablet:px-6">
@@ -31,10 +81,6 @@ export default function CoursePage() {
           {!isLoading && isAdmin && (
             <Link
               href="/course/create"
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.href = '/course/create';
-              }}
               className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-4 py-2 text-white transition-opacity hover:opacity-90"
             >
               <PlusCircle className="h-5 w-5" />

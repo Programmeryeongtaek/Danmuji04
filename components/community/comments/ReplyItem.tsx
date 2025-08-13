@@ -1,20 +1,16 @@
 'use client';
-import {
-  Comment,
-  EditingComment,
-  Profile,
-} from '@/app/types/community/communityType';
+import { Comment, EditingComment } from '@/app/types/community/communityType';
+import { useToggleCommentLike } from '@/hooks/api/useCommentInteraction';
+import { userAtom } from '@/store/auth';
+import { useAtomValue } from 'jotai';
 import { Edit, ThumbsUp, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { memo, useMemo } from 'react';
 
 interface ReplyItemProps {
   reply: Comment;
-  user: Profile | null;
-  parentId: number;
-  onLike: (commentId: number) => void;
-  onEdit: (comment: Comment, isReply: boolean) => void;
-  onDelete: (commentId: number, isReply: boolean, parentId: number) => void;
+  onEdit: () => void;
+  onDelete: () => void;
   editingComment: EditingComment | null;
   setEditingComment: (value: EditingComment | null) => void;
   onCancelEdit: () => void;
@@ -23,14 +19,13 @@ interface ReplyItemProps {
     isLiked: boolean;
     likesCount: number;
   };
+  updateCommentLoading?: boolean;
+  deleteCommentLoading?: boolean;
 }
 
 const ReplyItem = memo(
   ({
     reply,
-    user,
-    parentId,
-    onLike,
     onEdit,
     onDelete,
     editingComment,
@@ -38,7 +33,21 @@ const ReplyItem = memo(
     onCancelEdit,
     onSubmitEdit,
     getCommentLikeStatus,
+    updateCommentLoading = false,
+    deleteCommentLoading = false,
   }: ReplyItemProps) => {
+    const user = useAtomValue(userAtom);
+    const { mutate: toggleCommentLike } = useToggleCommentLike();
+
+    // 댓글 좋아요 처리
+    const handleCommentLike = (commentId: number) => {
+      if (!user) {
+        // 로그인 필요 시 처리 (부모 컴포넌트에서 모달 관리)
+        return;
+      }
+      toggleCommentLike(commentId);
+    };
+
     // 계산 최적화
     const isAuthor = useMemo(
       () => user && user.id === reply.author_id,
@@ -75,7 +84,7 @@ const ReplyItem = memo(
               {reply.author_avatar ? (
                 <Image
                   src={reply.author_avatar}
-                  alt={reply.author_name || ''}
+                  alt={reply.author_name || '사용자'}
                   width={24}
                   height={24}
                   className="h-full w-full object-cover"
@@ -90,14 +99,16 @@ const ReplyItem = memo(
               )}
             </div>
             <div>
-              <div className="text-sm font-medium">{reply.author_name}</div>
+              <div className="text-sm font-medium">
+                {reply.author_name || '사용자'}
+              </div>
               <div className="text-xs text-gray-500">{formattedDate}</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onLike(reply.id)}
+              onClick={() => handleCommentLike(reply.id)}
               className={`flex items-center gap-1 text-sm ${
                 likeStatus.isLiked
                   ? 'text-gold-start'
@@ -111,16 +122,22 @@ const ReplyItem = memo(
             {isAuthor && (
               <div className="flex items-center gap-2 text-xs">
                 <button
-                  onClick={() => onEdit(reply, true)}
+                  onClick={onEdit}
                   className="text-gray-500 hover:text-blue-500"
+                  disabled={updateCommentLoading}
                 >
                   <Edit className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => onDelete(reply.id, true, parentId)}
+                  onClick={onDelete}
                   className="text-gray-500 hover:text-red-500"
+                  disabled={deleteCommentLoading}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {deleteCommentLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-600"></div>
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             )}
@@ -139,20 +156,30 @@ const ReplyItem = memo(
                 })
               }
               className="mb-2 h-16 w-full resize-none rounded-lg border p-2 text-sm focus:border-gold-start focus:outline-none focus:ring-1 focus:ring-gold-start"
+              disabled={updateCommentLoading}
             />
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={onCancelEdit}
                 className="rounded-lg border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+                disabled={updateCommentLoading}
               >
                 취소
               </button>
               <button
                 type="submit"
                 className="rounded-lg bg-gradient-to-r from-gold-start to-gold-end px-2 py-1 text-xs text-white"
+                disabled={updateCommentLoading}
               >
-                저장
+                {updateCommentLoading ? (
+                  <div className="flex items-center">
+                    <div className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    저장 중...
+                  </div>
+                ) : (
+                  '저장'
+                )}
               </button>
             </div>
           </form>

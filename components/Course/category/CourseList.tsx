@@ -7,8 +7,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import CourseActions from './CourseActions';
 import { CourseWithSections } from '@/app/types/course/courseModel';
-import { useAtomValue } from 'jotai';
-import { courseProgressAtom } from '@/store/course/progressAtom';
+import { useAllCoursesProgress } from '@/hooks/api/useCourseProgress';
 
 interface CourseListProps {
   category?: string;
@@ -17,8 +16,10 @@ interface CourseListProps {
 export default function CourseList({ category }: CourseListProps) {
   const { courses: initialCourses, isLoading: coursesLoading } =
     useCourseList(category);
-  const progressState = useAtomValue(courseProgressAtom);
-  const { progressData, isLoading: progressLoading } = progressState;
+
+  const { data: progressData, isLoading: progressLoading } =
+    useAllCoursesProgress();
+
   const { isAdmin } = useCoursePermission();
   const [courses, setCourses] = useState<CourseWithSections[]>(
     initialCourses as CourseWithSections[]
@@ -61,13 +62,19 @@ export default function CourseList({ category }: CourseListProps) {
 
   return (
     <div className="grid gap-6 sm:grid-cols-2 laptop:grid-cols-3">
-      {courses.map((course: CourseWithSections) => {
-        const progress = progressData[course.id] || {
-          completed: false,
-          writingCompleted: false,
+      {courses.map((course) => {
+        // 해당 코스의 진도 정보 가져오기
+        const progress = (progressData && progressData[course.id]) || {
+          completedItems: [],
+          isCompleted: false,
+          hasWriting: false,
         };
 
-        // 이제 기본 페이지로 이동 - 첫 번째 강의 아이템은 서버에서 자동으로 가져옴
+        const courseProgress = {
+          completed: progress.isCompleted,
+          writingCompleted: progress.hasWriting,
+        };
+
         const targetUrl = `/course/${course.category}/${course.id}`;
 
         return (
@@ -93,49 +100,53 @@ export default function CourseList({ category }: CourseListProps) {
                     <div className="flex items-center gap-2">
                       <div
                         className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
-                          progress.completed
+                          courseProgress.completed
                             ? 'bg-green-100 text-green-700'
                             : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         <Check
-                          className={`h-3 w-3 ${progress.completed ? 'text-green-600' : 'text-gray-400'}`}
+                          className={`h-3 w-3 ${courseProgress.completed ? 'text-green-600' : 'text-gray-400'}`}
                         />
                         <span>
-                          {progress.completed ? '학습 완료' : '미수강'}
+                          {courseProgress.completed ? '학습 완료' : '미수강'}
                         </span>
                       </div>
 
                       <div
                         className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
-                          progress.writingCompleted
+                          courseProgress.writingCompleted
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         <Edit
-                          className={`h-3 w-3 ${progress.writingCompleted ? 'text-blue-600' : 'text-gray-400'}`}
+                          className={`h-3 w-3 ${courseProgress.writingCompleted ? 'text-blue-600' : 'text-gray-400'}`}
                         />
                         <span>
-                          {progress.writingCompleted
-                            ? '글작성 완료'
-                            : '글작성 미완료'}
+                          {courseProgress.writingCompleted
+                            ? '글쓰기 완료'
+                            : '글쓰기 미완료'}
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="flex h-[60px] border-b">
-                  <h3 className="line-clamp-2 flex text-lg font-medium group-hover:font-semibold">
-                    {course.title}
-                  </h3>
-                </div>
 
-                {course.description && (
-                  <p className="line-clamp-3 text-sm text-gray-600 group-hover:text-black">
-                    {course.description}
-                  </p>
-                )}
+                <h3 className="line-clamp-2 text-lg font-bold text-gray-900">
+                  {course.title}
+                </h3>
+
+                <p className="line-clamp-3 text-sm text-gray-600">
+                  {course.description}
+                </p>
+
+                <div className="mt-auto flex items-center justify-between text-sm text-gray-500">
+                  <span>{getCategoryTitle(course.category)}</span>
+                  <span>
+                    {new Date(course.created_at).toLocaleDateString('ko-KR')}
+                  </span>
+                </div>
               </div>
             </Link>
           </div>

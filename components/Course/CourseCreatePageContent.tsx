@@ -1,9 +1,8 @@
 'use client';
 
-import { useCoursePermission } from '@/hooks/useCourse';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '../common/Toast/Context';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import {
   COURSE_CATEGORIES,
   CourseCategory,
@@ -22,7 +21,6 @@ import Link from 'next/link';
 export default function CourseCreatePageContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get('category') || '';
-  const { isAdmin, isLoading: permissionLoading } = useCoursePermission();
   const { showToast } = useToast();
 
   // 카테고리 관리
@@ -35,14 +33,6 @@ export default function CourseCreatePageContent() {
   // 코스 아이템(강의) 관리
   const [courseItems, setCourseItems] = useState<CourseItemFormData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 관리자만 접근 가능
-  useEffect(() => {
-    if (!permissionLoading && !isAdmin) {
-      showToast('관리자만 접근할 수 있습니다.', 'error');
-      window.location.href = '/course';
-    }
-  }, [isAdmin, permissionLoading, showToast]);
 
   // 빈 코스 아이템 추가
   const addCourseItem = () => {
@@ -176,80 +166,46 @@ export default function CourseCreatePageContent() {
       );
       window.location.href = `/course/${category}`;
     } catch (error) {
-      console.error('강의 생성 실패:', error);
+      console.error('CourseCreatePageContent강의 생성 실패:', error);
       showToast('강의 생성에 실패했습니다.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (permissionLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        권한을 확인하는 중...
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-4xl py-12 mobile:px-4">
-      <div className="flex items-center justify-between mobile:mb-2 tablet:mb-4 laptop:mb-6">
-        <h1 className="text-2xl font-bold">강의 추가</h1>
-        <Link href={'/course'}>
-          <ArrowLeft className="h-6 w-6 hover:text-gold-start" />
+    <div className="mx-auto max-w-4xl py-12 mobile:px-4 tablet:px-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">코스 개설</h1>
+        <Link
+          href="/course"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          돌아가기
         </Link>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="mobile:space-y-3 tablet:space-y-6"
-      >
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* 카테고리 선택 */}
         <div className="rounded-lg border p-4">
-          <h2 className="text-xl font-semibold mobile:mb-2 tablet:mb-4">
-            강의 카테고리
-          </h2>
+          <h2 className="mb-4 text-xl font-semibold">카테고리 선택</h2>
 
-          <div>
-            {showCategoryInput ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="flex-1 rounded-lg border p-2"
-                  placeholder="새 카테고리를 작성해주세요."
-                  autoFocus
-                />
-                <Button
-                  type="button"
-                  onClick={addCustomCategory}
-                  className="rounded-lg px-3 py-2"
-                >
-                  추가
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setShowCategoryInput(false)}
-                  className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                {Object.keys(COURSE_CATEGORIES).map((cat) => (
+          <div className="space-y-4">
+            {!showCategoryInput ? (
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(COURSE_CATEGORIES).map(([key, cat]) => (
                   <button
-                    key={cat}
+                    key={key}
                     type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`rounded-lg mobile:px-2 mobile:py-1 tablet:px-4 tablet:py-2 ${
-                      category === cat
+                    onClick={() => setCategory(key)}
+                    className={`rounded-lg px-3 py-2 text-sm transition ${
+                      category === key
                         ? 'bg-gold-start text-white'
                         : 'border hover:bg-gray-50'
                     }`}
                   >
-                    {COURSE_CATEGORIES[cat as CourseCategory].title}
+                    {cat.title}
                   </button>
                 ))}
 
@@ -260,6 +216,36 @@ export default function CourseCreatePageContent() {
                 >
                   <PlusCircle size={16} />
                   <span>추가</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="새 카테고리 이름"
+                  className="flex-1 rounded-lg border px-3 py-2"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addCustomCategory();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addCustomCategory}
+                  className="rounded-lg bg-gold-start px-3 py-2 text-white"
+                >
+                  추가
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryInput(false)}
+                  className="rounded-lg border px-3 py-2"
+                >
+                  <X size={16} />
                 </button>
               </div>
             )}
@@ -291,96 +277,92 @@ export default function CourseCreatePageContent() {
               강의를 추가해주세요.
             </div>
           ) : (
-            <div className="space-y-6 bg-light">
+            <div className="space-y-4">
               {courseItems.map((item, index) => (
-                <div key={index} className="rounded-lg border p-4">
-                  <div className="mb-2 flex items-center justify-between">
+                <div
+                  key={index}
+                  className="rounded-lg border border-gray-200 p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between">
                     <h3 className="font-medium">강의 {index + 1}</h3>
                     <button
                       type="button"
                       onClick={() => removeCourseItem(index)}
-                      className="rounded-full p-1 text-red-500 hover:bg-red-50"
+                      className="text-red-500 hover:text-red-700"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
 
-                  <div className="mb-3">
-                    <label className="mb-1 block text-sm font-medium">
-                      제목
-                    </label>
-                    <input
-                      type="text"
-                      value={item.title}
-                      onChange={(e) =>
-                        updateCourseItem(index, 'title', e.target.value)
-                      }
-                      className="w-full rounded-lg border p-2"
-                      placeholder="강의 제목"
-                    />
-                  </div>
+                  <div className="space-y-3">
+                    {/* 강의 제목 */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        강의 제목 *
+                      </label>
+                      <input
+                        type="text"
+                        value={item.title}
+                        onChange={(e) =>
+                          updateCourseItem(index, 'title', e.target.value)
+                        }
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="강의 제목을 입력하세요"
+                        required
+                      />
+                    </div>
 
-                  <div className="mb-3">
-                    <label className="mb-1 block text-sm font-medium">
-                      설명 (선택사항)
-                    </label>
-                    <textarea
-                      value={item.description || ''}
-                      onChange={(e) =>
-                        updateCourseItem(index, 'description', e.target.value)
-                      }
-                      className="w-full rounded-lg border p-2"
-                      rows={2}
-                      placeholder="강의에 대한 짧은 설명"
-                    />
-                  </div>
+                    {/* 강의 설명 */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        강의 설명
+                      </label>
+                      <textarea
+                        value={item.description}
+                        onChange={(e) =>
+                          updateCourseItem(index, 'description', e.target.value)
+                        }
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="강의에 대한 설명을 입력하세요"
+                        rows={3}
+                      />
+                    </div>
 
-                  <div className="mb-3">
-                    <label className="mb-1 block text-sm font-medium">
-                      키워드 (선택사항)
-                    </label>
-                    <input
-                      type="text"
-                      value={item.keywords || ''}
-                      onChange={(e) =>
-                        updateCourseItem(index, 'keywords', e.target.value)
-                      }
-                      className="w-full rounded-lg border p-2"
-                      placeholder="쉼표(,)로 구분하여 키워드 입력 (예: 독서법, 인문학, 철학)"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      여러 키워드는 쉼표(,)로 구분해 입력해 주세요.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">
-                      YouTube URL 또는 ID
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
+                    {/* YouTube URL */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        YouTube URL *
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Youtube className="h-5 w-5 text-red-500" />
                         <input
                           type="text"
                           value={item.youtube_id}
                           onChange={(e) =>
-                            updateCourseItem(
-                              index,
-                              'youtube_id',
-                              e.target.value
-                            )
-                          }
-                          onBlur={(e) =>
                             extractYoutubeId(e.target.value, index)
                           }
-                          className="w-full rounded-lg border p-2 pl-9"
-                          placeholder="YouTube URL 또는 ID"
+                          className="flex-1 rounded-lg border px-3 py-2"
+                          placeholder="YouTube URL 또는 Video ID"
+                          required
                         />
-                        <Youtube className="absolute left-2 top-1/2 h-5 w-5 -translate-y-1/2 text-red-500" />
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      YouTube 전체 URL 또는 ID만 입력하세요 (예: dQw4w9WgXcQ)
-                    </p>
+
+                    {/* 키워드 */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        키워드
+                      </label>
+                      <input
+                        type="text"
+                        value={item.keywords}
+                        onChange={(e) =>
+                          updateCourseItem(index, 'keywords', e.target.value)
+                        }
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="키워드를 쉼표로 구분하여 입력하세요"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -389,13 +371,19 @@ export default function CourseCreatePageContent() {
         </div>
 
         {/* 제출 버튼 */}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-3">
+          <Link
+            href="/course"
+            className="rounded-lg border px-6 py-2 text-gray-600 hover:bg-gray-50"
+          >
+            취소
+          </Link>
           <Button
             type="submit"
-            disabled={isSubmitting}
-            className="disabled:opacity-50 mobile:px-3 mobile:py-1 tablet:px-6 tablet:py-3"
+            disabled={isSubmitting || courseItems.length === 0}
+            className="rounded-lg bg-gold-start px-6 py-2 text-white hover:bg-gold-start/90 disabled:opacity-50"
           >
-            {isSubmitting ? '추가 중...' : '등록'}
+            {isSubmitting ? '생성 중...' : '생성'}
           </Button>
         </div>
       </form>

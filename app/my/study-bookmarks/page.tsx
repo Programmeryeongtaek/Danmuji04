@@ -1,6 +1,11 @@
 'use client';
 
 import { useToast } from '@/components/common/Toast/Context';
+import {
+  BookmarkedStudy,
+  useBookmarksList,
+  useDeleteBookmarks,
+} from '@/hooks/api/useBookmarks';
 import { userAtom } from '@/store/auth';
 import { createClient } from '@/utils/supabase/client';
 import { useAtomValue } from 'jotai';
@@ -15,41 +20,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useState } from 'react';
-
-// 북마크된 스터디 타입 정의
-interface BookmarkedStudy {
-  id: string;
-  study_id: string;
-  user_id: string;
-  created_at: string;
-  notes: string | null;
-  importance: number;
-  // 스터디 정보
-  study: {
-    id: string;
-    title: string;
-    category: string;
-    description: string;
-    owner_id: string;
-    owner_name: string;
-    max_participants: number;
-    current_participants: number;
-    approved_participants: number;
-    start_date: string;
-    end_date: string;
-    status: 'recruiting' | 'in_progress' | 'completed';
-    book_id?: string | null;
-    book_title?: string | null;
-  };
-}
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 export default function StudyBookmarksPage() {
-  const [bookmarks, setBookmarks] = useState<BookmarkedStudy[]>([]);
   const [filteredBookmarks, setFilteredBookmarks] = useState<BookmarkedStudy[]>(
     []
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBookmarks, setSelectedBookmarks] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -60,82 +36,31 @@ export default function StudyBookmarksPage() {
   const user = useAtomValue(userAtom);
   const { showToast } = useToast();
 
-  // 북마크 데이터 로드
+  const {
+    data: bookmarks = [],
+    isLoading,
+    error,
+    refetch,
+  } = useBookmarksList('study');
+
+  const { mutate: deleteBookmarks } = useDeleteBookmarks('study');
+
+  // 로그인 체크
   useEffect(() => {
-    const fetchBookmarks = async () => {
-      if (!user) {
-        showToast('로그인이 필요합니다.', 'error');
-        router.push('/?login=true');
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const supabase = createClient();
-
-        // 북마크 목록 조회
-        const { data: bookmarkData, error: bookmarkError } = await supabase
-          .from('study_bookmarks')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (bookmarkError) throw bookmarkError;
-
-        if (!bookmarkData || bookmarkData.length === 0) {
-          setBookmarks([]);
-          setFilteredBookmarks([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // 북마크된 스터디 ID 목록
-        const studyIds = bookmarkData.map((b) => b.study_id);
-
-        // 스터디 상세 정보 조회
-        const { data: studiesData, error: studiesError } = await supabase
-          .from('studies')
-          .select(
-            `
-            *,
-            books:book_id (
-              id,
-              title
-            )
-          `
-          )
-          .in('id', studyIds);
-
-        if (studiesError) throw studiesError;
-
-        // 북마크와 스터디 정보 병합
-        const enrichedBookmarks: BookmarkedStudy[] = bookmarkData
-          .map((bookmark) => {
-            const study = studiesData?.find((s) => s.id === bookmark.study_id);
-            if (!study) return null;
-
-            return {
-              ...bookmark,
-              study: {
-                ...study,
-                book_title: study.books?.title || null,
-              },
-            };
-          })
-          .filter(Boolean) as BookmarkedStudy[];
-
-        setBookmarks(enrichedBookmarks);
-        setFilteredBookmarks(enrichedBookmarks);
-      } catch (error) {
-        console.error('북마크 로드 실패:', error);
-        showToast('북마크 정보를 불러오는데 실패했습니다.', 'error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBookmarks();
+    if (!user) {
+      showToast('로그인이 필요합니다.', 'error');
+      router.push('/?login=true');
+      return;
+    }
   }, [user, router, showToast]);
+
+  // 에러 처리
+  useEffect(() => {
+    if (error) {
+      console.error('북마크 로드 실패:', error);
+      showToast('북마크 정보를 불러오는데 실패했습니다.', 'error');
+    }
+  }, [error, showToast]);
 
   // 필터링 적용
   useEffect(() => {
@@ -197,28 +122,16 @@ export default function StudyBookmarksPage() {
       return;
     }
 
-    try {
-      const supabase = createClient();
-
-      // 선택된 북마크 삭제
-      const { error } = await supabase
-        .from('study_bookmarks')
-        .delete()
-        .in('id', selectedBookmarks);
-
-      if (error) throw error;
-
-      // UI 업데이트
-      setBookmarks((prev) =>
-        prev.filter((bookmark) => !selectedBookmarks.includes(bookmark.id))
-      );
-      setSelectedBookmarks([]);
-
-      showToast('선택한 북마크가 삭제되었습니다.', 'success');
-    } catch (error) {
-      console.error('북마크 삭제 실패:', error);
-      showToast('북마크 삭제에 실패했습니다.', 'error');
-    }
+    deleteBookmarks(selectedBookmarks, {
+      onSuccess: () => {
+        setSelectedBookmarks([]);
+        refetch(); // 목록 새로고침
+      },
+      onError: (error) => {
+        console.error('북마크 삭제 실패:', error);
+        showToast('북마크 삭제에 실패했습니다.', 'error');
+      },
+    });
   };
 
   // 단일 북마크 삭제
@@ -227,25 +140,15 @@ export default function StudyBookmarksPage() {
       return;
     }
 
-    try {
-      const supabase = createClient();
-
-      // 북마크 삭제
-      const { error } = await supabase
-        .from('study_bookmarks')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // UI 업데이트
-      setBookmarks((prev) => prev.filter((bookmark) => bookmark.id !== id));
-
-      showToast('북마크가 삭제되었습니다.', 'success');
-    } catch (error) {
-      console.error('북마크 삭제 실패:', error);
-      showToast('북마크 삭제에 실패했습니다.', 'error');
-    }
+    deleteBookmarks([id], {
+      onSuccess: () => {
+        refetch(); // 목록 새로고침
+      },
+      onError: (error) => {
+        console.error('북마크 삭제 실패:', error);
+        showToast('북마크 삭제에 실패했습니다.', 'error');
+      },
+    });
   };
 
   // 메모 수정 시작
@@ -267,15 +170,7 @@ export default function StudyBookmarksPage() {
 
       if (error) throw error;
 
-      // UI 업데이트
-      setBookmarks((prev) =>
-        prev.map((bookmark) =>
-          bookmark.id === bookmarkId
-            ? { ...bookmark, notes: currentNotes }
-            : bookmark
-        )
-      );
-
+      refetch();
       setShowNotesEditor(null);
       showToast('메모가 저장되었습니다.', 'success');
     } catch (error) {
@@ -297,13 +192,7 @@ export default function StudyBookmarksPage() {
 
       if (error) throw error;
 
-      // UI 업데이트
-      setBookmarks((prev) =>
-        prev.map((bookmark) =>
-          bookmark.id === bookmarkId ? { ...bookmark, importance } : bookmark
-        )
-      );
-
+      refetch();
       showToast('중요도가 변경되었습니다.', 'success');
     } catch (error) {
       console.error('중요도 변경 실패:', error);
@@ -322,10 +211,10 @@ export default function StudyBookmarksPage() {
   };
 
   // 카테고리 목록 구성
-  const categories = [
-    'all',
-    ...new Set(bookmarks.map((b) => b.study.category)),
-  ];
+  const categories = useMemo(
+    () => ['all', ...new Set(bookmarks.map((b) => b.study.category))],
+    [bookmarks]
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">

@@ -11,7 +11,7 @@ import { createClient } from '@/utils/supabase/client';
 import CourseProgressSummary from '../CourseProgressSummary';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/auth';
-import { courseProgressAtom } from '@/store/course/progressAtom';
+import { useAllCoursesProgress } from '@/hooks/api/useCourseProgress';
 
 interface CategoryDynamicContentProps {
   category: string;
@@ -24,8 +24,11 @@ export function CategoryDynamicContent({
 }: CategoryDynamicContentProps) {
   const { isAdmin, isLoading: permissionLoading } = useCoursePermission();
   const { courses, isLoading: coursesLoading } = useCourseList(category);
-  const progressState = useAtomValue(courseProgressAtom);
-  const { progressData, isLoading: progressLoading } = progressState;
+
+  // 코스 진도 관리
+  const { data: allCoursesProgress = {}, isLoading: progressLoading } =
+    useAllCoursesProgress();
+
   const [userName, setUserName] = useState('');
   const user = useAtomValue(userAtom);
 
@@ -72,14 +75,18 @@ export function CategoryDynamicContent({
 
     // 각 코스의 완료 상태 확인
     categoryCourses.forEach((course) => {
-      const progress = progressData[course.id];
+      const progress = allCoursesProgress[course.id];
       if (progress) {
-        if (progress.completed) completedCourses++;
-        if (progress.writingCompleted) completedWritings++;
+        if (progress.isCompleted) completedCourses++;
+        if (progress.hasWriting) completedWritings++;
       }
     });
 
-    return { totalCourses, completedCourses, completedWritings };
+    return {
+      totalCourses,
+      completedCourses,
+      completedWritings,
+    };
   };
 
   const { totalCourses, completedCourses, completedWritings } =
@@ -118,7 +125,7 @@ export function CategoryDynamicContent({
           선별한 {title} 관련 영상을 보고 자신만의 생각을 글로 정리해보세요.
         </p>
 
-        {/* 진행 상황 요약 컴포넌트 - 카테고리 prop 추가 */}
+        {/* 진행 상황 요약 컴포넌트 */}
         {user && totalCourses > 0 && (
           <CourseProgressSummary
             categoryName={title}

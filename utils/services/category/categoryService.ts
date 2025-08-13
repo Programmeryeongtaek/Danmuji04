@@ -75,7 +75,6 @@ export async function updateCategoryMap(): Promise<Record<string, string>> {
     // 캐시 타임스탬프 업데이트
     lastFetchTime = now;
 
-    console.log('카테고리 매핑 업데이트 됨:', categoryMapCache);
     return categoryMapCache;
   } catch (error) {
     console.error('카테고리 매핑 업데이트 실패:', error);

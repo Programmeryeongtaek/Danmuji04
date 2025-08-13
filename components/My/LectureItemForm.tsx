@@ -35,7 +35,6 @@ export function LectureItemForm({
     }
 
     setVideoFile(file);
-    console.log('비디오 파일 선택됨:', file.name, file.size, file.type);
 
     // 비디오 길이를 저장할 변수
     let detectedDuration = '00:00';
@@ -54,7 +53,6 @@ export function LectureItemForm({
         video.onloadedmetadata = () => {
           URL.revokeObjectURL(videoUrl);
           const duration = video.duration;
-          console.log('원시 비디오 길이(초):', duration);
 
           if (isNaN(duration) || duration === 0 || duration === Infinity) {
             console.warn('유효하지 않은 비디오 길이:', duration);
@@ -67,7 +65,6 @@ export function LectureItemForm({
           const seconds = Math.floor(duration % 60);
           const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-          console.log('포맷된 비디오 길이:', formattedDuration);
           resolve(formattedDuration);
         };
 
@@ -88,8 +85,6 @@ export function LectureItemForm({
         video.src = videoUrl;
         video.load();
       });
-
-      console.log('결정된 비디오 길이:', detectedDuration);
     } catch (error) {
       console.error('비디오 메타데이터 처리 중 오류:', error);
       detectedDuration = '00:03';
@@ -100,12 +95,6 @@ export function LectureItemForm({
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `lectures/videos/${fileName}`;
-
-      console.log('업로드 시작:', {
-        fileName,
-        filePath,
-        duration: detectedDuration,
-      });
 
       const options = {
         cacheControl: '3600',
@@ -127,12 +116,8 @@ export function LectureItemForm({
           .from('videos')
           .getPublicUrl(filePath);
 
-        console.log('파일 업로드 완료, URL:', urlData.publicUrl);
-
         // 여기서 중요: 반드시 duration 값이 빈 문자열이 아닌지 확인
         const finalDuration = detectedDuration || '00:03';
-
-        console.log('최종 사용할 영상 길이:', finalDuration);
 
         // 아이템 업데이트 전에 duration 값을 확인하고 로깅
         const updatedItem: LectureItemFormData = {
@@ -142,8 +127,6 @@ export function LectureItemForm({
           duration: finalDuration,
           orderNum: itemIndex + 1,
         };
-
-        console.log('Supabase에 업데이트할 아이템 정보:', updatedItem);
 
         // 아이템 상태 업데이트
         onUpdate(sectionIndex, itemIndex, updatedItem);
