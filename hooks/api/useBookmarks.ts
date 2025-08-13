@@ -98,7 +98,55 @@ export interface BookmarkedStudy {
   };
 }
 
+// 강의 북마크 타입
+export interface BookmarkedLecture {
+  id: number;
+  user_id: string;
+  lecture_id: number;
+  created_at: string;
+  lectures: {
+    id: number;
+    title: string;
+    thumbnail_url: string;
+    category: string;
+    instructor: string;
+    depth: string;
+    keyword: string;
+    group_type: string;
+    likes: number;
+    students: number;
+    createdAt: string;
+    href?: string;
+  };
+}
+
+// 게시글 북마크 타입
+export interface BookmarkedPost {
+  id: number;
+  user_id: string;
+  post_id: number;
+  created_at: string;
+  importance: number;
+  memo: string;
+  community_posts: {
+    id: number;
+    title: string;
+    content: string;
+    category_id: string;
+    author_id: string;
+    views: number;
+    likes: number;
+    created_at: string;
+    updated_at: string;
+  };
+}
+
 type BookmarkInsertData = PostBookmarkInsert | StudyBookmarkInsert | LectureBookmarkInsert;
+
+export type BookmarkResult<T extends BookmarkType> =
+  T extends 'study' ? BookmarkedStudy[] :
+  T extends 'lecture' ? BookmarkedLecture[] :
+  T extends 'post' ? BookmarkedPost[] : never;
 
 // 북마크 타입별 설정
 const BOOKMARK_CONFIGS: Record<BookmarkType, BookmarkConfig> = {
@@ -379,7 +427,7 @@ export const useBookmarksList = (type: BookmarkType, options?: {
 
   return useQuery({
     queryKey: [config.queryPrefix, 'list', page, limit],
-    queryFn: async (): Promise<BookmarkedStudy[]> => {
+    queryFn: async () => {
       if (!user) return [];
 
       const supabase = createClient();
@@ -416,7 +464,24 @@ export const useBookmarksList = (type: BookmarkType, options?: {
         }));
       }
 
-      // 다른 타입들은 기존 방식 유지 (any 타입 허용)
+      if (type === 'lecture') {
+        // 강의 북마크 조회
+        const { data, error } = await supabase
+          .from('bookmarks')
+          .select(`
+            *,
+            lectures (*)
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        return data || [];
+      }
+
+      // 
       const query = supabase
         .from(config.tableName)
         .select(`

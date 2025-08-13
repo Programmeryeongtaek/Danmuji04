@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react';
 import Dropdown from '../common/Dropdown/Dropdown';
 import { SortOption } from '../common/Dropdown/Type';
 import { useSearchParams } from 'next/navigation';
-import { useBookmarks } from '@/hooks/useBookmarks';
 import Pagination from '../common/Pagination';
 import { useAtom, useAtomValue } from 'jotai';
 import {
@@ -51,8 +50,6 @@ const LectureSection = ({
     isLoading: searchLoading,
     error: searchError,
   } = useLectureSearch(effectiveSearchQuery, activeFilters);
-
-  const { handleToggleBookmark, isBookmarked } = useBookmarks();
 
   const [lectureList, setLectureList] = useState<Lecture[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -242,12 +239,7 @@ const LectureSection = ({
           ))
         ) : paginatedLectures.length > 0 ? (
           paginatedLectures.map((lecture) => (
-            <Card
-              key={lecture.id}
-              {...lecture}
-              isBookmarked={isBookmarked(lecture.id)}
-              onToggleBookmark={() => handleToggleBookmark(lecture.id)}
-            />
+            <Card key={lecture.id} {...lecture} />
           ))
         ) : (
           <div className="col-span-full flex justify-center py-8">
